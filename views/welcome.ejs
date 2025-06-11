@@ -183,10 +183,10 @@
             <div class="error"><%= error %></div>
         <% } %>
         
-        <form action="/auth/login" method="POST">
+        <form action="/auth/loginwithPassword" method="POST">
            <div class="form-group">
-                <label for="name">Full Name</label>
-                <input type="text" id="name" name="name" required value="<%= typeof name !== 'undefined' ? name : '' %>" placeholder="John Doe">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required value="<%= typeof email !== 'undefined' ? email : '' %>" placeholder="Johndoe123@gmail.com">
             </div>
             
             <div class="form-group">

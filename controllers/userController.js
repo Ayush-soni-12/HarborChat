@@ -3,6 +3,7 @@ const generateToken = require("../middlewares/generateToken");
 const User= require("../modals/UserModal")
 const bcrypt = require('bcrypt');
 const admin = require("../firebaseAdmin/firebaseInit")
+const { parsePhoneNumber } = require('libphonenumber-js');
 
 
 module.exports.firebaseAuth = asyncHandler(async(req ,res)=>{
@@ -36,11 +37,26 @@ module.exports.signup = asyncHandler(async(req,res)=>{
   return res.render('signup');
 })
 module.exports.registerUser = asyncHandler(async(req,res)=>{
-  const {name,phoneNo,password} = req.body
-  if(!name || !phoneNo || !password){
+  const {name,phoneNo,email,password} = req.body
+  if(!name || !phoneNo  ||!email || !password){
     return res.status(400).send({error:"Please fill all the fields"})
   }
-  const isExist = await User.findOne({phoneNo})
+
+  const parsed = parsePhoneNumber(phoneNo, 'IN'); // 'IN' is for India
+  if (!parsed || !parsed.isValid()) {
+    return res.status(400).send({ error: "Invalid phone number" });
+  }
+
+  const formattedPhone = parsed.number; // +919876543210
+
+  // Check if user already exists
+const isExist = await User.findOne({
+  $or: [
+    { phoneNo: formattedPhone },
+    { email: email }
+  ]
+});
+
   if(isExist){
     return res.redirect('/auth/signup');
   }
@@ -51,7 +67,8 @@ module.exports.registerUser = asyncHandler(async(req,res)=>{
 // ...existing code...
 const newUser = new User({
   name,
-  phoneNo,
+  phoneNo:formattedPhone,
+  email,
   password: hashedPassword
 });
 // ...existing code...
@@ -77,3 +94,31 @@ module.exports.loginwithPassword =asyncHandler(async(req,res)=>{
 
 return res.render("welcome.ejs");
 })
+
+
+module.exports.loginConfirm = asyncHandler(async (req, res) => {
+    if (req.cookies.jwt) {
+        // return res.redirect("/show?message="+encodeURIComponent("You are already logged in"));
+        return res.send("already login")
+       
+    }
+
+    const { email, password } = req.body
+  
+    if(!email || !password){
+      return res.send("provide name or password ")
+    }
+      
+    const user = await User.findOne({email})
+    if(!user){
+      return res.send("user not found")
+    }
+
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
+        res.send("email and password is wrong")
+    }
+
+    return res.redirect("/")
+
+});
