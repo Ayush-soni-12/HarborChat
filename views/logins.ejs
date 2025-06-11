@@ -224,12 +224,12 @@
 
         // Your Firebase configuration
          const firebaseConfig = {
-    apiKey: "AIzaSyB2AzneWCUe5l1jzmTQ9ndFpki0pJl9lHM",
-    authDomain: "whatsapp-2f012.firebaseapp.com",
-    projectId: "whatsapp-2f012",
-    storageBucket: "whatsapp-2f012.appspot.com",
-    messagingSenderId: "361693672195",
-    appId: "1:361693672195:web:b14e914729e559180f6f36",
+    apiKey: process.env.API_KEY,
+    authDomain: process.env.AUTH_DOMAIN,
+    projectId: process.env.PROJECT_ID,
+    storageBucket: process.env.STORAGE_BUCKET,
+    messagingSenderId: process.env.MESSAGINGSENDER_ID,
+    appId: process.env.APP_ID,
   };
 
         // Initialize Firebase

@@ -3,7 +3,7 @@ const generateToken = require("../middlewares/generateToken");
 const User= require("../modals/UserModal")
 const bcrypt = require('bcrypt');
 const admin = require("../firebaseAdmin/firebaseInit")
-const { parsePhoneNumber } = require('libphonenumber-js');
+const  {parsePhoneNumber}  = require('libphonenumber-js');
 
 
 module.exports.firebaseAuth = asyncHandler(async(req ,res)=>{
