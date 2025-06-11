@@ -10,6 +10,7 @@ const mongoose = require('mongoose');
 const path = require('path');
 const cookieParser= require('cookie-parser');
 const authRoutes =require('./routes/auth')
+const homeRoute = require("./routes/home");
 
 async function main(){
     await mongoose.connect('mongodb://localhost:27017/harborchat')
@@ -31,9 +32,8 @@ app.set('view engine','ejs');
 
 
 app.use("/auth",authRoutes)
-app.get('/',(req,res)=>{
-    return res.send('welcome to harbor chat');
-})
+app.use('/',homeRoute)
+
 
 
 
