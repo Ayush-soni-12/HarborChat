@@ -2,7 +2,7 @@ const asyncHandler = require("../middlewares/asyncHandler");
 const generateToken = require("../middlewares/generateToken");
 const User= require("../modals/UserModal")
 const bcrypt = require('bcrypt');
-
+const admin = require("../firebaseAdmin/firebaseInit")
 
 
 module.exports.firebaseAuth = asyncHandler(async(req ,res)=>{
@@ -11,16 +11,19 @@ module.exports.firebaseAuth = asyncHandler(async(req ,res)=>{
 
   try {
     const decoded = await admin.auth().verifyIdToken(token);
-    const { uid, phoneNo } = decoded;
+    console.log("Decoded Firebase Token:", decoded);
+    const { uid, phone_number } = decoded;
     console.log("Decoded Firebase Token:", decoded);
 
-    let user = await User.findOne({ uid });
+    
+    const user = await User.findOne({ phoneNo: decoded.phone_number });
+    console.log("user",user);
     if (!user) {
       return res.status(404).send({ error: "User not found" });
     }
 
-    generateToken(res,uid);
-
+   generateToken(res, user._id);
+   return res.status(200).json({ message: "Authenticated", user });
   } catch (err) {
     console.error("Firebase token verification failed:", err);
     res.status(401).send({ err: "Invalid Firebase Token" });
