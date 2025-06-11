@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const asyncHandler = require("../middlewares/asyncHandler.js");
+const User = require("../modals/UserModal.js")
 
 
 const validToken = asyncHandler(async (req, res, next) => {
@@ -23,14 +24,17 @@ const validToken = asyncHandler(async (req, res, next) => {
     // if (isBlacklisted) {
     //     return res.status(403).send("Token has been revoked. Please log in again.");
     // }
+
     
 
     try {
         // Verify the token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log("decoded",decoded);
 
        
         req.user = await User.findById(decoded.uid).select("-password");
+        console.log("req.use",req.user)
     
 
         if (!req.user) {
@@ -44,5 +48,6 @@ const validToken = asyncHandler(async (req, res, next) => {
         throw new Error(`Not authorized. Token failed: ${err.message}`);
     }
 });
+
 
 module.exports = validToken;
