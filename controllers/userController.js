@@ -58,3 +58,13 @@ generateToken(res,newUser._id);
 return res.redirect("/")
 
 })
+
+
+module.exports.logoutUser = asyncHandler(async(req,res)=>{
+  res.clearCookie("jwt",{
+    httpOnly:true,
+    secure:false,
+
+  })
+  return res.redirect("/")
+})
