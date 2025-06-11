@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Up | HarborChat</title>
+    <title>Login | HarborChat</title>
     <style>
         :root {
             --primary: #25D366;
@@ -11,6 +11,7 @@
             --secondary: #34B7F1;
             --light: #e8f5e9;
             --dark: #075E54;
+            --gray: #667781;
         }
         body {
             font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -21,7 +22,7 @@
             height: 100vh;
             margin: 0;
         }
-        .signup-container {
+        .login-container {
             background: #fff;
             padding: 30px 40px;
             border-radius: 16px;
@@ -119,24 +120,54 @@
             border-radius: 4px;
             margin-bottom: 15px;
         }
-        .login-link {
+        .signup-link {
             text-align: center;
             margin-top: 20px;
             font-size: 14px;
-            color: #666;
+            color: var(--gray);
         }
-        .login-link a {
+        .signup-link a {
             color: var(--primary-dark);
             text-decoration: none;
             font-weight: 500;
         }
-        .login-link a:hover {
+        .signup-link a:hover {
+            text-decoration: underline;
+        }
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            color: var(--gray);
+            font-size: 14px;
+        }
+        .divider::before, .divider::after {
+            content: "";
+            flex: 1;
+            border-bottom: 1px solid #ddd;
+        }
+        .divider::before {
+            margin-right: 10px;
+        }
+        .divider::after {
+            margin-left: 10px;
+        }
+        .otp-option {
+            margin-top: 15px;
+        }
+        .otp-option a {
+            color: var(--primary-dark);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .otp-option a:hover {
             text-decoration: underline;
         }
     </style>
 </head>
 <body>
-    <div class="signup-container">
+    <div class="login-container">
         <div class="logo">
             <div class="logo-icon">
                 <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -146,35 +177,36 @@
             <div class="logo-text">Harbor<span>Chat</span></div>
         </div>
         
-        <h1>Create Your Account</h1>
+        <h1>Welcome Back</h1>
         
         <% if (typeof error !== 'undefined' && error) { %>
             <div class="error"><%= error %></div>
         <% } %>
         
-        <form action="/auth/signup" method="POST">
-            <div class="form-group">
+        <form action="/auth/login" method="POST">
+           <div class="form-group">
                 <label for="name">Full Name</label>
                 <input type="text" id="name" name="name" required value="<%= typeof name !== 'undefined' ? name : '' %>" placeholder="John Doe">
             </div>
             
             <div class="form-group">
-                <label for="phoneNo">Phone Number</label>
-                <input type="tel" id="phoneNo" name="phoneNo" required value="<%= typeof phoneNo !== 'undefined' ? phoneNo : '' %>" placeholder="+1 234 567 8900">
-            </div>
-            
-            <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" required placeholder="At least 6 characters">
+                <input type="password" id="password" name="password" required placeholder="Enter your password">
             </div>
             
             <div class="form-group">
-                <button type="submit">Continue</button>
+                <button type="submit">Log In</button>
             </div>
         </form>
+
+        <div class="otp-option">
+            <a href="/auth/login">Login with OTP instead</a>
+        </div>
+
         
-        <div class="login-link">
-            Already have an account? <a href="/auth/login">Log in</a>
+        
+        <div class="signup-link">
+            Don't have an account? <a href="/auth/signup">Sign up</a>
         </div>
     </div>
 </body>

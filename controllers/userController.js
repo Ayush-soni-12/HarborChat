@@ -30,7 +30,7 @@ module.exports.firebaseAuth = asyncHandler(async(req ,res)=>{
   }
 })
 module.exports.login = asyncHandler(async(req,res)=>{
-return res.render('login');
+return res.render('logins.ejs');
 })
 module.exports.signup = asyncHandler(async(req,res)=>{
   return res.render('signup');
@@ -70,4 +70,10 @@ module.exports.logoutUser = asyncHandler(async(req,res)=>{
 
   })
   return res.redirect("/")
+})
+
+
+module.exports.loginwithPassword =asyncHandler(async(req,res)=>{
+
+return res.render("welcome.ejs");
 })
