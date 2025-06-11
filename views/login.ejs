@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Phone Auth</title>
+</head>
+<body>
+  <h2>Login via Phone</h2>
+
+  <input type="text" id="phoneNumber" placeholder="+91XXXXXXXXXX" />
+  <div id="recaptcha-container"></div>
+  <button id="sendOtpBtn">Send OTP</button>
+
+  <br><br>
+  <input type="text" id="otp" placeholder="Enter OTP" />
+  <button id="verifyOtpBtn">Verify OTP</button>
+
+ <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
+  import {
+    getAuth,
+    RecaptchaVerifier,
+    signInWithPhoneNumber,
+  } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB2AzneWCUe5l1jzmTQ9ndFpki0pJl9lHM",
+    authDomain: "whatsapp-2f012.firebaseapp.com",
+    projectId: "whatsapp-2f012",
+    storageBucket: "whatsapp-2f012.appspot.com",
+    messagingSenderId: "361693672195",
+    appId: "1:361693672195:web:b14e914729e559180f6f36",
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app); // Get the auth instance
+
+  let recaptchaVerifier;
+
+  // Setup recaptcha only once, and ensure 'auth' is passed correctly.
+  // It's crucial that the 'auth' object is fully initialized here.
+  function setupRecaptcha() {
+    if (!recaptchaVerifier) {
+      // Pass the 'auth' instance directly as the third argument.
+      recaptchaVerifier = new RecaptchaVerifier(
+        auth, // Pass the auth instance here directly
+        "recaptcha-container",
+        {
+          size: "invisible",
+          callback: (response) => {
+            // reCAPTCHA solved
+            console.log("reCAPTCHA solved!");
+          },
+          "expired-callback": () => {
+            // Response expired. Ask user to solve reCAPTCHA again.
+            console.log("reCAPTCHA expired. Please try again.");
+          }
+        }
+      );
+      recaptchaVerifier.render().then((widgetId) => {
+        window.recaptchaWidgetId = widgetId;
+        console.log("reCAPTCHA rendered with widget ID:", widgetId);
+      }).catch(error => {
+        console.error("Error rendering reCAPTCHA:", error);
+      });
+    }
+  }
+
+  // Call setupRecaptcha as soon as the page loads or when the DOM is ready
+  document.addEventListener("DOMContentLoaded", () => {
+    setupRecaptcha();
+  });
+
+  document.getElementById("sendOtpBtn").addEventListener("click", async () => {
+    const phoneNumber = document.getElementById("phoneNumber").value;
+
+    if (!phoneNumber) {
+      alert("Please enter a phone number.");
+      return;
+    }
+
+    // Ensure reCAPTCHA is set up before sending OTP
+    if (!recaptchaVerifier) {
+      alert("reCAPTCHA is not yet initialized. Please wait a moment or refresh.");
+      return;
+    }
+
+    try {
+      console.log("Attempting to send OTP to:", phoneNumber);
+      const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
+      window.confirmationResult = confirmationResult;
+      alert("OTP sent!");
+      console.log("Confirmation result:", confirmationResult);
+    } catch (error) {
+      console.error("OTP Error:", error);
+      alert("Error sending OTP: " + error.message);
+
+      // Reset reCAPTCHA in case of an error to allow a new attempt
+      if (recaptchaVerifier && window.recaptchaWidgetId) {
+        recaptchaVerifier.reset(window.recaptchaWidgetId);
+        console.log("reCAPTCHA reset due to error.");
+      }
+    }
+  });
+
+  document.getElementById("verifyOtpBtn").addEventListener("click", async () => {
+    const otp = document.getElementById("otp").value;
+
+    if (!otp) {
+      alert("Please enter the OTP.");
+      return;
+    }
+
+    if (!window.confirmationResult) {
+      alert("No OTP was sent yet. Please send OTP first.");
+      return;
+    }
+
+    try {
+      const result = await window.confirmationResult.confirm(otp);
+      const token = await result.user.getIdToken();
+      console.log("OTP verified successfully:", result);
+        console.log("Firebase ID Token:", token);
+        
+
+      // Assuming your backend endpoint is correct and accessible
+      await fetch("/auth/verify-firebase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+
+      alert("Login success!");
+      console.log("User logged in:", result.user);
+    } catch (error) {
+      console.error("Verification Error:", error);
+      alert("Invalid OTP or verification failed: " + error.message);
+    }
+  });
+</script>
+
+</body>
+</html>
