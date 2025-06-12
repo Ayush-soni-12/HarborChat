@@ -1,370 +1,396 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OTP Login | HarborChat</title>
     <style>
-        :root {
-            --primary: #25D366;
-            --primary-dark: #128C7E;
-            --secondary: #34B7F1;
-            --light: #e8f5e9;
-            --dark: #075E54;
-            --gray: #667781;
+      :root {
+        --primary: #25d366;
+        --primary-dark: #128c7e;
+        --secondary: #34b7f1;
+        --light: #e8f5e9;
+        --dark: #075e54;
+        --gray: #667781;
+      }
+      body {
+        font-family: "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: linear-gradient(135deg, var(--light), white);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+      }
+      .otp-container {
+        background: #fff;
+        padding: 30px 40px;
+        border-radius: 16px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 420px;
+        text-align: center;
+        border-top: 5px solid var(--primary);
+      }
+      .logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+      .logo-icon {
+        width: 40px;
+        height: 40px;
+        background: var(--primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+      }
+      .logo-icon svg {
+        width: 24px;
+        height: 24px;
+        fill: white;
+      }
+      .logo-text {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--dark);
+      }
+      .logo-text span {
+        color: var(--primary);
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 25px;
+        color: var(--dark);
+        font-size: 22px;
+        font-weight: 600;
+      }
+      .form-group {
+        margin-bottom: 20px;
+        text-align: left;
+      }
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: var(--dark);
+        font-size: 14px;
+      }
+      input {
+        width: 100%;
+        padding: 12px 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-sizing: border-box;
+        font-size: 15px;
+        transition: all 0.3s;
+      }
+      input:focus {
+        border-color: var(--primary);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.2);
+      }
+      button {
+        width: 100%;
+        padding: 14px;
+        background-color: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        margin-top: 10px;
+        transition: all 0.3s;
+      }
+      button:hover {
+        background-color: var(--primary-dark);
+        transform: translateY(-2px);
+      }
+      .error {
+        color: #ff4444;
+        font-size: 14px;
+        margin-top: 5px;
+        text-align: center;
+        padding: 8px;
+        background-color: #ffebee;
+        border-radius: 4px;
+        margin-bottom: 15px;
+      }
+      .password-option {
+        margin-top: 15px;
+      }
+      .password-option a {
+        color: var(--primary-dark);
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 14px;
+      }
+      .password-option a:hover {
+        text-decoration: underline;
+      }
+      #recaptcha-container {
+        margin: 15px 0;
+        display: flex;
+        justify-content: center;
+      }
+      .otp-section {
+        display: none;
+        animation: fadeIn 0.3s ease-in-out;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
         }
-        body {
-            font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, var(--light), white);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
+        to {
+          opacity: 1;
+          transform: translateY(0);
         }
-        .otp-container {
-            background: #fff;
-            padding: 30px 40px;
-            border-radius: 16px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 420px;
-            text-align: center;
-            border-top: 5px solid var(--primary);
-        }
-        .logo {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-        .logo-icon {
-            width: 40px;
-            height: 40px;
-            background: var(--primary);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 12px;
-        }
-        .logo-icon svg {
-            width: 24px;
-            height: 24px;
-            fill: white;
-        }
-        .logo-text {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--dark);
-        }
-        .logo-text span {
-            color: var(--primary);
-        }
-        h1 {
-            text-align: center;
-            margin-bottom: 25px;
-            color: var(--dark);
-            font-size: 22px;
-            font-weight: 600;
-        }
-        .form-group {
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: var(--dark);
-            font-size: 14px;
-        }
-        input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-sizing: border-box;
-            font-size: 15px;
-            transition: all 0.3s;
-        }
-        input:focus {
-            border-color: var(--primary);
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.2);
-        }
-        button {
-            width: 100%;
-            padding: 14px;
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            margin-top: 10px;
-            transition: all 0.3s;
-        }
-        button:hover {
-            background-color: var(--primary-dark);
-            transform: translateY(-2px);
-        }
-        .error {
-            color: #ff4444;
-            font-size: 14px;
-            margin-top: 5px;
-            text-align: center;
-            padding: 8px;
-            background-color: #ffebee;
-            border-radius: 4px;
-            margin-bottom: 15px;
-        }
-        .password-option {
-            margin-top: 15px;
-        }
-        .password-option a {
-            color: var(--primary-dark);
-            text-decoration: none;
-            font-weight: 500;
-            font-size: 14px;
-        }
-        .password-option a:hover {
-            text-decoration: underline;
-        }
-        #recaptcha-container {
-            margin: 15px 0;
-            display: flex;
-            justify-content: center;
-        }
-        .otp-section {
-            display: none;
-            animation: fadeIn 0.3s ease-in-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .back-button {
-            background-color: transparent;
-            color: var(--primary-dark);
-            border: 1px solid var(--primary-dark);
-            margin-top: 15px;
-        }
-        .back-button:hover {
-            background-color: var(--light);
-        }
-        .status-message {
-            margin: 15px 0;
-            padding: 10px;
-            border-radius: 4px;
-            text-align: center;
-        }
-        .success {
-            background-color: #e8f5e9;
-            color: var(--dark);
-        }
-        .error-message {
-            background-color: #ffebee;
-            color: #c62828;
-        }
+      }
+      .back-button {
+        background-color: transparent;
+        color: var(--primary-dark);
+        border: 1px solid var(--primary-dark);
+        margin-top: 15px;
+      }
+      .back-button:hover {
+        background-color: var(--light);
+      }
+      .status-message {
+        margin: 15px 0;
+        padding: 10px;
+        border-radius: 4px;
+        text-align: center;
+      }
+      .success {
+        background-color: #e8f5e9;
+        color: var(--dark);
+      }
+      .error-message {
+        background-color: #ffebee;
+        color: #c62828;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="otp-container">
-        <div class="logo">
-            <div class="logo-icon">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
-                </svg>
-            </div>
-            <div class="logo-text">Harbor<span>Chat</span></div>
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"
+            />
+          </svg>
         </div>
-        
-        <h1>Login with OTP</h1>
-        
-        <div id="status-message" class="status-message" style="display: none;"></div>
-        
-        <div id="phone-section">
-            <div class="form-group">
-                <label for="phoneNumber">Phone Number</label>
-                <input type="tel" id="phoneNumber" name="phoneNumber" required placeholder="+1 234 567 8900">
-            </div>
-            
-            <div id="recaptcha-container"></div>
-            
-            <button id="sendOtpBtn">Send OTP</button>
-            
-            <div class="password-option">
-                <a href="/auth/loginwithPassword">Login with password instead</a>
-            </div>
+        <div class="logo-text">Harbor<span>Chat</span></div>
+      </div>
+
+      <h1>Login with OTP</h1>
+
+      <div
+        id="status-message"
+        class="status-message"
+        style="display: none"
+      ></div>
+
+      <div id="phone-section">
+        <div class="form-group">
+          <label for="phoneNumber">Phone Number</label>
+          <input
+            type="tel"
+            id="phoneNumber"
+            name="phoneNumber"
+            required
+            placeholder="+1 234 567 8900"
+          />
         </div>
-        
-        <div id="otp-section" class="otp-section">
-            <div class="form-group">
-                <label for="otp">Enter 6-digit OTP</label>
-                <input type="text" id="otp" name="otp" required placeholder="123456" maxlength="6">
-            </div>
-            
-            <button id="verifyOtpBtn">Verify OTP</button>
-            
-            <button class="back-button" id="backToPhoneBtn">
-                ← Back to phone number
-            </button>
+
+        <div id="recaptcha-container"></div>
+
+        <button id="sendOtpBtn">Send OTP</button>
+
+        <div class="password-option">
+          <a href="/auth/loginwithPassword">Login with password instead</a>
         </div>
+      </div>
+
+      <div id="otp-section" class="otp-section">
+        <div class="form-group">
+          <label for="otp">Enter 6-digit OTP</label>
+          <input
+            type="text"
+            id="otp"
+            name="otp"
+            required
+            placeholder="123456"
+            maxlength="6"
+          />
+        </div>
+
+        <button id="verifyOtpBtn">Verify OTP</button>
+
+        <button class="back-button" id="backToPhoneBtn">
+          ← Back to phone number
+        </button>
+      </div>
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
-        import {
-            getAuth,
-            RecaptchaVerifier,
-            signInWithPhoneNumber,
-        } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-auth.js";
+            import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
+            import {
+                getAuth,
+                RecaptchaVerifier,
+                signInWithPhoneNumber,
+            } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-auth.js";
 
-        // Your Firebase configuration
-         const firebaseConfig = {
-    apiKey: process.env.API_KEY,
-    authDomain: process.env.AUTH_DOMAIN,
-    projectId: process.env.PROJECT_ID,
-    storageBucket: process.env.STORAGE_BUCKET,
-    messagingSenderId: process.env.MESSAGINGSENDER_ID,
-    appId: process.env.APP_ID,
-  };
+            // Your Firebase configuration
+          const firebaseConfig = <%- JSON.stringify(firebaseConfig) %>;
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        
-        // DOM elements
-        const phoneSection = document.getElementById('phone-section');
-        const otpSection = document.getElementById('otp-section');
-        const sendOtpBtn = document.getElementById('sendOtpBtn');
-        const verifyOtpBtn = document.getElementById('verifyOtpBtn');
-        const backToPhoneBtn = document.getElementById('backToPhoneBtn');
-        const phoneNumberInput = document.getElementById('phoneNumber');
-        const otpInput = document.getElementById('otp');
-        const statusMessage = document.getElementById('status-message');
-        
-        let recaptchaVerifier;
+            // Initialize Firebase
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+
+            // DOM elements
+            const phoneSection = document.getElementById('phone-section');
+            const otpSection = document.getElementById('otp-section');
+            const sendOtpBtn = document.getElementById('sendOtpBtn');
+            const verifyOtpBtn = document.getElementById('verifyOtpBtn');
+            const backToPhoneBtn = document.getElementById('backToPhoneBtn');
+            const phoneNumberInput = document.getElementById('phoneNumber');
+            const otpInput = document.getElementById('otp');
+            const statusMessage = document.getElementById('status-message');
+
+            let recaptchaVerifier;
 
 
-        // Show status message
-        function showStatus(message, isError = false) {
-            statusMessage.textContent = message;
-            statusMessage.className = isError ? 'status-message error-message' : 'status-message success';
-            statusMessage.style.display = 'block';
-            
-            if (!isError) {
-                setTimeout(() => {
-                    statusMessage.style.display = 'none';
-                }, 3000);
-            }
-        }
+            // Show status message
+            function showStatus(message, isError = false) {
+                statusMessage.textContent = message;
+                statusMessage.className = isError ? 'status-message error-message' : 'status-message success';
+                statusMessage.style.display = 'block';
 
-        // Setup reCAPTCHA
-      function setupRecaptcha() {
-    if (!recaptchaVerifier) {
-      // Pass the 'auth' instance directly as the third argument.
-      recaptchaVerifier = new RecaptchaVerifier(
-        auth, // Pass the auth instance here directly
-        "recaptcha-container",
-        {
-          size: "invisible",
-          callback: (response) => {
-            // reCAPTCHA solved
-            console.log("reCAPTCHA solved!");
-          },
-          "expired-callback": () => {
-            // Response expired. Ask user to solve reCAPTCHA again.
-            console.log("reCAPTCHA expired. Please try again.");
-          }
-        }
-      );
-      recaptchaVerifier.render().then((widgetId) => {
-        window.recaptchaWidgetId = widgetId;
-        console.log("reCAPTCHA rendered with widget ID:", widgetId);
-      }).catch(error => {
-        console.error("Error rendering reCAPTCHA:", error);
-      });
-    }
-  }
-
-        // Initialize when DOM is loaded
-        document.addEventListener("DOMContentLoaded", () => {
-            setupRecaptcha();
-        });
-
-        // Send OTP
-        sendOtpBtn.addEventListener('click', async () => {
-            const phoneNumber = phoneNumberInput.value.trim();
-            
-            if (!phoneNumber) {
-                showStatus("Please enter your phone number", true);
-                return;
-            }
-
-            try {
-                showStatus("Sending OTP...");
-              const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
-                window.confirmationResult = confirmationResult;
-                
-                // Switch to OTP section
-                phoneSection.style.display = 'none';
-                otpSection.style.display = 'block';
-                showStatus("OTP sent successfully!");
-            } catch (error) {
-                console.error("OTP Error:", error);
-                showStatus("Error sending OTP: " + error.message, true);
-                
-                // Reset reCAPTCHA
-                if (recaptchaVerifier) {
-                    recaptchaVerifier.clear();
-                    setupRecaptcha();
+                if (!isError) {
+                    setTimeout(() => {
+                        statusMessage.style.display = 'none';
+                    }, 3000);
                 }
             }
-        });
 
-        // Verify OTP
-        verifyOtpBtn.addEventListener('click', async () => {
-            const otp = otpInput.value.trim();
-            
-            if (!otp || otp.length !== 6) {
-                showStatus("Please enter a valid 6-digit OTP", true);
-                return;
+            // Setup reCAPTCHA
+          function setupRecaptcha() {
+        if (!recaptchaVerifier) {
+          // Pass the 'auth' instance directly as the third argument.
+          recaptchaVerifier = new RecaptchaVerifier(
+            auth, // Pass the auth instance here directly
+            "recaptcha-container",
+            {
+              size: "invisible",
+              callback: (response) => {
+                // reCAPTCHA solved
+                console.log("reCAPTCHA solved!");
+              },
+              "expired-callback": () => {
+                // Response expired. Ask user to solve reCAPTCHA again.
+                console.log("reCAPTCHA expired. Please try again.");
+              }
             }
+          );
+          recaptchaVerifier.render().then((widgetId) => {
+            window.recaptchaWidgetId = widgetId;
+            console.log("reCAPTCHA rendered with widget ID:", widgetId);
+          }).catch(error => {
+            console.error("Error rendering reCAPTCHA:", error);
+          });
+        }
+      }
 
-            try {
-                showStatus("Verifying OTP...");
-                const result = await confirmationResult.confirm(otp);
-                const token = await result.user.getIdToken();
-                
-                // Verify with your backend
-                const response = await fetch("/auth/verify-firebase", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ token }),
-                });
+            // Initialize when DOM is loaded
+            document.addEventListener("DOMContentLoaded", () => {
+                setupRecaptcha();
+            });
 
-                if (response.ok) {
-                    showStatus("Login successful! Redirecting...");
-                    window.location.href = "/dashboard";
-                } else {
-                    throw new Error("Backend verification failed");
+            // Send OTP
+            sendOtpBtn.addEventListener('click', async () => {
+                let phoneNumber = phoneNumberInput.value.trim();
+
+
+                  if (!phoneNumber.startsWith('+')) {
+                      
+                        phoneNumber = phoneNumber.replace(/^0+/, '');
+                        phoneNumber = '+91' + phoneNumber;
+                            }
+
+
+                if (!phoneNumber) {
+                    showStatus("Please enter your phone number", true);
+                    return;
                 }
-            } catch (error) {
-                console.error("Verification Error:", error);
-                showStatus("Invalid OTP or verification failed: " + error.message, true);
-            }
-        });
 
-        // Back to phone number
-        backToPhoneBtn.addEventListener('click', () => {
-            otpSection.style.display = 'none';
-            phoneSection.style.display = 'block';
-            otpInput.value = '';
-            showStatus("", false);
-        });
+                try {
+                    showStatus("Sending OTP...");
+                  const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
+                    window.confirmationResult = confirmationResult;
+
+                    // Switch to OTP section
+                    phoneSection.style.display = 'none';
+                    otpSection.style.display = 'block';
+                    showStatus("OTP sent successfully!");
+                } catch (error) {
+                    console.error("OTP Error:", error);
+                    showStatus("Error sending OTP: " + error.message, true);
+
+                    // Reset reCAPTCHA
+                    if (recaptchaVerifier) {
+                        recaptchaVerifier.clear();
+                        setupRecaptcha();
+                    }
+                }
+            });
+
+            // Verify OTP
+            verifyOtpBtn.addEventListener('click', async () => {
+                const otp = otpInput.value.trim();
+
+                if (!otp || otp.length !== 6) {
+                    showStatus("Please enter a valid 6-digit OTP", true);
+                    return;
+                }
+
+                try {
+                    showStatus("Verifying OTP...");
+                    const result = await confirmationResult.confirm(otp);
+                    const token = await result.user.getIdToken();
+
+                    // Verify with your backend
+                    const response = await fetch("/auth/verify-firebase", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ token }),
+                    });
+
+                    if (response.ok) {
+                        showStatus("Login successful! Redirecting...");
+                        window.location.href = "/dashboard";
+                    } else {
+                        throw new Error("Backend verification failed");
+                    }
+                } catch (error) {
+                    console.error("Verification Error:", error);
+                    showStatus("Invalid OTP or verification failed: " + error.message, true);
+                }
+            });
+
+            // Back to phone number
+            backToPhoneBtn.addEventListener('click', () => {
+                otpSection.style.display = 'none';
+                phoneSection.style.display = 'block';
+                otpInput.value = '';
+                showStatus("", false);
+            });
     </script>
-</body>
+  </body>
 </html>
