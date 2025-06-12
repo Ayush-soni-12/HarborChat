@@ -31,7 +31,16 @@ module.exports.firebaseAuth = asyncHandler(async(req ,res)=>{
   }
 })
 module.exports.login = asyncHandler(async(req,res)=>{
-return res.render('logins.ejs');
+res.render('logins', {
+  firebaseConfig: {
+    apiKey: process.env.API_KEY,
+    authDomain: process.env.AUTH_DOMAIN,
+    projectId: process.env.PROJECT_ID,
+    storageBucket: process.env.STORAGE_BUCKET,
+    messagingSenderId: process.env.MESSAGINGSENDER_ID,
+    appId: process.env.APP_ID,
+  }
+});
 })
 module.exports.signup = asyncHandler(async(req,res)=>{
   return res.render('signup');
@@ -84,6 +93,7 @@ module.exports.logoutUser = asyncHandler(async(req,res)=>{
   res.clearCookie("jwt",{
     httpOnly:true,
     secure:false,
+    sameSite: 'strict', // Add this line
 
   })
   return res.redirect("/")
@@ -106,7 +116,7 @@ module.exports.loginConfirm = asyncHandler(async (req, res) => {
     const { email, password } = req.body
   
     if(!email || !password){
-      return res.send("provide name or password ")
+      return res.send("provide email or password ")
     }
       
     const user = await User.findOne({email})

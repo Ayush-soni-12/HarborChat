@@ -1,0 +1,53 @@
+const Joi = require('joi');
+
+exports.registerSchema = Joi.object({
+  name: Joi.string()
+    .min(3)
+    .max(30)
+    .required()
+    .messages({
+      'string.empty': 'Name is required',
+      'string.min': 'Name must be at least 3 characters',
+      'string.max': 'Name must be at most 30 characters'
+    }),
+
+  phoneNo: Joi.string()
+    .pattern(/^[0-9]+$/).min(10).max(15)
+    .required()
+    .messages({
+      'string.empty': 'Phone number is required',
+    }),
+
+  password: Joi.string()
+    .pattern(
+      new RegExp(
+        "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*])[A-Za-z\\d!@#$%^&*]{8,}$"
+      )
+    )
+    .required()
+    .messages({
+      'string.empty': 'Password is required',
+      'string.pattern.base':
+        'Password must be at least 8 characters long, and include uppercase, lowercase, number, and special character'
+    }),
+    email: Joi.string().email().required().messages({
+        'string.empty': 'Email is required'
+    }),
+    
+});
+
+exports.loginSchema = Joi.object({
+  email: Joi.string().email()
+    .required()
+    .messages({
+      'string.empty': 'email is required'
+    }),
+
+  password: Joi.string()
+    .required()
+    .messages({
+      'string.empty': 'Password is required'
+    })
+});
+
+
