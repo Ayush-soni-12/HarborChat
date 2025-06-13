@@ -1,9 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Up | HarborChat</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
     <link href="/css/signup.css" rel="stylesheet">
 </head>
 <body>
@@ -23,7 +25,7 @@
             <div class="error"><%= error %></div>
         <% } %>
         
-        <form action="/auth/signup" method="POST">
+        <form  id="signupForm" action="/auth/signup" method="POST">
             <div class="form-group">
                 <label for="name">Full Name</label>
                 <input type="text" id="name" name="name" required value="<%= typeof name !== 'undefined' ? name : '' %>" placeholder="John Doe">
@@ -53,5 +55,23 @@
             Already have an account? <a href="/auth/login">Log in</a>
         </div>
     </div>
+
+    <!-- Transition Elements -->
+    <div class="transition-overlay" id="transitionOverlay">
+        <div class="transition-logo">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+            </svg>
+        </div>
+        <div class="transition-message">Welcome to HarborChat!</div>
+        
+        <div class="chat-bubbles">
+            <div class="chat-bubble" style="top: 20%; left: 60%;">Account created! 🎉</div>
+            <div class="chat-bubble" style="top: 40%; left: 65%;">Let's get started</div>
+            <div class="chat-bubble" style="top: 60%; left: 55%;">Connecting you...</div>
+        </div>
+    </div>
+
+      <script type="module" src="/js/signup.js"></script>
 </body>
 </html>

@@ -48,12 +48,12 @@ module.exports.signup = asyncHandler(async(req,res)=>{
 module.exports.registerUser = asyncHandler(async(req,res)=>{
   const {name,phoneNo,email,password} = req.body
   if(!name || !phoneNo  ||!email || !password){
-    return res.status(400).send({error:"Please fill all the fields"})
+        return res.json({ success: false, message: "Please provide all Fields" });
   }
 
   const parsed = parsePhoneNumber(phoneNo, 'IN'); // 'IN' is for India
   if (!parsed || !parsed.isValid()) {
-    return res.status(400).send({ error: "Invalid phone number" });
+            return res.json({ success: false, message: "Invalid phone no" });
   }
 
   const formattedPhone = parsed.number; // +919876543210
@@ -67,7 +67,7 @@ const isExist = await User.findOne({
 });
 
   if(isExist){
-    return res.redirect('/auth/signup');
+           return res.json({ success: false, message: "Phoneno or email is already exist" });
   }
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password,salt);
@@ -84,7 +84,7 @@ const newUser = new User({
   await newUser.save();
 console.log("user created Successfully");
 generateToken(res,newUser._id);
-return res.redirect("/")
+        return res.json({ success: true, message: "User login successfully" });
 
 })
 
@@ -107,28 +107,28 @@ return res.render("welcome.ejs");
 
 
 module.exports.loginConfirm = asyncHandler(async (req, res) => {
-    if (req.cookies.jwt) {
-        // return res.redirect("/show?message="+encodeURIComponent("You are already logged in"));
-        return res.send("already login")
-       
+        if (req.cookies.jwt) {
+        return res.json({ success: false, message: "Already logged in" });
     }
 
-    const { email, password } = req.body
-  
-    if(!email || !password){
-      return res.send("provide email or password ")
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.json({ success: false, message: "Provide email and password" });
     }
-      
-    const user = await User.findOne({email})
-    if(!user){
-      return res.send("user not found")
+
+    const user = await User.findOne({ email });
+    if (!user) {
+        return res.json({ success: false, message: "User not found" });
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
-        res.send("email and password is wrong")
+        return res.json({ success: false, message: "Email or password is incorrect" }); // ✅ JSON response
     }
 
-    return res.redirect("/")
+    generateToken(res,user._id)
+     return res.json({ success: true, message: "Login successful" });
+
 
 });
