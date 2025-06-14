@@ -93,7 +93,7 @@
             
             // Redirect after animation completes
             setTimeout(() => {
-                window.location.href = '/home'; // Change to your actual home page URL
+                window.location.href = '/chat'; // Change to your actual home page URL
             }, 3500);
         }
 

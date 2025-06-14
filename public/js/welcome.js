@@ -91,7 +91,7 @@
         
         // Redirect after animation completes
         setTimeout(() => {
-            window.location.href = '/';
+            window.location.href = '/chat';
         }, 5000);
     }
 

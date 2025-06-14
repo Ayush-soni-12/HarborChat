@@ -30,18 +30,18 @@ const validToken = asyncHandler(async (req, res, next) => {
     try {
         // Verify the token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log("decoded",decoded);
+        // console.log("decoded",decoded);
 
        
         req.user = await User.findById(decoded.uid).select("-password");
-        console.log("req.use",req.user)
+        // console.log("req.use",req.user)
     
 
         if (!req.user) {
             res.status(404);
             throw new Error("User not found.");
         }
-
+           console.log("hello")
         next();
     } catch (err) {
         res.status(401);

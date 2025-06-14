@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HarborChat</title>
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #25D366;
+            --primary-dark: #128C7E;
+            --secondary: #34B7F1;
+            --sidebar-bg: #f0f2f5;
+            --chat-bg: #e5ddd5;
+            --text-primary: #111b21;
+            --text-secondary: #667781;
+            --border-color: #e9edef;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        body {
+            height: 100vh;
+            display: flex;
+            background-color: var(--sidebar-bg);
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: 30%;
+            min-width: 300px;
+            max-width: 400px;
+            height: 100%;
+            border-right: 1px solid var(--border-color);
+            background-color: white;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .sidebar-header {
+            padding: 10px 16px;
+            background-color: var(--sidebar-bg);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+        }
+
+        .user-name {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .header-icons {
+            display: flex;
+            gap: 20px;
+            color: var(--text-secondary);
+        }
+
+        /* Search */
+        .search-container {
+            padding: 8px 10px;
+            background-color: white;
+        }
+
+        .search-box {
+            background-color: var(--sidebar-bg);
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-box input {
+            border: none;
+            background: transparent;
+            width: 100%;
+            padding: 4px 8px;
+            outline: none;
+            font-size: 14px;
+        }
+
+        /* Contact List */
+        .contact-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .contact-item {
+            display: flex;
+            padding: 12px 16px;
+            gap: 12px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .contact-item:hover {
+            background-color: #f5f5f5;
+        }
+
+        .contact-item.active {
+            background-color: #e9edef;
+        }
+
+        .contact-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #dfe5e7;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+        }
+
+        .contact-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .contact-name {
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .contact-last-msg {
+            font-size: 14px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .contact-time {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Chat Area */
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--chat-bg);
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%239C92AC' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
+        }
+
+        .chat-header {
+            padding: 10px 16px;
+            background-color: var(--sidebar-bg);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .chat-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chat-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+        }
+
+        .chat-name {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .chat-status {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .chat-icons {
+            display: flex;
+            gap: 20px;
+            color: var(--text-secondary);
+        }
+
+        .messages-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .received {
+            align-self: flex-start;
+            background-color: white;
+            border-top-left-radius: 0;
+        }
+
+        .sent {
+            align-self: flex-end;
+            background-color: #d9fdd3;
+            border-top-right-radius: 0;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-align: right;
+            margin-top: 4px;
+        }
+
+        .input-container {
+            padding: 10px;
+            background-color: var(--sidebar-bg);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 10px 15px;
+            border-radius: 20px;
+            border: none;
+            outline: none;
+            font-size: 15px;
+        }
+
+        .send-button {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .chat-area {
+                display: none;
+            }
+
+            .sidebar.active {
+                display: none;
+            }
+
+            .chat-area.active {
+                display: flex;
+            }
+        }
+
+        /* Empty State */
+        .empty-chat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-secondary);
+            text-align: center;
+            padding: 20px;
+        }
+
+        .empty-chat-icon {
+            font-size: 100px;
+            margin-bottom: 20px;
+            color: #d1d7db;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar with Contacts -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="user-profile">
+                <div class="user-avatar">U</div>
+                <div class="user-name">User</div>
+            </div>
+            <div class="header-icons">
+                <i class="fas fa-users"></i>
+                <i class="fas fa-comment-dots"></i>
+                <i class="fas fa-ellipsis-v"></i>
+            </div>
+                      <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addContactModal">
+                         Add Contact
+                       </button>
+            
+
+        </div>
+
+        <div class="search-container">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Search or start new chat">
+            </div>
+        </div>
+
+        <div class="contact-list">
+           <!-- Add Contact Button -->
+        <% if (contacts && contacts.length > 0) { %>
+      <% contacts.forEach(contact => { %>
+        <div class="p-2 border rounded mb-2">
+          <strong><%= contact.name %></strong> (<%= contact.phone %>)
+        </div>
+      <% }) %>
+    <% } else { %>
+      <p>No contacts yet. You appear as <strong>Anonymous</strong> to others.</p>
+    <% } %>
+
+  
+        </div>
+    </div>
+
+    <!-- Chat Area -->
+    <div class="chat-area" id="chatArea">
+        <div class="empty-chat">
+            <div class="empty-chat-icon">
+                <i class="fas fa-comment-dots"></i>
+            </div>
+            <h2>HarborChat Web</h2>
+            <p>Select a chat to start messaging</p>
+        </div>
+
+        <!-- This would be shown when a chat is selected -->
+        
+    </div>
+       <!-- Modal: Add Contact -->
+<div class="modal fade" id="addContactModal" tabindex="-1" aria-labelledby="addContactModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form id="addContactForm" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addContactModalLabel">Add New Contact</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="contactName" class="form-label">Name</label>
+          <input type="text" name="name" id="contactName" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label for="contactPhone" class="form-label">Phone Number</label>
+          <input type="text" name="phone" id="contactPhone" class="form-control" required pattern="^[0-9]{10,15}$">
+        </div>
+      </div>
+
+       <div class="modal-footer">
+        <button type="submit" class="btn btn-success">Save</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- Toast Notification -->
+<div id="contactToast" class="toast position-fixed bottom-0 end-0 bg-success text-white p-3" style="display:none; z-index:1055;">
+  <div class="toast-body">Contact added successfully!</div>
+</div>
+
+
+    <script>
+  document.getElementById("addContactForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const name = document.getElementById("contactName").value.trim();
+    const phone = document.getElementById("contactPhone").value.trim();
+
+    try {
+      const res = await fetch("/contacts/ajax/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, phone })
+      });
+
+      const result = await res.json();
+      console.log(result)
+
+      if (res.ok) {
+  
+
+        
+        e.target.reset();
+      } else {
+        // console.log(err)
+        alert(result.message || "Something went wrong.");
+        
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to add contact.");
+    }
+  });
+</script>
+</body>
+</html>
