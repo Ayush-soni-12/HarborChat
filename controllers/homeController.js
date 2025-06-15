@@ -61,3 +61,14 @@ if (!phone.startsWith("+91")) {
     res.status(500).json({ success: false, message: "Server error." });
   }
 })
+
+module.exports.setting =asyncHandler(async(req,res)=>{
+  return res.render("setting.ejs")
+})
+
+module.exports.Status =asyncHandler(async(req,res)=>{
+  return res.render("status.ejs")
+})
+module.exports.profile =asyncHandler(async(req,res)=>{
+  return res.render("profile.ejs")
+})

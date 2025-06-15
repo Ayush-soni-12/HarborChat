@@ -1,0 +1,848 @@
+
+    <%- include('partials/header') %>
+
+
+
+
+
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HarborChat - Settings</title>
+    <style>
+        :root {
+            --primary-color: #128C7E;
+            --primary-dark: #075E54;
+            --primary-light: #25D366;
+            --secondary-color: #34B7F1;
+            --background-color: #e5ddd5;
+            --card-color: #ffffff;
+            --text-color: #3b4a54;
+            --border-color: #e9edef;
+            --danger-color: #e74c3c;
+            --online-status: #00b309;
+            --sidebar-width: 250px;
+             --sidebar-bg: #f0f2f5;
+        }
+
+
+
+        /* body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            height: 100vh;
+            overflow: hidden;
+        } */
+
+        .settings-container {
+            display: flex;
+            /* max-width: 1000px; */
+            width: 100%;
+            height: 100%;
+            margin: 0 auto;
+            background-color: var(--card-color);
+            position: relative;
+        }
+
+        .settings-sidebar {
+            /* width: var(--sidebar-width); */
+            width: 100%;
+            border-right: 1px solid var(--border-color);
+            background-color: #f8f9fa;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .settings-content-container {
+            /* flex: 1; */
+            position: relative;
+            /* overflow: hidden; */
+        }
+
+   .settings-content {
+  position: absolute;
+  top: 4rem; /* instead of margin-top */
+  left: 0;
+  width: 100%;
+  bottom: 0; /* make it stretch to bottom */
+  
+  padding: 20px;
+  overflow-y: auto;
+
+  background-color: var(--card-color);
+
+  transform: translateX(0); /* Ensure it's visible */
+  opacity: 1;
+}
+
+
+
+        .settings-content.active {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .settings-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+        }
+
+        .back-button {
+            background: none;
+            border: none;
+            color: var(--primary-dark);
+            font-size: 1.2rem;
+            margin-right: 15px;
+            cursor: pointer;
+            display: none;
+        }
+
+        .settings-header h1 {
+            margin: 0;
+            color: var(--primary-dark);
+            font-size: 1.5rem;
+        }
+
+        .settings-nav {
+            padding: 10px 0;
+        }
+
+        .settings-nav-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+        }
+
+        .settings-nav-item:hover {
+            background-color: rgba(18, 140, 126, 0.1);
+        }
+
+        .settings-nav-item.active {
+            background-color: rgba(18, 140, 126, 0.15);
+            color: var(--primary-dark);
+            font-weight: 500;
+            border-left: 3px solid var(--primary-color);
+        }
+
+        .settings-nav-item i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .setting-item {
+            margin-bottom: 25px;
+            padding-bottom: 25px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .setting-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .setting-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+            color: var(--primary-dark);
+        }
+
+        .setting-description {
+            color: #667781;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: var(--primary-color);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+
+        .profile-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 20px;
+            border: 3px solid var(--primary-color);
+        }
+
+        .profile-details h3 {
+            margin: 0 0 5px 0;
+            color: var(--primary-dark);
+        }
+
+        .profile-details p {
+            margin: 0;
+            color: #667781;
+        }
+
+        .profile-details .online-status {
+            color: var(--online-status);
+            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+
+        .shortcut-key {
+            display: inline-block;
+            padding: 3px 6px;
+            background-color: #e0e0e0;
+            border-radius: 3px;
+            font-family: monospace;
+            margin: 0 5px;
+        }
+
+        input[type="text"], 
+        input[type="email"], 
+        input[type="password"], 
+        textarea, 
+        select {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            color: var(--text-color);
+            /* background-color: #f8f9fa; */
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus, 
+        input[type="email"]:focus, 
+        input[type="password"]:focus, 
+        textarea:focus, 
+        select:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            /* background-color: white; */
+        }
+
+        .default-message {
+            text-align: center;
+            padding: 50px 20px;
+            color: #667781;
+            position: absolute;
+            width: 100%;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+        }
+
+        .default-message i {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+        }
+
+
+
+    /* Content sections */
+    /* .settings-content {
+        position: absolute;
+        width: 100%;
+        min-height: 100%;
+        padding: 20px;
+        transform: translateX(100%);
+        opacity: 0;
+        background-color: var(--card-color);
+    } */
+
+    /* Adjust for mobile */
+    @media (max-width: 768px) {
+        .settings-sidebar {
+            position: relative;
+            width: 100%;
+            height: auto;
+            max-height: 200px;
+            margin-left: 0;
+        }
+        
+        .settings-content-container {
+            margin-left: 0;
+            height: calc(100vh - 200px); /* Adjust for mobile header */
+        }
+    }
+
+
+        @media (max-width: 768px) {
+            .settings-container {
+                flex-direction: column;
+                max-width: 100%;
+            }
+            
+            .settings-sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+            
+            .settings-nav {
+                display: flex;
+                overflow-x: auto;
+                white-space: nowrap;
+                padding-bottom: 5px;
+            }
+            
+            .settings-nav-item {
+                border-left: none;
+                border-bottom: 3px solid transparent;
+                flex-direction: column;
+                align-items: center;
+                padding: 10px 15px;
+                min-width: 80px;
+            }
+            
+            .settings-nav-item.active {
+                border-left: none;
+                border-bottom: 3px solid var(--primary-color);
+            }
+            
+            .settings-nav-item i {
+                margin-right: 0;
+                margin-bottom: 5px;
+            }
+        }
+    </style>
+   
+</head>
+<body>
+    <div class="settings-container">
+        <div class="settings-sidebar">
+            <div class="settings-header">
+                <button class="back-button" id="backButton"><i class="fas fa-arrow-left"></i></button>
+                <h1>Settings</h1>
+            </div>
+            
+            <div class="settings-nav">
+                <div class="settings-nav-item" data-section="profile">
+                    <i class="fas fa-user"></i>
+                    <span>Profile</span>
+                </div>
+                <div class="settings-nav-item" data-section="account">
+                    <i class="fas fa-cog"></i>
+                    <span>Account</span>
+                </div>
+                <div class="settings-nav-item" data-section="privacy">
+                    <i class="fas fa-lock"></i>
+                    <span>Privacy</span>
+                </div>
+                <div class="settings-nav-item" data-section="chat">
+                    <i class="fas fa-comment"></i>
+                    <span>Chat</span>
+                </div>
+                <div class="settings-nav-item" data-section="notifications">
+                    <i class="fas fa-bell"></i>
+                    <span>Notifications</span>
+                </div>
+                <div class="settings-nav-item" data-section="keyboard">
+                    <i class="fas fa-keyboard"></i>
+                    <span>Shortcuts</span>
+                </div>
+                <div class="settings-nav-item" data-section="logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- <div class="settings-content-container"> -->
+        
+
+            <!-- Content Sections -->
+            <div class="settings-content" id="profile-section">
+                <div class="profile-info">
+                    <img src="https://via.placeholder.com/80" alt="Profile Picture" class="profile-avatar">
+                    <div class="profile-details">
+                        <h3>John Doe</h3>
+                        <p>john.doe@example.com</p>
+                        <p class="online-status">Online</p>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">Profile </div>
+                    <div class="setting-description">Upload a new profile picture</div>
+                    <input type="file" id="profile-picture" accept="image/*">
+                    <button class="btn btn-primary" style="margin-top: 10px;">Upload</button>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">Display Name</div>
+                    <div class="setting-description">Change how your name appears to others</div>
+                    <input type="text" value="John Doe" style="width: 100%; max-width: 300px;">
+                    <button class="btn btn-primary" style="margin-top: 10px;">Save Changes</button>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">About</div>
+                    <div class="setting-description">Tell others about yourself</div>
+                    <textarea style="width: 100%; max-width: 500px; height: 100px;">Hey there! I'm using HarborChat.</textarea>
+                    <button class="btn btn-primary" style="margin-top: 10px;">Save Changes</button>
+                </div>
+            </div>
+
+            <!-- Other content sections (Account, Privacy, Chat, etc.) would go here -->
+            <!-- They follow the same pattern as the profile section -->
+        <!-- </div> -->
+   
+
+        <!-- acccount content -->
+
+         <div class="settings-content" id="account-section">
+                <div class="setting-item">
+                    <div class="setting-title">Email Address</div>
+                    <div class="setting-description">Your current email address is john.doe@example.com</div>
+                    <button class="btn btn-primary">Change Email</button>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">Password</div>
+                    <div class="setting-description">Last changed 3 months ago</div>
+                    <button class="btn btn-primary">Change Password</button>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">Two-Step Verification</div>
+                    <div class="setting-description">Add an extra layer of security to your account</div>
+                    <label class="toggle-switch">
+                        <input type="checkbox">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span style="margin-left: 10px;">Disabled</span>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">Delete Account</div>
+                    <div class="setting-description">Permanently delete your account and all data</div>
+                    <button class="btn btn-danger">Delete Account</button>
+                </div>
+            </div>
+
+
+
+
+            <!-- privacy content -->
+
+
+            <div class="settings-content" id="privacy-section">
+                <div class="setting-item">
+                    <div class="setting-title">Last Seen & Online</div>
+                    <div class="setting-description">Control who can see when you're online and your last seen time</div>
+                    <select style="width: 100%; max-width: 300px;">
+                        <option>Everyone</option>
+                        <option selected>My Contacts</option>
+                        <option>Nobody</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">Profile Photo</div>
+                    <div class="setting-description">Control who can see your profile photo</div>
+                    <select style="width: 100%; max-width: 300px;">
+                        <option>Everyone</option>
+                        <option selected>My Contacts</option>
+                        <option>Nobody</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">About</div>
+                    <div class="setting-description">Control who can see your about info</div>
+                    <select style="width: 100%; max-width: 300px;">
+                        <option>Everyone</option>
+                        <option selected>My Contacts</option>
+                        <option>Nobody</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">Read Receipts</div>
+                    <div class="setting-description">Let others know when you've read their messages</div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span style="margin-left: 10px;">Enabled</span>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">Blocked Contacts</div>
+                    <div class="setting-description">Manage contacts you've blocked</div>
+                    <button class="btn btn-primary">Manage Blocked Contacts</button>
+                </div>
+            </div>
+
+
+
+            <!--  chat section  -->
+           
+            <div class="settings-content" id="chat-section">
+                <div class="setting-item">
+                    <div class="setting-title">Chat Backup</div>
+                    <div class="setting-description">Automatically back up your chats to Google Drive</div>
+                    <button class="btn btn-primary">Back Up Now</button>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">Enter Key Behavior</div>
+                    <div class="setting-description">Choose what the Enter key does</div>
+                    <select style="width: 100%; max-width: 300px;">
+                        <option selected>Sends the message</option>
+                        <option>Adds a new line</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">Media Visibility</div>
+                    <div class="setting-description">Show newly downloaded media in your phone's gallery</div>
+                    <label class="toggle-switch">
+                        <input type="checkbox">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span style="margin-left: 10px;">Disabled</span>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">Wallpaper</div>
+                    <div class="setting-description">Change the background of your chats</div>
+                    <button class="btn btn-primary">Change Wallpaper</button>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">Font Size</div>
+                    <div class="setting-description">Adjust the text size in your chats</div>
+                    <select style="width: 100%; max-width: 300px;">
+                        <option>Small</option>
+                        <option selected>Medium</option>
+                        <option>Large</option>
+                    </select>
+                </div>
+            </div>
+
+
+
+              <!-- Notifications Section -->
+            <div class="settings-content" id="notifications-section">
+                <div class="setting-item">
+                    <div class="setting-title">Message Notifications</div>
+                    <div class="setting-description">Show notifications for new messages</div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span style="margin-left: 10px;">Enabled</span>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">Notification Tone</div>
+                    <div class="setting-description">Select a sound for new messages</div>
+                    <select style="width: 100%; max-width: 300px;">
+                        <option selected>Default (HarborChat)</option>
+                        <option>Chime</option>
+                        <option>Note</option>
+                        <option>Pop</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">Vibrate</div>
+                    <div class="setting-description">Vibrate for new messages</div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span style="margin-left: 10px;">Enabled</span>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">Popup Notifications</div>
+                    <div class="setting-description">Show brief popup when screen is on</div>
+                    <label class="toggle-switch">
+                        <input type="checkbox">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span style="margin-left: 10px;">Disabled</span>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">Light</div>
+                    <div class="setting-description">Flash light for new messages</div>
+                    <label class="toggle-switch">
+                        <input type="checkbox">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span style="margin-left: 10px;">Disabled</span>
+                </div>
+            </div>
+
+            <!-- Keyboard Shortcuts Section -->
+            <div class="settings-content" id="keyboard-section">
+                <div class="setting-item">
+                    <div class="setting-title">Keyboard Shortcuts</div>
+                    <div class="setting-description">Enable keyboard shortcuts for faster navigation</div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span style="margin-left: 10px;">Enabled</span>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">Available Shortcuts</div>
+                    <div class="setting-description">List of all keyboard shortcuts</div>
+                    
+                    <div style="margin-top: 15px;">
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                            <span>New chat</span>
+                            <span><span class="shortcut-key">Ctrl</span> + <span class="shortcut-key">N</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                            <span>Search</span>
+                            <span><span class="shortcut-key">Ctrl</span> + <span class="shortcut-key">K</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                            <span>Send message</span>
+                            <span><span class="shortcut-key">Enter</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                            <span>New line</span>
+                            <span><span class="shortcut-key">Shift</span> + <span class="shortcut-key">Enter</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                            <span>Settings</span>
+                            <span><span class="shortcut-key">Ctrl</span> + <span class="shortcut-key">,</span></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                            <span>Emoji picker</span>
+                            <span><span class="shortcut-key">Ctrl</span> + <span class="shortcut-key">E</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logout Section -->
+            <div class="settings-content" id="logout-section">
+                <div class="setting-item">
+                    <div class="setting-title">Log Out</div>
+                    <div class="setting-description">Sign out of your account on this device</div>
+                    <button class="btn btn-primary">Log Out</button>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-title">Log Out From All Devices</div>
+                    <div class="setting-description">Sign out of your account on all devices</div>
+                    <button class="btn btn-primary">Log Out Everywhere</button>
+                </div>
+            </div>
+  
+            <!-- </div> -->
+
+
+
+    </div>
+
+
+
+
+
+         </div>
+
+
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
+
+   <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const navItems = document.querySelectorAll('.settings-nav-item');
+        const contentSections = document.querySelectorAll('.settings-content');
+        const defaultMessage = document.getElementById('defaultMessage');
+        const backButton = document.getElementById('backButton');
+        const settingsHeader = document.querySelector('.settings-header h1');
+        let currentContent = null;
+        
+        // Initialize GSAP animations
+        gsap.set('.settings-content', { x: '100%', opacity: 0 });
+        
+        navItems.forEach(item => {
+            item.addEventListener('click', function() {
+                const sectionId = this.getAttribute('data-section') + '-section';
+                const contentSection = document.getElementById(sectionId);
+                const sectionTitle = this.querySelector('span').textContent;
+                
+                // Don't do anything if clicking the already active item
+                // if (this.classList.contains('active')) return;
+                
+                // Update header
+                settingsHeader.textContent = sectionTitle;
+                backButton.style.display = 'block';
+                
+                // Create animation timeline
+                const tl = gsap.timeline();
+                
+                // If there's currently shown content, hide it first
+                if (currentContent) {
+                    tl.to(currentContent, {
+                        x: '100%',
+                        opacity: 0,
+                        duration: 0.2,
+                        ease: "power2.in",
+                        onComplete: () => {
+                            currentContent.style.display = 'none';
+                        }
+                    });
+                } else {
+                    // Hide default message if this is the first selection
+                    tl.to(defaultMessage, { 
+                        opacity: 0,
+                        duration: 0.2,
+                        onComplete: () => {
+                            defaultMessage.style.display = 'none';
+                        }
+                    });
+                }
+                
+                // Show new content section
+                tl.to(contentSection, {
+                    x: 0,
+                    opacity: 1,
+                    duration: 0.3,
+                    ease: "power2.out",
+                    onStart: () => {
+                        contentSection.style.display = 'block';
+                        document.querySelector('.settings-content-container').scrollTo(0, 0);
+                    }
+                });
+                
+                // Update current content reference
+                currentContent = contentSection;
+                
+                // Update active nav item
+                navItems.forEach(navItem => navItem.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+        
+        backButton.addEventListener('click', function() {
+            if (!currentContent) return;
+            
+            // Update header
+            settingsHeader.textContent = 'Settings';
+            backButton.style.display = 'none';
+            
+            // Hide current content section with animation
+            gsap.to(currentContent, {
+                x: '100%',
+                opacity: 0,
+                duration: 0.3,
+                ease: "power2.in",
+                onComplete: () => {
+                    currentContent.style.display = 'none';
+                    currentContent = null;
+                }
+            });
+            
+            // Show default message
+            defaultMessage.style.display = 'block';
+            gsap.fromTo(defaultMessage, 
+                { opacity: 0 }, 
+                { opacity: 1, duration: 0.3 }
+            );
+            
+            // Remove active class from nav items
+            navItems.forEach(navItem => navItem.classList.remove('active'));
+            
+            // Scroll to top when returning to options
+            document.querySelector('.settings-sidebar').scrollTo(0, 0);
+        });
+    });
+</script>
+</body>
+</html>
+    
+
+   
+
+
+    <%- include('partials/footer') %>
