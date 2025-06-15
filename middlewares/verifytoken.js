@@ -41,7 +41,7 @@ const validToken = asyncHandler(async (req, res, next) => {
             res.status(404);
             throw new Error("User not found.");
         }
-           console.log("hello")
+        //    console.log("hello")
         next();
     } catch (err) {
         res.status(401);
