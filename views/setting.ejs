@@ -319,6 +319,52 @@
 
 
 
+
+        .password-form {
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-control {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.btn {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+.btn-success {
+    background-color: #28a745;
+    color: white;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+
     /* Content sections */
     /* .settings-content {
         position: absolute;
@@ -432,37 +478,41 @@
         
 
             <!-- Content Sections -->
-            <div class="settings-content" id="profile-section">
-                <div class="profile-info">
-                    <img src="https://via.placeholder.com/80" alt="Profile Picture" class="profile-avatar">
-                    <div class="profile-details">
-                        <h3>John Doe</h3>
-                        <p>john.doe@example.com</p>
-                        <p class="online-status">Online</p>
-                    </div>
-                </div>
+            <form id="profile-form" enctype="multipart/form-data" method="POST" action="/update-profile">
+  <div class="settings-content" id="profile-section">
+    
+    <div class="profile-info">
+      <img src="<%= userDetail.image ? userDetail.image : 'https://via.placeholder.com/80' %>" alt="Profile Picture" class="profile-avatar">
+      <div class="profile-details">
+        <h3><%= userDetail.name %></h3>
+        <p><%= userDetail.email %></p>
+        <p class="online-status">Online</p>
+      </div>
+    </div>
 
-                <div class="setting-item">
-                    <div class="setting-title">Profile </div>
-                    <div class="setting-description">Upload a new profile picture</div>
-                    <input type="file" id="profile-picture" accept="image/*">
-                    <button class="btn btn-primary" style="margin-top: 10px;">Upload</button>
-                </div>
+    <div class="setting-item">
+      <div class="setting-title">Profile</div>
+      <div class="setting-description">Upload a new profile picture</div>
+      <input type="file" name="image" id="image" accept="image/*">
+    </div>
 
-                <div class="setting-item">
-                    <div class="setting-title">Display Name</div>
-                    <div class="setting-description">Change how your name appears to others</div>
-                    <input type="text" value="John Doe" style="width: 100%; max-width: 300px;">
-                    <button class="btn btn-primary" style="margin-top: 10px;">Save Changes</button>
-                </div>
+    <div class="setting-item">
+      <div class="setting-title">Display Name</div>
+      <div class="setting-description">Change your name</div>
+      <input type="text" name="name" id="name" value="<%= userDetail.name %>" style="width: 100%; max-width: 300px;">
+    </div>
 
-                <div class="setting-item">
-                    <div class="setting-title">About</div>
-                    <div class="setting-description">Tell others about yourself</div>
-                    <textarea style="width: 100%; max-width: 500px; height: 100px;">Hey there! I'm using HarborChat.</textarea>
-                    <button class="btn btn-primary" style="margin-top: 10px;">Save Changes</button>
-                </div>
-            </div>
+    <div class="setting-item">
+      <div class="setting-title">About</div>
+      <div class="setting-description">Tell others about yourself</div>
+      <textarea name="about" style="width: 100%; max-width: 500px; height: 100px;"><%=userDetail.about %>.</textarea>
+
+      <button class="btn btn-primary" type="submit" style="margin-top: 10px;">Save Changes</button>
+    </div>
+    
+  </div>
+</form>
+
 
             <!-- Other content sections (Account, Privacy, Chat, etc.) would go here -->
             <!-- They follow the same pattern as the profile section -->
@@ -472,17 +522,50 @@
         <!-- acccount content -->
 
          <div class="settings-content" id="account-section">
+                <form id="profile-form" method="POST" action="/update-email">
                 <div class="setting-item">
                     <div class="setting-title">Email Address</div>
-                    <div class="setting-description">Your current email address is john.doe@example.com</div>
+                    <div class="setting-description">Your current email address is <%=userDetail.email %></div>
+                    <input type="email" name="email" id="email" required>
                     <button class="btn btn-primary">Change Email</button>
                 </div>
+                </form>
+           
+               <div class="setting-item">
+    <div class="setting-title">Password</div>
+    <div class="setting-description">Last changed 3 months ago</div>
+    <button class="btn btn-primary" id="changePasswordBtn">Change Password</button>
+    
+    <!-- Password Change Form (initially hidden) -->
+    <div class="password-form" id="passwordForm" style="display: none;">
+        <form action="/auth/changePassword" method="POST">
+            <div class="form-group">
+                <label for="currentPassword">Current Password</label>
+                <input type="password" name="currentPassword" class="form-control" id="currentPassword" required>
+            </div>
+            <div class="form-group">
+                <label for="newPassword">New Password</label>
+                <input type="password" name="newPassword" class="form-control" id="newPassword" required>
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword">Confirm New Password</label>
+                <input type="password"  name="confirmPassword"  class="form-control" id="confirmPassword" required>
+            </div>
+            <button type="submit" class="btn btn-success">Save Changes</button>
+            <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+        </form>
+    </div>
+</div>
 
-                <div class="setting-item">
-                    <div class="setting-title">Password</div>
-                    <div class="setting-description">Last changed 3 months ago</div>
-                    <button class="btn btn-primary">Change Password</button>
-                </div>
+
+
+                
+
+
+
+
+
+
 
                 <div class="setting-item">
                     <div class="setting-title">Two-Step Verification</div>
@@ -740,6 +823,25 @@
         const defaultMessage = document.getElementById('defaultMessage');
         const backButton = document.getElementById('backButton');
         const settingsHeader = document.querySelector('.settings-header h1');
+          const changePasswordBtn = document.getElementById('changePasswordBtn');
+    const passwordForm = document.getElementById('passwordForm');
+    const cancelBtn = document.getElementById('cancelBtn');
+
+
+
+        // Toggle form visibility when button is clicked
+    changePasswordBtn.addEventListener('click', function() {
+        passwordForm.style.display = passwordForm.style.display === 'none' ? 'block' : 'none';
+    });
+    
+    // Hide form when cancel button is clicked
+    cancelBtn.addEventListener('click', function() {
+        passwordForm.style.display = 'none';
+    });
+    
+
+
+
         let currentContent = null;
         
         // Initialize GSAP animations

@@ -6,6 +6,7 @@ const admin = require("../firebaseAdmin/firebaseInit")
 const  {parsePhoneNumber}  = require('libphonenumber-js');
 
 
+
 module.exports.firebaseAuth = asyncHandler(async(req ,res)=>{
       console.log("Incoming token:", req.body.token);
       const { token } = req.body;
@@ -132,3 +133,36 @@ module.exports.loginConfirm = asyncHandler(async (req, res) => {
 
 
 });
+
+module.exports.changePassword = asyncHandler(async(req,res)=>{
+  const {currentPassword,newPassword,confirmPassword} = req.body;
+  console.log(req.body)
+  if(!currentPassword || !newPassword || !confirmPassword){
+    return res.send("please provide password for changes")
+  }
+  if(newPassword!==confirmPassword){
+    return res.send("New password not matach ")
+  }
+  const user = await User.findById(req.user._id)
+  console.log(user)
+
+  if(!user){
+    return res.send("User not found")
+  }
+
+  const match = await bcrypt.compare(currentPassword,user.password);
+  console.log(match)
+  if(!match){
+    return res.send("current password not match")
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(newPassword,salt);
+  
+  
+  user.password = hashedPassword;
+  await user.save()
+  return res.send("Password changed successfully")
+
+
+})

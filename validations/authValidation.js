@@ -12,7 +12,7 @@ exports.registerSchema = Joi.object({
     }),
 
   phoneNo: Joi.string()
-    .pattern(/^[0-9]+$/).min(10).max(15)
+    .pattern(/^[0-9]+$/).min(10)
     .required()
     .messages({
       'string.empty': 'Phone number is required',
@@ -33,6 +33,7 @@ exports.registerSchema = Joi.object({
     email: Joi.string().email().required().messages({
         'string.empty': 'Email is required'
     }),
+
     
 });
 
@@ -49,5 +50,65 @@ exports.loginSchema = Joi.object({
       'string.empty': 'Password is required'
     })
 });
+
+exports.newContactSchema = Joi.object({
+
+
+    name: Joi.string().required().messages({
+      'string.empty':'name is required'
+    }),
+
+  phoneNo: Joi.string()
+    .pattern(/^[0-9]+$/).min(10)
+    .required()
+    .messages({
+      'string.empty': 'Phone number is required',
+    }),
+});
+exports.verifyemail = Joi.object({
+    email: Joi.string().email().required().messages({
+        'string.empty': 'Email is required'
+    }),
+})
+exports.passwordChange = Joi.object({
+   currentPassword: Joi.string()
+    .pattern(
+      new RegExp(
+        "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*])[A-Za-z\\d!@#$%^&*]{8,}$"
+      )
+    )
+    .required()
+    .messages({
+      'string.empty': 'Password is required',
+      'string.pattern.base':
+        'Password must be at least 8 characters long, and include uppercase, lowercase, number, and special character'
+    }),
+       newPassword: Joi.string()
+    .pattern(
+      new RegExp(
+        "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*])[A-Za-z\\d!@#$%^&*]{8,}$"
+      )
+    )
+    .required()
+    .messages({
+      'string.empty': 'Password is required',
+      'string.pattern.base':
+        'Password must be at least 8 characters long, and include uppercase, lowercase, number, and special character'
+    }),
+       confirmPassword: Joi.string()
+    .pattern(
+      new RegExp(
+        "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*])[A-Za-z\\d!@#$%^&*]{8,}$"
+      )
+    )
+    .required()
+    .messages({
+      'string.empty': 'Password is required',
+      'string.pattern.base':
+        'Password must be at least 8 characters long, and include uppercase, lowercase, number, and special character'
+    }),
+})
+
+
 
 

@@ -19,6 +19,16 @@ const userSchema = new mongoose.Schema({
     required:true,
     unique:true
   },
+  image:{
+    type:String,
+    
+  },
+    image_id: {
+      type:String, 
+    },
+  about:{
+    type:String,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

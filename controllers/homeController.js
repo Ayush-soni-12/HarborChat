@@ -1,6 +1,10 @@
 const asyncHandler = require("../middlewares/asyncHandler");
 const Contact = require("../modals/contactModal")
 const User = require("../modals/UserModal")
+const { cloudinary } = require("../ cloudConfig");
+const {sendMail} = require("../Helpers/mailer")
+// const generateToken = require("../middlewares/generateToken");
+const jwt = require("jsonwebtoken")
 
 module.exports.index = asyncHandler(async(req,res)=>{
     return res.render('home.ejs')
@@ -63,7 +67,12 @@ if (!phone.startsWith("+91")) {
 })
 
 module.exports.setting =asyncHandler(async(req,res)=>{
-  return res.render("setting.ejs")
+  if(!req.user){
+    return res.send("User not exist")
+  }
+  const userDetail = req.user
+  // console.log(userDetail)
+  return res.render("setting.ejs",{userDetail})
 })
 
 module.exports.Status =asyncHandler(async(req,res)=>{
@@ -72,3 +81,91 @@ module.exports.Status =asyncHandler(async(req,res)=>{
 module.exports.profile =asyncHandler(async(req,res)=>{
   return res.render("profile.ejs")
 })
+module.exports.updateProfile = asyncHandler(async (req, res) => {
+  const { name ,about} = req.body;
+  const data = { name, about };
+  const user_id = req.user._id;
+
+  const oldUser = await User.findById(user_id);
+  // console.log(oldUser.image_id)
+  // console.log(req.file)
+
+  
+
+  if (req.file) {
+     if (oldUser && oldUser.image_id) {
+    // console.log("Deleting:", oldUser.image_id);
+    await cloudinary.uploader.destroy(oldUser.image_id);
+  } else {
+    console.log("No old image to delete.");
+  }
+
+    // Add new image info
+    data.image = req.file.path; // Cloudinary URL
+    data.image_id = req.file.filename; // Cloudinary public_id
+    // console.log(data.image_id)
+    // console.log(data)
+  }
+
+  const updatedData = await User.findByIdAndUpdate(user_id, data, { new: true });
+
+  // return res.status(200).json({ 
+  //   message: "Profile updated successfully", 
+  //   imageUrl: updatedData.image 
+  // });
+  return res.redirect("/chat/setting");
+});
+
+module.exports.updateEmail = asyncHandler(async(req,res)=>{
+  const {email} = req.body;
+  
+   const userExist = await User.findOne({email});
+  // console.log(userExist)
+
+  if(userExist){
+    return res.send("Email already exist")
+  };
+
+  const userdata = req.user
+  const userId=req.user._id
+  
+  const token = jwt.sign({userId,email},process.env.JWT_SECRET,{expiresIn:"1h"})
+
+
+    const msg = `
+  <p>Hi <strong>${userdata.name}</strong>,</p>
+  <p>We received a request to change your email address on HarborChat.</p>
+  <p>To confirm this change, please click the link below:</p>
+  <p><a href="http://localhost:3000/auth/verifyemail?token=${token}" style="background-color:#4CAF50;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;">Verify Email Address</a></p>
+  <p>If you did not request this change, you can safely ignore this email.</p>
+  <p>Thanks,<br>The HarborChat Team</p>
+`;
+
+ 
+    await sendMail(email, "Email change", msg);
+
+    return res.redirect("/chat/setting")
+
+})
+
+
+
+module.exports.verifyEmailChange = asyncHandler(async (req, res) => {
+  const { token } = req.query;
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const { userId, email } = decoded;
+    console.log(decoded)
+
+    const updatedUser = await User.findByIdAndUpdate(userId, {
+      email: email,
+    }, { new: true });
+    console.log(updatedUser)
+
+    res.send("✅ Email successfully updated!");
+  } catch (err) {
+    console.log(err)
+    res.status(400).send("❌ Invalid or expired token.");
+  }
+});
