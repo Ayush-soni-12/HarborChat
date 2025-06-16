@@ -32,6 +32,9 @@ module.exports.firebaseAuth = asyncHandler(async(req ,res)=>{
   }
 })
 module.exports.login = asyncHandler(async(req,res)=>{
+     if (req.cookies.jwt) {
+        return res.json({ success: false, message: "Already logged in" });
+    }
 res.render('logins', {
   firebaseConfig: {
     apiKey: process.env.API_KEY,
@@ -44,9 +47,15 @@ res.render('logins', {
 });
 })
 module.exports.signup = asyncHandler(async(req,res)=>{
+     if (req.cookies.jwt) {
+        return res.json({ success: false, message: "Already signup " });
+    }
   return res.render('signup');
 })
 module.exports.registerUser = asyncHandler(async(req,res)=>{
+     if (req.cookies.jwt) {
+        return res.json({ success: false, message: "Already logged in" });
+    }
   const {name,phoneNo,email,password} = req.body
   if(!name || !phoneNo  ||!email || !password){
         return res.json({ success: false, message: "Please provide all Fields" });
@@ -102,6 +111,9 @@ module.exports.logoutUser = asyncHandler(async(req,res)=>{
 
 
 module.exports.loginwithPassword =asyncHandler(async(req,res)=>{
+     if (req.cookies.jwt) {
+        return res.json({ success: false, message: "Already logged in" });
+    }
 
 return res.render("welcome.ejs");
 })

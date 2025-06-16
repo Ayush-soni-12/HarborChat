@@ -58,7 +58,7 @@ exports.newContactSchema = Joi.object({
       'string.empty':'name is required'
     }),
 
-  phoneNo: Joi.string()
+  phone: Joi.string()
     .pattern(/^[0-9]+$/).min(10)
     .required()
     .messages({

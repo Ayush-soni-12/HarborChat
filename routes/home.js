@@ -19,7 +19,7 @@ router.get('/',index)
 
 router.get('/chat',validToken,chat)
 
-router.post("/contacts/ajax/add",validToken,validation(newContactSchema),contact)
+router.post("/contacts/ajax/add",validation(newContactSchema),validToken,contact)
 
 router.get("/chat/setting",validToken,setting)
 router.get("/chat/status",validToken,Status)
