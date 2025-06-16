@@ -178,3 +178,21 @@ module.exports.changePassword = asyncHandler(async(req,res)=>{
 
 
 })
+
+
+module.exports.pinChange = asyncHandler(async(req,res)=>{
+     let {pin,isPin} = req.body
+     if(!pin){
+       pin = null;
+      return res.send("Please Provide pin")
+     }
+     const userDetail = await User.findById(req.user._id)
+     if(!userDetail){
+      return res.send("User not Found")
+     }
+     userDetail.pin = pin;
+      userDetail.isPin = isPin;
+
+     await userDetail.save()
+     return res.send("Pin Created")
+})

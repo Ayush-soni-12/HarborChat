@@ -540,16 +540,21 @@
     <div class="password-form" id="passwordForm" style="display: none;">
         <form action="/auth/changePassword" method="POST">
             <div class="form-group">
+               <div class="form-group" style="position: relative;">
                 <label for="currentPassword">Current Password</label>
-                <input type="password" name="currentPassword" class="form-control" id="currentPassword" required>
+                 <input type="password" name="currentPassword" class="form-control" id="currentPassword" placeholder="Enter the current password" readonly  onfocus="this.removeAttribute('readonly')">
+                 <i class="toggle-password fas fa-eye" style="position: absolute; right: 10px; top: 35px; cursor: pointer;"></i>
+              </div>
             </div>
-            <div class="form-group">
+             <div class="form-group" style="position: relative;">
                 <label for="newPassword">New Password</label>
                 <input type="password" name="newPassword" class="form-control" id="newPassword" required>
+                <i class="toggle-newpassword fas fa-eye" style="position: absolute; right: 10px; top: 35px; cursor: pointer;"></i>
             </div>
-            <div class="form-group">
+             <div class="form-group" style="position: relative;">
                 <label for="confirmPassword">Confirm New Password</label>
                 <input type="password"  name="confirmPassword"  class="form-control" id="confirmPassword" required>
+                <i class="toggle-confirmpassword fas fa-eye" style="position: absolute; right: 10px; top: 35px; cursor: pointer;"></i>
             </div>
             <button type="submit" class="btn btn-success">Save Changes</button>
             <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
@@ -567,15 +572,30 @@
 
 
 
-                <div class="setting-item">
-                    <div class="setting-title">Two-Step Verification</div>
-                    <div class="setting-description">Add an extra layer of security to your account</div>
-                    <label class="toggle-switch">
-                        <input type="checkbox">
-                        <span class="toggle-slider"></span>
-                    </label>
-                    <span style="margin-left: 10px;">Disabled</span>
-                </div>
+               <div class="setting-item">
+    <div class="setting-title">Two-Step Verification</div>
+    <div class="setting-description">Add an extra layer of security to your account</div>
+    <label class="toggle-switch">
+        <input type="checkbox" id="twoStepToggle"  <%= userDetail.isPin ? 'checked' : '' %>>
+        <span class="toggle-slider"></span>
+    </label>
+    <span style="margin-left: 10px;" id="toggleStatus"><%= userDetail.isPin ? 'Enabled' : 'Disabled' %></span>
+</div>
+
+<div class="PIN" id="pinForm" style="display: none;">
+    <form action="/auth/changePin" method="POST" class="formPin">
+        <div class="form-group" style="position: relative;">
+            <label for="setPin">Set Pin</label>
+            <input type="password" name="pin" class="form-control" id="setPin" required readonly onfocus="this.removeAttribute('readonly')">
+            <i class="toggle-setPin fas fa-eye" style="position: absolute; right: 10px; top: 35px; cursor: pointer;"></i>
+        </div>
+        <button type="submit" class="btn btn-success" id="savePin">Save Changes</button>
+        <button type="button" class="btn btn-secondary" id="cancelpinBtn">Cancel</button>
+    </form>
+</div>
+
+
+
 
                 <div class="setting-item">
                     <div class="setting-title">Delete Account</div>
@@ -583,7 +603,6 @@
                     <button class="btn btn-danger">Delete Account</button>
                 </div>
             </div>
-
 
 
 
@@ -825,8 +844,132 @@
         const settingsHeader = document.querySelector('.settings-header h1');
           const changePasswordBtn = document.getElementById('changePasswordBtn');
     const passwordForm = document.getElementById('passwordForm');
-    const cancelBtn = document.getElementById('cancelBtn');
+        const toggle = document.getElementById('twoStepToggle');
+        const toggleStatus = document.getElementById('toggleStatus');
+        const pinForm = document.getElementById('pinForm');
+    const cancelpinBtn = document.getElementById('cancelpinBtn');
+      const cancelBtn = document.getElementById('cancelBtn');
 
+             
+    document.querySelector('.toggle-password').addEventListener('click', function() {
+    const passwordInput = document.getElementById('currentPassword');
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        this.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        this.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+});
+
+
+    document.querySelector('.toggle-newpassword').addEventListener('click', function() {
+    const passwordInput = document.getElementById('newPassword');
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        this.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        this.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+});
+
+
+    document.querySelector('.toggle-confirmpassword').addEventListener('click', function() {
+    const passwordInput = document.getElementById('confirmPassword');
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        this.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        this.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+});
+
+
+      document.querySelector('.toggle-setPin').addEventListener('click', function() {
+    const passwordInput = document.getElementById('setPin');
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        this.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        this.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+});
+
+
+
+
+        //  let isPin = false;
+          toggle.addEventListener('change',async function() {
+
+             const isEnabled = this.checked;
+
+            if (isEnabled) {
+                toggleStatus.textContent = 'Enabled';
+                pinForm.style.display = 'block';
+                // isPin =true
+                // console.log(isPin)
+        document.querySelector('.formPin').addEventListener('submit',async function (e) {
+            e.preventDefault()
+              const pin = document.getElementById("setPin").value.trim();
+            //   console.log(pin)
+            //   console.log(isPin);
+               await fetch('/auth/changePin',{
+                    method:'POST',
+                    headers:{
+                        'Content-Type': 'application/json'
+                    },
+                    body:JSON.stringify({isPin:isEnabled,pin})
+                })
+        });
+
+               
+
+                
+
+            } else {
+                toggleStatus.textContent = 'Disabled';
+                pinForm.style.display = 'none';
+                console.log(isEnabled)
+                // isPin = false
+                //    console.log(isPin)
+                    await fetch('/auth/changePin',{
+                    method:'POST',
+                    headers:{
+                        'Content-Type': 'application/json'
+                    },
+                    body:JSON.stringify({isPin:isEnabled,pin:'null'})
+                })
+            }
+         
+              // Handle cancel button click
+        cancelpinBtn.addEventListener('click',async function() {
+            toggle.checked = false;
+            toggleStatus.textContent = 'Disabled';
+            pinForm.style.display = 'none';
+            // isPin = false
+            //    console.log(isPin)
+                await fetch('/auth/changePin',{
+                    method:'POST',
+                    headers:{
+                        'Content-Type': 'application/json'
+                    },
+                    body:JSON.stringify({isPin:isEnabled,pin:'null'})
+                })
+        });
+
+         document.querySelector('#savePin').addEventListener('click',function(e){
+            toggle.checked = true;
+            toggleStatus.textContent = 'Enabled';
+            pinForm.style.display = 'none';
+        })
+
+       
+  })
+
+            
 
 
         // Toggle form visibility when button is clicked

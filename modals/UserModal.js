@@ -29,6 +29,13 @@ const userSchema = new mongoose.Schema({
   about:{
     type:String,
   },
+  pin:{
+    type:String,
+  },
+  isPin:{
+    type:Boolean,
+    default:false,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

@@ -11,12 +11,14 @@ exports.registerSchema = Joi.object({
       'string.max': 'Name must be at most 30 characters'
     }),
 
-  phoneNo: Joi.string()
-    .pattern(/^[0-9]+$/).min(10)
-    .required()
-    .messages({
-      'string.empty': 'Phone number is required',
-    }),
+phoneNo: Joi.string()
+  .pattern(/^\d{10}$/)
+  .required()
+  .messages({
+    'string.empty': 'Phone number is required',
+    'string.pattern.base': 'Phone number must be exactly 10 digits',
+  }),
+
 
   password: Joi.string()
     .pattern(
@@ -58,12 +60,14 @@ exports.newContactSchema = Joi.object({
       'string.empty':'name is required'
     }),
 
-  phone: Joi.string()
-    .pattern(/^[0-9]+$/).min(10)
-    .required()
-    .messages({
-      'string.empty': 'Phone number is required',
-    }),
+phone: Joi.string()
+  .pattern(/^\d{10}$/)
+  .required()
+  .messages({
+    'string.empty': 'Phone number is required',
+    'string.pattern.base': 'Phone number must be exactly 10 digits',
+  })
+
 });
 exports.verifyemail = Joi.object({
     email: Joi.string().email().required().messages({
@@ -110,5 +114,15 @@ exports.passwordChange = Joi.object({
 })
 
 
+exports.pinSchema = Joi.object({
+  pin: Joi.alternatives().try(
+    Joi.string().pattern(/^\d{6}$/).messages({
+      'string.pattern.base': 'PIN must be exactly 6 digits',
+    }),
+    Joi.valid(null)
+  ).optional(),
+
+  isPin: Joi.boolean().required(),
+});
 
 
