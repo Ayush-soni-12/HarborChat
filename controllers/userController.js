@@ -24,8 +24,23 @@ module.exports.firebaseAuth = asyncHandler(async(req ,res)=>{
       return res.status(404).send({ error: "User not found" });
     }
 
-   generateToken(res, user._id);
+    if(user.isPin){
+
+     return res.cookie("tempUser", user._id.toString(), {
+    httpOnly: true,
+    secure: false,
+    sameSite:'strict',
+    maxAge: 5 * 60 * 1000, // 5 minutes
+  }).json({ success: true, message: "Require PIN", redirect: "/auth/pin" });
+       
+    }else{
+
+    generateToken(res, user._id);
    return res.status(200).json({ message: "Authenticated", user });
+
+    }
+
+
   } catch (err) {
     console.error("Firebase token verification failed:", err);
     res.status(401).send({ err: "Invalid Firebase Token" });

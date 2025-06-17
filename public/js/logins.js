@@ -131,9 +131,16 @@
                         body: JSON.stringify({ token }),
                     });
 
+                    const data = await response.json()
+
                     if (response.ok) {
                         showStatus("Login successful! Redirecting...");
-                        window.location.href = "/dashboard";
+                if (data.redirect) {
+                       window.location.href = data.redirect; // redirect to pin page
+                   }
+                   else{
+                        window.location.href = "/chat";
+                   }
                     } else {
                         throw new Error("Backend verification failed");
                     }
