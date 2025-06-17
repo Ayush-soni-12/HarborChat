@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const {firebaseAuth,login,signup,registerUser,logoutUser,loginwithPassword,loginConfirm,changePassword,pinCreate,pinform,pinVerify} =require("../controllers/userController");
+const {firebaseAuth,login,signup,registerUser,logoutUser,loginwithPassword,loginConfirm,changePassword,pinCreate,pinform,pinVerify,deleteAccount} =require("../controllers/userController");
 const {registerSchema ,loginSchema,passwordChange,pinSchema} = require("../validations/authValidation")
 const validation = require("../middlewares/validate");
 const validToken = require("../middlewares/verifytoken");
@@ -16,10 +16,11 @@ router.get("/signup",signup);
 router.post("/signup",validation(registerSchema),registerUser)
 router.get("/logout",logoutUser);
 router.get("/verifyemail",verifyEmailChange)
-router.post("/changePassword",validToken,validation(passwordChange),changePassword)
+router.patch("/changePassword",validToken,validation(passwordChange),changePassword)
 router.get("/pin",pinform)
 router.post("/changePin",validToken,pinCreate)
 router.post("/pinVerify",pinVerify)
+router.delete("/deleteAccount",validToken,deleteAccount)
 
 
 module.exports = router;

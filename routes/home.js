@@ -24,8 +24,8 @@ router.post("/contacts/ajax/add",validation(newContactSchema),validToken,contact
 router.get("/chat/setting",validToken,setting)
 router.get("/chat/status",validToken,Status)
 router.get("/chat/profile",validToken,profile)
-router.post("/update-profile",validToken,setUserFolder,multerUpload.single('image'),updateProfile)
-router.post("/update-email",validToken,validation(verifyemail),updateEmail)
+router.patch("/update-profile",validToken,setUserFolder,multerUpload.single('image'),updateProfile)
+router.patch("/update-email",validToken,validation(verifyemail),updateEmail)
 
 
 module.exports= router

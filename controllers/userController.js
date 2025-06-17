@@ -248,3 +248,13 @@ module.exports.pinVerify = asyncHandler(async(req,res)=>{
   generateToken(res,user._id)
    return res.json({ success: true, message: "Login successful" });
 })
+
+
+module.exports.deleteAccount = asyncHandler(async(req,res)=>{
+  console.log(req.user)
+  const deletedUser = await User.findByIdAndDelete(req.user._id)  
+  console.log(deletedUser)
+  // return res.json({ success: true, message: "User deleted successfully" });
+  res.clearCookie("jwt");
+  return res.json({ success: true, message: "User deleted", redirect: "/" });
+})

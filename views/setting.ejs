@@ -51,7 +51,7 @@
             /* width: var(--sidebar-width); */
             width: 100%;
             border-right: 1px solid var(--border-color);
-            background-color: #f8f9fa;
+            /* background-color: #f8f9fa; */
             height: 100%;
             overflow-y: auto;
         }
@@ -365,6 +365,140 @@
 }
 
 
+/* Alert Modal Styles */
+.alert-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.alert-modal-content {
+    background-color: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 450px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    animation: modalFadeIn 0.3s;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.alert-modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.alert-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+}
+
+.close-btn {
+    font-size: 24px;
+    cursor: pointer;
+    color: #999;
+    transition: color 0.2s;
+}
+
+.close-btn:hover {
+    color: #666;
+}
+
+.alert-modal-body {
+    padding: 20px;
+    text-align: center;
+}
+
+.alert-icon {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 15px;
+    color: #e74c3c;
+}
+
+.alert-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.alert-modal-body p {
+    color: #555;
+    margin-bottom: 15px;
+    line-height: 1.5;
+}
+
+.alert-modal-body ul {
+    text-align: left;
+    margin: 15px 0;
+    padding-left: 20px;
+    color: #666;
+}
+
+.alert-modal-body li {
+    margin-bottom: 8px;
+}
+
+.alert-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.cancel-btn {
+    padding: 10px 20px;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.cancel-btn:hover {
+    background: #f5f5f5;
+}
+
+.confirm-delete-btn {
+    padding: 10px 20px;
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.confirm-delete-btn:hover {
+    background-color: #c0392b;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .alert-actions {
+        flex-direction: column;
+    }
+    
+    .cancel-btn, .confirm-delete-btn {
+        width: 100%;
+    }
+}
+
+
     /* Content sections */
     /* .settings-content {
         position: absolute;
@@ -478,7 +612,7 @@
         
 
             <!-- Content Sections -->
-            <form id="profile-form" enctype="multipart/form-data" method="POST" action="/update-profile">
+ <form id="profile-form" enctype="multipart/form-data"  action="/update-profile?_method=PATCH" method="POST">
   <div class="settings-content" id="profile-section">
     
     <div class="profile-info">
@@ -522,7 +656,7 @@
         <!-- acccount content -->
 
          <div class="settings-content" id="account-section">
-                <form id="profile-form" method="POST" action="/update-email">
+                <form id="profile-form"  action="/update-email?_method=PATCH"   method="POST">
                 <div class="setting-item">
                     <div class="setting-title">Email Address</div>
                     <div class="setting-description">Your current email address is <%=userDetail.email %></div>
@@ -538,7 +672,7 @@
     
     <!-- Password Change Form (initially hidden) -->
     <div class="password-form" id="passwordForm" style="display: none;">
-        <form action="/auth/changePassword" method="POST">
+        <form action="/auth/changePassword?_method=PATCH" method="POST">
             <div class="form-group">
                <div class="form-group" style="position: relative;">
                 <label for="currentPassword">Current Password</label>
@@ -572,7 +706,7 @@
 
 
 
-               <div class="setting-item">
+    <div class="setting-item">
     <div class="setting-title">Two-Step Verification</div>
     <div class="setting-description">Add an extra layer of security to your account</div>
     <label class="toggle-switch">
@@ -600,10 +734,38 @@
                 <div class="setting-item">
                     <div class="setting-title">Delete Account</div>
                     <div class="setting-description">Permanently delete your account and all data</div>
-                    <button class="btn btn-danger">Delete Account</button>
+                    <button class="btn btn-danger" id="deleteAccountBtn">Delete Account</button>
                 </div>
             </div>
 
+
+
+              <!--  Delete modal -->
+            <div class="alert-modal" id="deleteConfirmationModal">
+    <div class="alert-modal-content">
+        <div class="alert-modal-header">
+            <h3>Confirm Account Deletion</h3>
+            <span class="close-btn">&times;</span>
+        </div>
+        <div class="alert-modal-body">
+            <div class="alert-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+            </div>
+            <p>This action <strong>cannot</strong> be undone. This will permanently delete:</p>
+            <ul>
+                <li>Your profile</li>
+                <li>All your data</li>
+                <li>Any associated content</li>
+            </ul>
+            <div class="alert-actions">
+                <button class="cancel-btn">Cancel</button>
+                <button class="confirm-delete-btn" id="confirmDeleteBtn">Delete Account</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 
             <!-- privacy content -->
@@ -837,18 +999,23 @@
 
    <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const navItems = document.querySelectorAll('.settings-nav-item');
-        const contentSections = document.querySelectorAll('.settings-content');
-        const defaultMessage = document.getElementById('defaultMessage');
-        const backButton = document.getElementById('backButton');
-        const settingsHeader = document.querySelector('.settings-header h1');
-          const changePasswordBtn = document.getElementById('changePasswordBtn');
-    const passwordForm = document.getElementById('passwordForm');
-        const toggle = document.getElementById('twoStepToggle');
-        const toggleStatus = document.getElementById('toggleStatus');
-        const pinForm = document.getElementById('pinForm');
-    const cancelpinBtn = document.getElementById('cancelpinBtn');
+      const navItems = document.querySelectorAll('.settings-nav-item');
+      const contentSections = document.querySelectorAll('.settings-content');
+      const defaultMessage = document.getElementById('defaultMessage');
+      const backButton = document.getElementById('backButton');
+      const settingsHeader = document.querySelector('.settings-header h1');
+      const changePasswordBtn = document.getElementById('changePasswordBtn');
+      const passwordForm = document.getElementById('passwordForm');
+      const toggle = document.getElementById('twoStepToggle');
+      const toggleStatus = document.getElementById('toggleStatus');
+      const pinForm = document.getElementById('pinForm');
+      const cancelpinBtn = document.getElementById('cancelpinBtn');
       const cancelBtn = document.getElementById('cancelBtn');
+      const deleteBtn = document.getElementById('deleteAccountBtn');
+      const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+      const modal = document.getElementById('deleteConfirmationModal');
+      const closeBtn = document.querySelector('.close-btn');
+      const canceldeletebtn = document.querySelector('.cancel-btn');
 
              
     document.querySelector('.toggle-password').addEventListener('click', function() {
@@ -982,6 +1149,49 @@
         passwordForm.style.display = 'none';
     });
     
+    
+
+
+
+    deleteBtn.addEventListener('click', function() {
+        modal.style.display = 'flex';
+    });
+
+      function closeModal() {
+        modal.style.display = 'none';
+    }
+
+    closeBtn.addEventListener('click', closeModal);
+    canceldeletebtn.addEventListener('click', closeModal);
+
+    confirmDeleteBtn.addEventListener('click',async function() {
+
+        closeModal();
+        // alert('Account deletion would be processed here');
+        const response = await fetch ('/auth/deleteAccount',{
+          method: 'DELETE',        
+        })
+         const result = await response.json();
+                if (result.redirect) {
+                 window.location.href = result.redirect; // redirect to pin page
+               }
+        
+    });
+
+
+        // Close modal when clicking outside
+    window.addEventListener('click', function(event) {
+        if (event.target === modal) {
+            closeModal();
+        }
+    });
+
+     
+
+
+
+
+
 
 
 

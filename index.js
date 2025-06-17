@@ -9,6 +9,7 @@ const app = express();
 const mongoose = require('mongoose');
 const path = require('path');
 const cookieParser= require('cookie-parser');
+const methodOverride = require("method-override");
 const setCurrentUser = require('./middlewares/setCurrentuser')
 const authRoutes =require('./routes/auth')
 const homeRoute = require("./routes/home");
@@ -20,7 +21,7 @@ async function main(){
 main().catch((err)=>{
     console.log('error connecting to mongodb',err);
 })
-
+app.use(methodOverride('_method'));
 app.use(cookieParser());
 app.use(express.urlencoded({extended:true}));
 app.use(express.json());
