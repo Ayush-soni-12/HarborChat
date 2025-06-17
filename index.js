@@ -9,6 +9,7 @@ const app = express();
 const mongoose = require('mongoose');
 const path = require('path');
 const cookieParser= require('cookie-parser');
+const setCurrentUser = require('./middlewares/setCurrentuser')
 const authRoutes =require('./routes/auth')
 const homeRoute = require("./routes/home");
 
@@ -26,6 +27,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname,'public')));
 app.use('views',express.static(path.join(__dirname,'views')));
 app.set('view engine','ejs');
+app.use(setCurrentUser)
 
 
 

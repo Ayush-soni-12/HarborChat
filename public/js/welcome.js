@@ -1,7 +1,9 @@
  // Register GSAP plugins
     gsap.registerPlugin(ScrollTrigger, MotionPathPlugin);
+    const loginForm = document.getElementById('loginForm')
+    if(loginForm){
     
-    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    loginForm.addEventListener('submit', async function(e) {
     e.preventDefault(); // prevent normal form submission
 
     const email = document.getElementById('email').value;
@@ -19,8 +21,12 @@
         const result = await response.json();
 
         if (response.ok && result.success) {
+            if (result.redirect) {
+                 window.location.href = result.redirect; // redirect to pin page
+               }else{
             // Login successful - show animation
             simulateLogin();
+               }
         } else {
             // Handle error (show message to user)
             alert(result.message || 'Invalid credentials');
@@ -29,7 +35,50 @@
         console.error('Login error:', error);
         alert('Something went wrong. Please try again later.');
     }
-});
+})
+    }
+
+    else{
+
+document.getElementById('pinForm').addEventListener('submit',async function(e){
+    e.preventDefault();
+    const pin = document.getElementById('pinNumber').value;
+
+    try{
+
+           const response = await fetch('/auth/pinVerify', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({pin})
+        });
+
+          const result = await response.json();
+          console.log( 'result',result)
+
+        if (response.ok && result.success) {
+            console.log('result',result)
+    
+            // Login successful - show animation
+            simulateLogin();
+               
+        } else {
+            // Handle error (show message to user)
+            alert(result.message || 'Invalid credentials');
+        }
+
+
+    }catch(err){
+        console.error('Login error:', err);
+        alert('Something went wrong. Please try again later.');
+    }
+})
+
+    }
+
+  
+
 
 
     function simulateLogin() {

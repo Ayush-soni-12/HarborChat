@@ -120,7 +120,7 @@ return res.render("welcome.ejs");
 
 
 module.exports.loginConfirm = asyncHandler(async (req, res) => {
-        if (req.cookies.jwt) {
+    if (req.cookies.jwt) {
         return res.json({ success: false, message: "Already logged in" });
     }
 
@@ -139,10 +139,23 @@ module.exports.loginConfirm = asyncHandler(async (req, res) => {
     if (!passwordMatch) {
         return res.json({ success: false, message: "Email or password is incorrect" }); // ✅ JSON response
     }
+    console.log(user.isPin)
+     if (user.isPin) {
+     return res.cookie("tempUser", user._id.toString(), {
+    httpOnly: true,
+    secure: false,
+    sameSite:'strict',
+    maxAge: 5 * 60 * 1000, // 5 minutes
+  }).json({ success: true, message: "Require PIN", redirect: "/auth/pin" });
+     }
 
-    generateToken(res,user._id)
+   else{
+     generateToken(res,user._id)
      return res.json({ success: true, message: "Login successful" });
 
+   } 
+
+   
 
 });
 
@@ -178,9 +191,14 @@ module.exports.changePassword = asyncHandler(async(req,res)=>{
 
 
 })
+module.exports.pinform = asyncHandler(async(req,res)=>{
+     if (req.cookies.jwt) {
+        return res.json({ success: false, message: "Already logged in" });
+    }
+  return res.render("pin.ejs")
+})
 
-
-module.exports.pinChange = asyncHandler(async(req,res)=>{
+module.exports.pinCreate = asyncHandler(async(req,res)=>{
      let {pin,isPin} = req.body
      if(!pin){
        pin = null;
@@ -195,4 +213,23 @@ module.exports.pinChange = asyncHandler(async(req,res)=>{
 
      await userDetail.save()
      return res.send("Pin Created")
+})
+module.exports.pinVerify = asyncHandler(async(req,res)=>{
+   if (req.cookies.jwt) {
+    return res.json({ success: false, message: "Already logged in" });
+    }
+  const {pin} = req.body
+    const userId = req.cookies.tempUser;
+  if(!userId){
+    return res.json({success:false, message:"Session expired"})
+  }
+  const user = await User.findById(userId);
+  if (!user || user.pin !== pin) {
+    return res.status(401).json({ success: false, message: "Invalid PIN" });
+  }
+
+   res.clearCookie("tempUser");
+
+  generateToken(res,user._id)
+   return res.json({ success: true, message: "Login successful" });
 })
