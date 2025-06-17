@@ -15,11 +15,13 @@
         });
 
         const result = await response.json();
+          console.log(result)
 
         if (response.ok && result.success) {
             // Login successful - show animation
             simulateSignup();
         } else {
+          
             // Handle error (show message to user)
             alert(result.message || 'Invalid credentials');
         }

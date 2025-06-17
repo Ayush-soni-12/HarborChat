@@ -15,7 +15,9 @@ const setCurrentUser = async (req, res, next) => {
   if (token) {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.userId).select("-password");
+      // console.log(decoded)
+      const user = await User.findById(decoded.uid).select("-password");
+      // console.log(user)
       res.locals.currentUser = user;
     } catch {
       res.locals.currentUser = null;
