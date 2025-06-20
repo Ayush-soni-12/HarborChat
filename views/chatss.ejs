@@ -29,3 +29,119 @@
     </div>
 
    <%- include('partials/footer') %>
+   <script>
+    
+   const personalChats = document.querySelectorAll(".contact-item");
+//    const chat = document.querySelector(".chattingArea");
+//    const empty_chat = document.querySelector(".empty-chat")
+   console.log(personalChats)
+//    console.log(chat)
+
+        personalChats.forEach(contact => {
+            contact.addEventListener('click', function() {
+                // Get contact info
+                const contactName = this.querySelector('.contact-name').textContent;
+                const contactAvatar = this.querySelector('.contact-avatar').textContent;
+                
+                // Update chat header
+                document.querySelector('.nav-name').textContent = contactName;
+                document.querySelector('.nav-avatar').textContent = contactAvatar;
+                
+                // Hide empty state and show active chat
+                document.querySelector('.empty-chat').style.display = 'none';
+                document.querySelector('.chattingArea').style.display = 'block';
+                
+                // For mobile view
+                document.getElementById('sidebar').classList.add('active');
+                document.getElementById('chatArea').classList.add('active');
+                
+                // Clear and load messages for this contact
+                loadChatMessages(contactName);
+            });
+   })
+
+   function loadChatMessages(contactName) {
+        const messagesContainer = document.getElementById('messagesContainer');
+        messagesContainer.innerHTML = '';
+        
+        // In a real app, you would fetch messages from your backend
+        // Here we just add some sample messages
+        const sampleMessages = [
+            { text: `Hi there! This is ${contactName}`, sent: false, time: '10:30 AM' },
+            { text: 'Hello! How are you?', sent: true, time: '10:32 AM' },
+            { text: 'I was wondering if you got my email?', sent: false, time: '10:33 AM' },
+            { text: 'Yes, I did. Thanks for sending it!', sent: true, time: '10:35 AM' }
+        ];
+        
+        sampleMessages.forEach(msg => {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${msg.sent ? 'sent' : 'received'}`;
+            messageDiv.innerHTML = `
+                ${msg.text}
+                <div class="message-time">${msg.time}</div>
+            `;
+            messagesContainer.appendChild(messageDiv);
+        });
+        
+        // Scroll to bottom
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+
+        document.querySelector('.send-button').addEventListener('click', sendMessage);
+    document.querySelector('.message-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+     function sendMessage() {
+        const input = document.querySelector('.message-input');
+        const message = input.value.trim();
+        
+        if (message) {
+            const messagesContainer = document.getElementById('messagesContainer');
+            
+            // Create new message element
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message sent';
+            messageDiv.innerHTML = `
+                ${message}
+                <div class="message-time">${getCurrentTime()}</div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            input.value = '';
+            
+            // Scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Simulate received message after 1 second
+            setTimeout(() => {
+                const contactName = document.getElementById('chatName').textContent;
+                const replyDiv = document.createElement('div');
+                replyDiv.className = 'message received';
+                replyDiv.innerHTML = `
+                    Thanks for your message!
+                    <div class="message-time">${getCurrentTime()}</div>
+                `;
+                
+                messagesContainer.appendChild(replyDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }, 1000);
+        }
+    }
+
+        function getCurrentTime() {
+        const now = new Date();
+        let hours = now.getHours();
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // the hour '0' should be '12'
+        return `${hours}:${minutes} ${ampm}`;
+    }
+
+
+   </script>
