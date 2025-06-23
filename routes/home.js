@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {index,chat,contact,setting,Status,profile,updateProfile,updateEmail} = require("../controllers/homeController");
+const {index,chat,contact,setting,Status,profile,updateProfile,updateEmail,me,personalChat} = require("../controllers/homeController");
 const validToken= require('../middlewares/verifytoken');
 const {verifyemail, newContactSchema }= require("../validations/authValidation.js")
 const validation = require("../middlewares/validate");
@@ -26,6 +26,8 @@ router.get("/chat/status",validToken,Status)
 router.get("/chat/profile",validToken,profile)
 router.patch("/update-profile",validToken,setUserFolder,multerUpload.single('image'),updateProfile)
 router.patch("/update-email",validToken,validation(verifyemail),updateEmail)
+router.get("/api/me",validToken,me)
+router.get("/api/messages/:receiverId",validToken,personalChat)
 
 
 module.exports= router

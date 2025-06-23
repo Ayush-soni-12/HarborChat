@@ -19,6 +19,7 @@
                     <div class="nav-avatar"></div>
                     <div class="nav-info">
                         <div class="nav-name" id="chatName"></div>
+                          <span class="user-status">Offline</span> 
                     </div>
                 </div>
 
@@ -103,16 +104,16 @@
       console.log(result)
 
       if (res.ok) {
-        
+            
             const contactList = document.getElementById('contactList');
-                const emptyState = contactList.querySelector('.empty-chat');
-                
-                if (emptyState) {
-                    contactList.removeChild(emptyState);
-                }
-                
+             const emptyState = document.getElementById('emptyChatMsg');
+             if (emptyState) {
+                 emptyState.style.display = 'none';
+             }
+                 const userId = result.contactId 
                 const newContact = document.createElement('div');
                 newContact.className = 'contact-item';
+                newContact.dataset.userid = userId;
                 newContact.innerHTML = `
                     <div class="contact-avatar">${name.charAt(0)}</div>
                     <div class="contact-info">
@@ -121,8 +122,21 @@
                     </div>
                 `;
                 
-                contactList.appendChild(newContact);
-                
+               
+                    // Add click event to open chat
+                 newContact.addEventListener('click', async function () {
+                     document.querySelector('.nav-name').textContent = name;
+                     document.querySelector('.nav-avatar').textContent = name.charAt(0);
+                     window.currentReceiverId = userId;
+                     document.querySelector('.empty-chat').style.display = 'none';
+                     document.querySelector('.chattingArea').style.display = 'block';
+                     document.getElementById('sidebar').classList.add('active');
+                     document.getElementById('chatArea').classList.add('active');
+                     await loadChatMessages();
+                 });
+                 contactList.appendChild(newContact);
+
+                   updateEmptyChatMessage();
                 // Reset form and close modal
                 e.target.reset();
                 bootstrap.Modal.getInstance(document.getElementById('addContactModal')).hide();

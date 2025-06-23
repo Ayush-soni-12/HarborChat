@@ -3,6 +3,7 @@ const Contact = require("../modals/contactModal")
 const User = require("../modals/UserModal")
 const { cloudinary } = require("../ cloudConfig");
 const {sendMail} = require("../Helpers/mailer")
+const Message = require("../modals/Message")
 // const generateToken = require("../middlewares/generateToken");
 const jwt = require("jsonwebtoken")
 
@@ -38,7 +39,7 @@ if (!phone.startsWith("+91")) {
 
     // Check if contact is a registered user
     const registeredUser = await User.findOne({ phoneNo:phone });
-
+    console.log("resgisterUser",registeredUser)
     if (!registeredUser) {
       return res.status(404).json({ success: false, message: "Contact is not registered on the platform." });
     }
@@ -53,6 +54,7 @@ if (!phone.startsWith("+91")) {
     const contact = new Contact({
       name,
       phone,
+      contactId :registeredUser._id,
       userId: req.user._id,
     });
     console.log(contact)
@@ -169,3 +171,27 @@ module.exports.verifyEmailChange = asyncHandler(async (req, res) => {
     res.status(400).send("❌ Invalid or expired token.");
   }
 });
+
+module.exports.me = asyncHandler(async(req,res)=>{
+  const user = req.user
+  console.log(req.user)
+  return res.json({user});
+})
+module.exports.personalChat = asyncHandler(async(req,res)=>{
+    
+  try {
+        const senderId = req.user._id.toString(); // from JWT
+        const receiverId = req.params.receiverId;
+
+        const messages = await Message.find({
+            $or: [
+                { senderId, receiverId },
+                { senderId: receiverId, receiverId: senderId },
+            ]
+        }).sort({ timestamp: 1 });
+
+        res.json({ messages });
+    } catch (err) {
+        res.status(500).json({ error: 'Server error' });
+    }
+})

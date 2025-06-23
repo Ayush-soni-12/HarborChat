@@ -1,94 +1,160 @@
-     <%- include('partials/header') %>
+<%- include('partials/header') %>
         <div class="message">
              <button id="btn">All</button>
               <button id="btn">Unread</button>
                <button id="btn">Group</button>
                 <button id="btn">Favorites</button>
         </div>
-
-        <div class="contact-list" id="contactList">
-            <% if (contacts && contacts.length > 0) { %>
-                <% contacts.forEach(contact => { %>
-                    <div class="contact-item">
-                        <div class="contact-avatar"><%= contact.name.charAt(0) %></div>
-                        <div class="contact-info">
-                            <div class="contact-name"><%= contact.name %></div>
-                            <div class="contact-last-msg"><%= contact.phone %></div>
-                        </div>
-                    </div>
-                <% }) %>
-            <% } else { %>
-                <div class="empty-chat">
-                    <div class="empty-chat-icon">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <p>No contacts yet</p>
+<div class="contact-list" id="contactList">
+    <% if (contacts && contacts.length > 0) { %>
+        <% contacts.forEach(contact => { %>
+            <div class="contact-item" data-userid="<%=contact.contactId %>">
+                <div class="contact-avatar"><%= contact.name.charAt(0) %></div>
+                <div class="contact-info">
+                    <div class="contact-name"><%= contact.name %></div>
+                    <div class="contact-last-msg"><%= contact.phone %></div>
                 </div>
-            <% } %>
-        </div>
+            </div>
+        <% }) %>
+    <% } %>
+</div>
+<div class="empty" id="emptyChatMsg" <% if (contacts && contacts.length > 0) { %>style="display:none"<% } %>>
+    <div class="empty-chat-icon">
+        <i class="fas fa-users"></i>
+    </div>
+    <p>No contacts yet</p>
+</div>
     </div>
 
    <%- include('partials/footer') %>
+   <script src="/socket.io/socket.io.js"></script>
    <script>
-    
-   const personalChats = document.querySelectorAll(".contact-item");
-//    const chat = document.querySelector(".chattingArea");
-//    const empty_chat = document.querySelector(".empty-chat")
-   console.log(personalChats)
-//    console.log(chat)
+    const socket = io();
+    const contactMap = {};
+    const onlineUserIds = new Set();
 
-        personalChats.forEach(contact => {
-            contact.addEventListener('click', function() {
-                // Get contact info
-                const contactName = this.querySelector('.contact-name').textContent;
-                const contactAvatar = this.querySelector('.contact-avatar').textContent;
-                
-                // Update chat header
-                document.querySelector('.nav-name').textContent = contactName;
-                document.querySelector('.nav-avatar').textContent = contactAvatar;
-                
-                // Hide empty state and show active chat
-                document.querySelector('.empty-chat').style.display = 'none';
-                document.querySelector('.chattingArea').style.display = 'block';
-                
-                // For mobile view
-                document.getElementById('sidebar').classList.add('active');
-                document.getElementById('chatArea').classList.add('active');
-                
-                // Clear and load messages for this contact
-                loadChatMessages(contactName);
-            });
-   })
-
-   function loadChatMessages(contactName) {
-        const messagesContainer = document.getElementById('messagesContainer');
-        messagesContainer.innerHTML = '';
-        
-        // In a real app, you would fetch messages from your backend
-        // Here we just add some sample messages
-        const sampleMessages = [
-            { text: `Hi there! This is ${contactName}`, sent: false, time: '10:30 AM' },
-            { text: 'Hello! How are you?', sent: true, time: '10:32 AM' },
-            { text: 'I was wondering if you got my email?', sent: false, time: '10:33 AM' },
-            { text: 'Yes, I did. Thanks for sending it!', sent: true, time: '10:35 AM' }
-        ];
-        
-        sampleMessages.forEach(msg => {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${msg.sent ? 'sent' : 'received'}`;
-            messageDiv.innerHTML = `
-                ${msg.text}
-                <div class="message-time">${msg.time}</div>
-            `;
-            messagesContainer.appendChild(messageDiv);
+    async function getUserInfo() {
+        const res = await fetch("/api/me", {
+            method: "GET",
+            credentials: "include",
         });
-        
-        // Scroll to bottom
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        const data = await res.json();
+        if (data.user) {
+            localStorage.setItem("userId", data.user._id);
+            const userId = localStorage.getItem("userId")
+            socket.emit("join",userId)
+        }
     }
 
+window.addEventListener("DOMContentLoaded", () => {
+  getUserInfo();
+  
 
-        document.querySelector('.send-button').addEventListener('click', sendMessage);
+  document.querySelectorAll(".contact-item").forEach(contact => {
+    const userId = contact.dataset.userid;
+    const name = contact.querySelector('.contact-name')?.textContent.trim() || "";
+    const phone = contact.querySelector('.contact-last-msg')?.textContent.trim() || "";
+    contactMap[userId] = { name, phone };
+    console.log("contact",contactMap)
+  });
+    updateEmptyChatMessage();
+});
+
+
+    const personalChats = document.querySelectorAll(".contact-item");
+    console.log(personalChats);
+
+    personalChats.forEach(contact => {
+        contact.addEventListener('click', async function () {
+            const contactName = this.querySelector('.contact-name').textContent;
+            const contactAvatar = this.querySelector('.contact-avatar').textContent;
+            const userId = this.dataset.userid;
+            window.currentReceiverId = userId;
+            console.log("Receiver ID:", window.currentReceiverId);
+             const statusText = document.querySelector('.nav-info .user-status');
+               if (statusText) {
+                   if (onlineUserIds.has(userId)) {
+                       statusText.innerText = "Online";
+                       statusText.style.color = "green";
+                   } else {
+                       statusText.innerText = "Offline";
+                       statusText.style.color = "gray";
+                   }
+               }
+
+            document.querySelector('.nav-name').textContent = contactName;
+            document.querySelector('.nav-avatar').textContent = contactAvatar;
+
+            document.querySelector('.empty-chat').style.display = 'none';
+            document.querySelector('.chattingArea').style.display = 'block';
+
+            document.getElementById('sidebar').classList.add('active');
+            document.getElementById('chatArea').classList.add('active');
+
+            await loadChatMessages(); // fetch real messages
+        });
+    });
+
+
+    const messageInput = document.querySelector('.message-input');
+    messageInput.addEventListener('input', function() {
+    const senderId = localStorage.getItem('userId');
+    const receiverId = window.currentReceiverId;
+    if (receiverId) {
+        socket.emit('typing', { senderId, receiverId });
+    }
+});
+
+    async function loadChatMessages() {
+        const senderId = localStorage.getItem("userId");
+        const receiverId = window.currentReceiverId;
+        const messagesContainer = document.getElementById('messagesContainer');
+        messagesContainer.innerHTML = '';
+        try {
+            const res = await fetch(`/api/messages/${receiverId}`, {
+                method: 'GET',
+                credentials: 'include'
+            });
+            const data = await res.json();
+            // Collect IDs of received messages to mark as read
+            const unreadIds = [];
+            data.messages.forEach(msg => {
+                const messageDiv = document.createElement('div');
+                const isSent = msg.senderId === senderId;
+                messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
+                // Add tick icon for sent messages
+                let tickHtml = '';
+                if (isSent) {
+                  if (msg.status === 'sent') {
+                    tickHtml = '<span class="tick-icon">✔️</span>';
+                  } else if (msg.status === 'delivered') {
+                    tickHtml = '<span class="tick-icon">✔✔️</span>';
+                  } else if (msg.status === 'read') {
+                    tickHtml = '<span class="tick-icon" style="color: #34B7F1">✔✔️</span>';
+                  }
+                }
+                messageDiv.innerHTML = `
+                    ${msg.message}
+                    <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
+                `;
+                messagesContainer.appendChild(messageDiv);
+                // Collect unread message IDs for read receipt
+                if (!isSent && msg.status !== 'read') {
+                  unreadIds.push(msg._id);
+                }
+            });
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            // Emit read receipt for all unread messages
+            if (unreadIds.length > 0) {
+              socket.emit('message-read', { messageIds: unreadIds, readerId: senderId });
+            }
+        } catch (err) {
+            console.error("Failed to load messages:", err);
+        }
+    }
+
+    document.querySelector('.send-button').addEventListener('click', sendMessage);
     document.querySelector('.message-input').addEventListener('keypress', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -96,52 +162,263 @@
         }
     });
 
-     function sendMessage() {
+    function sendMessage() {
         const input = document.querySelector('.message-input');
         const message = input.value.trim();
-        
-        if (message) {
-            const messagesContainer = document.getElementById('messagesContainer');
-            
-            // Create new message element
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message sent';
-            messageDiv.innerHTML = `
-                ${message}
-                <div class="message-time">${getCurrentTime()}</div>
-            `;
-            
-            messagesContainer.appendChild(messageDiv);
-            input.value = '';
-            
-            // Scroll to bottom
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            
-            // Simulate received message after 1 second
-            setTimeout(() => {
-                const contactName = document.getElementById('chatName').textContent;
-                const replyDiv = document.createElement('div');
-                replyDiv.className = 'message received';
-                replyDiv.innerHTML = `
-                    Thanks for your message!
-                    <div class="message-time">${getCurrentTime()}</div>
-                `;
-                
-                messagesContainer.appendChild(replyDiv);
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }, 1000);
+        const senderId = localStorage.getItem('userId');
+        const receiverId = window.currentReceiverId;
+
+        if (!message) return;
+        if (!receiverId) {
+            alert("Select a user to chat with");
+            return;
         }
+
+        socket.emit('chat message', { senderId, receiverId, message });
+
+             input.value = '';
     }
 
-        function getCurrentTime() {
+
+
+    function updateEmptyChatMessage() {
+    const contactList = document.querySelector('.contact-list');
+    const emptyChatMsg = document.getElementById('emptyChatMsg');
+    if (contactList && emptyChatMsg) {
+        if (contactList.querySelectorAll('.contact-item').length === 0) {
+            emptyChatMsg.style.display = '';
+        } else {
+            emptyChatMsg.style.display = 'none';
+        }
+    }
+}
+
+
+  socket.on("chat message", (msg) => {
+  const senderId = localStorage.getItem("userId");
+  const otherUserId = msg.senderId === senderId ? msg.receiverId : msg.senderId;
+
+  
+    if (!contactMap[otherUserId]) {
+    const name = "Unknown";
+    const phone = msg.senderPhone ? msg.senderPhone.replace(/\D/g, '').slice(-10) : "";
+
+    contactMap[otherUserId] = { name, phone };
+
+
+    async function unKnownUser(){
+      const res = await fetch("/contacts/ajax/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, phone })
+      });
+    }
+       unKnownUser()
+
+     const emptyChat = document.querySelector('.empty');
+    if (emptyChat) emptyChat.style.display = 'none';
+    // Also show in your contact list UI
+    const chatItem = document.createElement("div");
+    chatItem.className = "contact-item";
+    chatItem.dataset.userid = otherUserId;
+        chatItem.innerHTML = `
+            <div class="contact-avatar">?</div>
+            <div class="contact-info">
+                <div class="contact-name">Unknown</div>
+                <div class="contact-last-msg">${msg.senderPhone}</div>
+            </div>
+        `;
+    chatItem.addEventListener('click', async function () {
+        document.querySelector('.nav-name').textContent = name;
+        document.querySelector('.nav-avatar').textContent = name.charAt(0);
+        window.currentReceiverId = otherUserId;
+
+        document.querySelector('.empty-chat').style.display = 'none';
+        document.querySelector('.chattingArea').style.display = 'block';
+
+        document.getElementById('sidebar').classList.add('active');
+        document.getElementById('chatArea').classList.add('active');
+
+        await loadChatMessages();
+    });
+
+    document.querySelector(".contact-list").appendChild(chatItem);
+    updateEmptyChatMessage();
+  }
+
+
+  if (
+    (msg.senderId === window.currentReceiverId && msg.receiverId === senderId) ||
+    (msg.senderId === senderId && msg.receiverId === window.currentReceiverId)
+  ) {
+    const messagesContainer = document.getElementById("messagesContainer");
+    const messageDiv = document.createElement("div");
+    const isSent = msg.senderId === senderId;
+    messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
+    let tickHtml = '';
+    if (isSent) {
+      if (msg.status === 'sent') {
+        tickHtml = '<span class="tick-icon">✔️</span>';
+      } else if (msg.status === 'delivered') {
+        tickHtml = '<span class="tick-icon">✔✔️</span>';
+      } else if (msg.status === 'read') {
+        tickHtml = '<span class="tick-icon" style="color: #34B7F1">✔✔️</span>';
+      }
+    }
+    messageDiv.innerHTML = `
+      ${msg.message}
+      <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
+    `;
+    if (msg._id) messageDiv.dataset.messageId = msg._id;
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    // If this is a received message and the chat is open, emit read immediately
+    if (!isSent && msg.status !== 'read' && msg._id) {
+      socket.emit('message-read', { messageIds: [msg._id], readerId: senderId });
+    }
+  }
+});
+
+// Listen for message-delivered event to update tick to double tick in real time
+socket.on('message-delivered', ({ messageId }) => {
+  const messagesContainer = document.getElementById('messagesContainer');
+  if (!messagesContainer) return;
+  const msgDiv = messagesContainer.querySelector(`[data-message-id='${messageId}'] .message-time .tick-icon`);
+  if (msgDiv) {
+    msgDiv.innerHTML = '✔✔️';
+    msgDiv.style.color = '';
+  }
+});
+
+// Listen for message-read event to update ticks in UI
+socket.on('message-read', ({ messageIds, readerId }) => {
+  const messagesContainer = document.getElementById('messagesContainer');
+  if (!messagesContainer) return;
+  if (Array.isArray(messageIds)) {
+    messageIds.forEach(id => {
+      const msgDiv = messagesContainer.querySelector(`[data-message-id='${id}'] .message-time .tick-icon`);
+      if (msgDiv) {
+        msgDiv.innerHTML = '✔✔️';
+        msgDiv.style.color = '#34B7F1';
+      }
+    });
+  }
+});
+
+socket.on("user-online", (userId) => {
+    onlineUserIds.add(userId);
+    console.log("hijo")
+    console.log(onlineUserIds)
+    console.log("User online event received for:", userId);
+    showOnlineDot(userId);
+});
+socket.on("user-offline", (userId) => {
+    onlineUserIds.delete(userId);
+    console.log("User offline event received for:", userId);
+    showOfflineDot(userId);
+});
+socket.on("online-contacts", (onlineContactIds) => {
+    // Clear and repopulate the onlineUserIds set
+    onlineUserIds.clear();
+    onlineContactIds.forEach(id => onlineUserIds.add(id));
+    // Update status for all contacts in the list
+    document.querySelectorAll('.contact-item').forEach(contact => {
+        const uid = contact.dataset.userid;
+        const statusText = contact.querySelector('.user-status');
+        if (onlineUserIds.has(uid)) {
+            if (statusText) {
+                statusText.innerText = "Online";
+                statusText.style.color = "green";
+            }
+        } else {
+            if (statusText) {
+                statusText.innerText = "Offline";
+                statusText.style.color = "gray";
+            }
+        }
+    });
+    // Also update the chat header if a chat is open
+    if (window.currentReceiverId) {
+        const statusText = document.querySelector('.nav-info .user-status');
+        if (statusText) {
+            if (onlineUserIds.has(window.currentReceiverId)) {
+                statusText.innerText = "Online";
+                statusText.style.color = "green";
+            } else {
+                statusText.innerText = "Offline";
+                statusText.style.color = "gray";
+            }
+        }
+    }
+});
+
+socket.on('typing', (senderId) => {
+    // Only show typing if this is the current chat
+    if (window.currentReceiverId === senderId) {
+        const statusText = document.querySelector('.nav-info .user-status');
+        if (statusText) {
+            statusText.innerText = "Typing...";
+            statusText.style.color = "blue";
+            // Optionally, revert to online/offline after a short delay
+            clearTimeout(window.typingTimeout);
+            window.typingTimeout = setTimeout(() => {
+                if (onlineUserIds.has(senderId)) {
+                    statusText.innerText = "Online";
+                    statusText.style.color = "green";
+                } else {
+                    statusText.innerText = "Offline";
+                    statusText.style.color = "gray";
+                }
+            }, 1500); // 1.5 seconds after last typing event
+        }
+    }
+});
+
+function showOnlineDot(userId) {
+  // Update chat header if open
+  if (window.currentReceiverId === userId) {
+    const statusText = document.querySelector('.nav-info .user-status');
+    console.log("receverId",window.currentReceiverId)
+    console.log("Hello world" ,statusText)
+    if (statusText) {
+      statusText.innerText = "Online";
+      statusText.style.color = "green";
+    }
+  }
+}
+
+function showOfflineDot(userId) {
+  // Update chat header if open
+  if (window.currentReceiverId === userId) {
+    const statusText = document.querySelector('.nav-info .user-status');
+    if (statusText) {
+      statusText.innerText = "Offline";
+      statusText.style.color = "gray";
+    }
+  }
+
+}
+
+
+
+
+
+
+    function getCurrentTime() {
         const now = new Date();
         let hours = now.getHours();
         const minutes = now.getMinutes().toString().padStart(2, '0');
         const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12;
-        hours = hours ? hours : 12; // the hour '0' should be '12'
+        hours = hours % 12 || 12;
         return `${hours}:${minutes} ${ampm}`;
     }
 
-
-   </script>
+    function formatTime(timestamp) {
+        const date = new Date(timestamp);
+        let hours = date.getHours();
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12 || 12;
+        return `${hours}:${minutes} ${ampm}`;
+    }
+</script>
