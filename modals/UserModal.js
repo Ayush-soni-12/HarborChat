@@ -4,6 +4,7 @@ const userSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
+    index:true,
   },
   password: {
     type: String,
@@ -21,7 +22,6 @@ const userSchema = new mongoose.Schema({
   },
   image:{
     type:String,
-    
   },
     image_id: {
       type:String, 

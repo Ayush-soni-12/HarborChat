@@ -12,7 +12,7 @@ module.exports.index = asyncHandler(async(req,res)=>{
 });
 module.exports.chat = asyncHandler(async(req,res)=>{
       try {
-    const contacts = await Contact.find({ userId: req.user._id });
+    const contacts = await Contact.find({ userId: req.user._id }).populate('contactId','about');
     res.render("chatss", { contacts: contacts || [] }); // ✅ Ensure contacts is at least an empty array
   } catch (err) {
     console.error(err);
@@ -39,6 +39,7 @@ if (!phone.startsWith("+91")) {
 
     // Check if contact is a registered user
     const registeredUser = await User.findOne({ phoneNo:phone });
+
     console.log("resgisterUser",registeredUser)
     if (!registeredUser) {
       return res.status(404).json({ success: false, message: "Contact is not registered on the platform." });
@@ -182,15 +183,18 @@ module.exports.personalChat = asyncHandler(async(req,res)=>{
   try {
         const senderId = req.user._id.toString(); // from JWT
         const receiverId = req.params.receiverId;
+        const { skip = 0, limit = 30 } = req.query;
 
         const messages = await Message.find({
             $or: [
                 { senderId, receiverId },
                 { senderId: receiverId, receiverId: senderId },
             ]
-        }).sort({ timestamp: 1 });
+        }) .sort({ timestamp: -1 }) // newest first
+  .skip(Number(skip))
+  .limit(Number(limit));
 
-        res.json({ messages });
+        res.json({ messages:messages.reverse() });
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
     }

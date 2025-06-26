@@ -8,5 +8,10 @@ const contactSchema = new mongoose.Schema({
   phone: { type: String, required: true,  },
 });
 
+
+
+contactSchema.index({ userId: 1 });
+contactSchema.index({ userId: 1, phone: 1 },{unique:true});
+
 module.exports = mongoose.model("Contact", contactSchema);
 

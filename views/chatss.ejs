@@ -8,11 +8,12 @@
 <div class="contact-list" id="contactList">
     <% if (contacts && contacts.length > 0) { %>
         <% contacts.forEach(contact => { %>
-            <div class="contact-item" data-userid="<%=contact.contactId %>">
+            <div class="contact-item" data-userid="<%=contact.contactId._id%>">
                 <div class="contact-avatar"><%= contact.name.charAt(0) %></div>
                 <div class="contact-info">
                     <div class="contact-name"><%= contact.name %></div>
                     <div class="contact-last-msg"><%= contact.phone %></div>
+                    <div class="contact-about" style="display: none;"><%=contact.contactId.about%></div>
                 </div>
             </div>
         <% }) %>
@@ -25,6 +26,22 @@
     <p>No contacts yet</p>
 </div>
     </div>
+        <!-- Add this just before </body> -->
+<div class="user-info-overlay" id="userInfoOverlay"></div>
+<div class="user-info" id="userInfoSidebar">
+  <div class="crossEdit">
+    <div class="crossbtn">
+    <i class="fa-solid fa-xmark"></i>
+    </div>
+    <div class="editbtn">
+    <i class="fa-solid fa-pencil"></i>
+    </div>
+  </div>
+  <div class="profile-avatar" id="profileAvatar"></div>
+  <div class="profile-name" id="profileName"></div>
+  <div class="profile-phone" id="profilePhone"></div>
+  <div class="profile-about" id="profileAbout"></div>
+</div>
 
    <%- include('partials/footer') %>
    <script src="/socket.io/socket.io.js"></script>
@@ -32,6 +49,10 @@
     const socket = io();
     const contactMap = {};
     const onlineUserIds = new Set();
+    let messagesSkip = 0;
+    const messagesLimit = 30;
+    let allMessagesLoaded = false;
+    let isLoadingMessages = false;
 
     async function getUserInfo() {
         const res = await fetch("/api/me", {
@@ -56,7 +77,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const name = contact.querySelector('.contact-name')?.textContent.trim() || "";
     const phone = contact.querySelector('.contact-last-msg')?.textContent.trim() || "";
     contactMap[userId] = { name, phone };
-    console.log("contact",contactMap)
+    console.log("contact",contactMap);  
   });
     updateEmptyChatMessage();
 });
@@ -69,6 +90,8 @@ window.addEventListener("DOMContentLoaded", () => {
         contact.addEventListener('click', async function () {
             const contactName = this.querySelector('.contact-name').textContent;
             const contactAvatar = this.querySelector('.contact-avatar').textContent;
+            const contactPhone = this.querySelector('.contact-last-msg').textContent
+            const contactabout = this.querySelector('.contact-about').textContent
             const userId = this.dataset.userid;
             window.currentReceiverId = userId;
             console.log("Receiver ID:", window.currentReceiverId);
@@ -86,13 +109,20 @@ window.addEventListener("DOMContentLoaded", () => {
             document.querySelector('.nav-name').textContent = contactName;
             document.querySelector('.nav-avatar').textContent = contactAvatar;
 
+            document.querySelector('.profile-name').textContent = contactName;
+            document.querySelector('.profile-avatar').textContent = contactAvatar;
+            document.querySelector('.profile-phone').textContent = contactPhone;
+            document.querySelector('.profile-about').textContent = contactabout;
+
             document.querySelector('.empty-chat').style.display = 'none';
             document.querySelector('.chattingArea').style.display = 'block';
 
             document.getElementById('sidebar').classList.add('active');
             document.getElementById('chatArea').classList.add('active');
-
-            await loadChatMessages(); // fetch real messages
+            
+            messagesSkip = 0
+            allMessagesLoaded = false;
+            await loadChatMessages(false); // fetch real messages
         });
     });
 
@@ -106,53 +136,78 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-    async function loadChatMessages() {
-        const senderId = localStorage.getItem("userId");
-        const receiverId = window.currentReceiverId;
-        const messagesContainer = document.getElementById('messagesContainer');
+async function loadChatMessages(append = false) {
+    if (isLoadingMessages || allMessagesLoaded) return;
+    isLoadingMessages = true;
+      document.getElementById('loader').style.display = 'block';
+    await new Promise(resolve => setTimeout(resolve, 100));
+    const senderId = localStorage.getItem("userId");
+    const receiverId = window.currentReceiverId;
+    const messagesContainer = document.getElementById('messagesContainer');
+    if (!append) {
+        messagesSkip = 0;
+        allMessagesLoaded = false;
         messagesContainer.innerHTML = '';
-        try {
-            const res = await fetch(`/api/messages/${receiverId}`, {
-                method: 'GET',
-                credentials: 'include'
-            });
-            const data = await res.json();
-            // Collect IDs of received messages to mark as read
-            const unreadIds = [];
-            data.messages.forEach(msg => {
-                const messageDiv = document.createElement('div');
-                const isSent = msg.senderId === senderId;
-                messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
-                // Add tick icon for sent messages
-                let tickHtml = '';
-                if (isSent) {
-                  if (msg.status === 'sent') {
-                    tickHtml = '<span class="tick-icon">✔️</span>';
-                  } else if (msg.status === 'delivered') {
-                    tickHtml = '<span class="tick-icon">✔✔️</span>';
-                  } else if (msg.status === 'read') {
-                    tickHtml = '<span class="tick-icon" style="color: #34B7F1">✔✔️</span>';
-                  }
-                }
-                messageDiv.innerHTML = `
-                    ${msg.message}
-                    <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
-                `;
-                messagesContainer.appendChild(messageDiv);
-                // Collect unread message IDs for read receipt
-                if (!isSent && msg.status !== 'read') {
-                  unreadIds.push(msg._id);
-                }
-            });
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            // Emit read receipt for all unread messages
-            if (unreadIds.length > 0) {
-              socket.emit('message-read', { messageIds: unreadIds, readerId: senderId });
-            }
-        } catch (err) {
-            console.error("Failed to load messages:", err);
-        }
     }
+    try {
+        const res = await fetch(`/api/messages/${receiverId}?skip=${messagesSkip}&limit=${messagesLimit}`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        const data = await res.json();
+        console.log('messages',data)
+        const oldScrollHeight = messagesContainer.scrollHeight;
+        if (data.messages.length < messagesLimit) allMessagesLoaded = true;
+        messagesSkip += data.messages.length;
+
+        // Render messages
+        data.messages.forEach(msg => {
+            const messageDiv = document.createElement('div');
+            const isSent = msg.senderId === senderId;
+            messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
+            // ...tickHtml and innerHTML as before...
+            let tickHtml = '';
+            if (isSent) {
+              if (msg.status === 'sent') {
+                tickHtml = '<span class="tick-icon">✔️</span>';
+              } else if (msg.status === 'delivered') {
+                tickHtml = '<span class="tick-icon">✔✔️</span>';
+              } else if (msg.status === 'read') {
+                tickHtml = '<span class="tick-icon" style="color: #34B7F1">✔✔️</span>';
+              }
+            }
+            messageDiv.innerHTML = `
+                ${msg.message}
+                <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
+            `;
+            if (msg._id) messageDiv.dataset.messageId = msg._id;
+            if (append) {
+                messagesContainer.insertBefore(messageDiv, messagesContainer.firstChild);
+            } else {
+                messagesContainer.appendChild(messageDiv);
+            }
+        });
+
+        if (!append) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        } else {
+            // Maintain scroll position after prepending
+            messagesContainer.scrollTop = messagesContainer.scrollHeight - oldScrollHeight;
+        }
+    } catch (err) {
+        console.error("Failed to load messages:", err);
+    }
+    isLoadingMessages = false;
+    document.getElementById('loader').style.display = 'none'; 
+}
+
+
+const messagesContainer = document.getElementById('messagesContainer');
+messagesContainer.addEventListener('scroll', function() {
+    if (messagesContainer.scrollTop === 0 && !allMessagesLoaded && !isLoadingMessages) {
+        loadChatMessages(true); // Load more and prepend
+    }
+});
 
     document.querySelector('.send-button').addEventListener('click', sendMessage);
     document.querySelector('.message-input').addEventListener('keypress', function(e) {
@@ -167,6 +222,7 @@ window.addEventListener("DOMContentLoaded", () => {
         const message = input.value.trim();
         const senderId = localStorage.getItem('userId');
         const receiverId = window.currentReceiverId;
+        console.log('receiver',receiverId)
 
         if (!message) return;
         if (!receiverId) {
@@ -421,4 +477,28 @@ function showOfflineDot(userId) {
         hours = hours % 12 || 12;
         return `${hours}:${minutes} ${ampm}`;
     }
+
+
+
+             // Example: open sidebar when clicking nav-avatar
+document.querySelector('.nav-avatar').addEventListener('click', function() {
+  document.getElementById('userInfoOverlay').classList.add('active');
+  gsap.to("#userInfoSidebar", { right: 0, duration: 0.4, ease: "power2.out" });
+});
+
+document.querySelector('.userinfo').addEventListener('click', function() {
+  document.getElementById('userInfoOverlay').classList.add('active');
+  gsap.to("#userInfoSidebar", { right: 0, duration: 0.4, ease: "power2.out" });
+});
+
+// Close sidebar with GSAP
+document.getElementById('userInfoOverlay').addEventListener('click', function() {
+  gsap.to("#userInfoSidebar", { right: -400, duration: 0.4, ease: "power2.in"});
+  document.getElementById('userInfoOverlay').classList.remove('active');
+});
+// Close sidebar with GSAP
+document.querySelector('.crossbtn').addEventListener('click', function() {
+  gsap.to("#userInfoSidebar", { right: -400, duration: 0.4, ease: "power2.in"});
+  document.getElementById('userInfoOverlay').classList.remove('active');
+});
 </script>

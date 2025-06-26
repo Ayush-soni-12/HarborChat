@@ -16,6 +16,7 @@
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
+
     <style>
       :root {
         --primary: #25d366;
@@ -384,7 +385,7 @@
         /* background: #fff; */
         border-bottom: 1px solid #e6e6e6;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
-        /* position: relative; */
+        position: relative;
         padding: 0;
         width: 100%;
 
@@ -559,6 +560,153 @@
         display: none;
         z-index: 999;
       }
+/* WhatsApp-like user info sidebar */
+.user-info {
+  position: fixed;
+  top: 0;
+  right: -400px; /* Hidden by default */
+  width: 400px;
+  height: 100vh;
+  background: #fff;
+  box-shadow: -2px 0 8px rgba(0,0,0,0.08);
+  z-index: 2000;
+  opacity: 1;
+  transition: none;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  /* transition: box-shadow 0.2s, background 0.2s; */
+}
+
+
+.user-info .profile-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: #ece5dd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  margin: 0 auto 16px auto;
+}
+
+.user-info .profile-name {
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-align: center;
+}
+
+.user-info .profile-phone {
+  font-size: 1rem;
+  color: #888;
+  text-align: center;
+}
+
+.user-info .profile-about {
+  margin-top: 16px;
+  font-size: 1rem;
+  color: #555;
+  text-align: center;
+}
+
+.user-info .crossEdit{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.crossEdit i {
+  font-size: larger;
+  font-weight: bolder;
+}
+
+
+/* Overlay for background blur */
+.user-info-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.2);
+  z-index: 1999;
+  display: none;
+}
+.user-info-overlay.active {
+  display: block;
+}
+.iconImage {
+  min-width: 220px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 1.5px 4px rgba(0,0,0,0.08);
+  padding: 0.5rem 0;
+  border: none;
+  margin-top: 8px;
+  font-family: inherit;
+}
+
+.iconImage li {
+  margin: 0;
+  padding: 0;
+}
+
+.iconImage .dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  font-size: 1rem;
+  color: #222;
+  border-radius: 6px;
+  transition: background 0.18s, color 0.18s;
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+.iconImage .dropdown-item i {
+  font-size: 1.1em;
+  color: #128c7e;
+  min-width: 22px;
+  text-align: center;
+}
+
+.iconImage .dropdown-item:hover,
+.iconImage .dropdown-item:focus {
+  background: #e5f7ed;
+  color: #128c7e;
+}
+
+.iconImage hr.dropdown-divider {
+  margin: 6px 0;
+  border-top: 1px solid #e0e0e0;
+}
+
+.iconImage .danger:hover,
+.iconImage .danger:focus{
+  background: #f7e9e5;
+  color: #ff0000;
+  
+}
+.iconImage .danger:hover i,
+.iconImage .danger:focus i {
+  color: #ff0000;
+}
+
+.spinner {
+  width: 25px;
+  height: 25px;
+  margin-left: 50%;
+  border: 3px solid rgba(0,0,0,0.1);
+  border-top: 3px solid #333;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg);}
+  100% { transform: rotate(360deg);}
+}
 
       @keyframes fadeIn {
         from {
@@ -648,7 +796,24 @@
           >
             <i class="fas fa-user-plus"></i>
           </button>
-          <i class="fas fa-ellipsis-v"></i>
+      
+
+
+
+<div class="dropdown">
+  <!-- <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton2" data-bs-toggle="dropdown" aria-expanded="false"> -->
+     <i class="fas fa-ellipsis-v" data-bs-toggle="dropdown"aria-expanded="false"></i>
+  <!-- </button> -->
+  <ul class="dropdown-menu dropdown-menu-white iconImage" aria-labelledby="dropdownMenuButton2">
+    <li><a class="dropdown-item " href="#"><i class="fas fa-user-plus"></i>  New groups</a></li>
+    <li><a class="dropdown-item" href="#"><i class="fa-regular fa-star"></i>  Starred Messages</a></li>
+    <li><a class="dropdown-item" href="#"><i class="fa-regular fa-square-check"></i>  Selected chats</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item danger" href="#">Logout</a></li>
+  </ul>
+</div>
+
+
         </div>
       </div>
 
@@ -658,6 +823,6 @@
           <input type="text" placeholder="Search or start new chat" />
         </div>
       </div>
-    </div>
+    <!-- </div> -->
   </body>
 </html>
