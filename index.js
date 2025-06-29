@@ -16,6 +16,7 @@ const Message = require("./modals/Message");
 const http = require("http");
 const authRoutes = require("./routes/auth");
 const homeRoute = require("./routes/home");
+const client = require('./redisClient.js')
 
 async function main() {
   await mongoose.connect("mongodb://localhost:27017/harborchat");
@@ -90,6 +91,24 @@ io.on("connection", (socket) => {
       senderPhone,
       status: "sent",
     });
+
+   const ids = [senderId, receiverId].sort();
+  const cacheKey = `chat:${ids[0]}:${ids[1]}`;
+
+
+  let cached = await client.get(cacheKey);
+  let messages = cached ? JSON.parse(cached) : [];
+
+  
+
+   messages.push(savedMessage);
+
+  // 5. Keep only latest 20 messages
+  if (messages.length > 30) {
+    messages = messages.slice(-30);
+  }
+
+    await client.set(cacheKey, JSON.stringify(messages), { EX: 300 });
 
     // Emit the message to the sender (with 'sent' status)
     io.to(senderId).emit("chat message", savedMessage);

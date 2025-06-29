@@ -4,6 +4,7 @@ const User = require("../modals/UserModal")
 const { cloudinary } = require("../ cloudConfig");
 const {sendMail} = require("../Helpers/mailer")
 const Message = require("../modals/Message")
+const client = require("../redisClient.js")
 // const generateToken = require("../middlewares/generateToken");
 const jwt = require("jsonwebtoken")
 
@@ -180,22 +181,48 @@ module.exports.me = asyncHandler(async(req,res)=>{
 })
 module.exports.personalChat = asyncHandler(async(req,res)=>{
     
-  try {
-        const senderId = req.user._id.toString(); // from JWT
-        const receiverId = req.params.receiverId;
-        const { skip = 0, limit = 30 } = req.query;
+ try {
+    const senderId = req.user._id.toString(); // from JWT
+    const receiverId = req.params.receiverId;
 
-        const messages = await Message.find({
-            $or: [
-                { senderId, receiverId },
-                { senderId: receiverId, receiverId: senderId },
-            ]
-        }) .sort({ timestamp: -1 }) // newest first
-  .skip(Number(skip))
-  .limit(Number(limit));
+    const ids = [senderId, receiverId].sort(); // consistent cache key
+    const cacheKey = `chat:${ids[0]}:${ids[1]}`;
 
-        res.json({ messages:messages.reverse() });
-    } catch (err) {
-        res.status(500).json({ error: 'Server error' });
+    const { skip = 0, limit = 30 } = req.query;
+
+    // ✅ 1. Check Redis cache
+    if (Number(skip) === 0) {
+      const cached = await client.get(cacheKey);
+      if (cached) {
+        console.log("✅ Redis cache hit");
+        return res.json({ messages: JSON.parse(cached) });
+      }
     }
+
+    // ❌ 2. Redis miss → Load from MongoDB
+    const messages = await Message.find({
+      $or: [
+        { senderId, receiverId },
+        { senderId: receiverId, receiverId: senderId },
+      ],
+    })
+      .sort({ timestamp: -1 })
+      .skip(Number(skip))
+      .limit(Number(limit));
+
+    const result = messages.reverse(); // oldest to newest for UI
+    console.log("mongodb hit")
+
+    // ✅ 3. Store only the first page in Redis
+    if (Number(skip) === 0) {
+      await client.set(cacheKey, JSON.stringify(result), { EX: 300 }); // 1 min cache
+      console.log("💾 Cached first page to Redis");
+    }
+
+    return res.json({ messages: result });
+  } catch (err) {
+    console.error("Redis or DB error:", err);
+    res.status(500).json({ error: 'Server error' });
+  }
+
 })
