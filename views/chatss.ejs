@@ -136,10 +136,12 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 });
 
+
+// When loading messages, emit 'message-read' for all unread received messages
 async function loadChatMessages(append = false) {
     if (isLoadingMessages || allMessagesLoaded) return;
     isLoadingMessages = true;
-      document.getElementById('loader').style.display = 'block';
+    document.getElementById('loader').style.display = 'block';
     await new Promise(resolve => setTimeout(resolve, 100));
     const senderId = localStorage.getItem("userId");
     const receiverId = window.currentReceiverId;
@@ -160,12 +162,23 @@ async function loadChatMessages(append = false) {
         if (data.messages.length < messagesLimit) allMessagesLoaded = true;
         messagesSkip += data.messages.length;
 
+        // Collect unread received message IDs
+        const unreadReceivedIds = [];
+        data.messages.forEach(msg => {
+            const isSent = msg.senderId === senderId;
+            if (!isSent && msg.status !== 'read' && msg._id) {
+                unreadReceivedIds.push(msg._id);
+            }
+        });
+        if (unreadReceivedIds.length > 0) {
+            socket.emit('message-read', { messageIds: unreadReceivedIds, readerId: senderId });
+        }
+
         // Render messages
         data.messages.forEach(msg => {
             const messageDiv = document.createElement('div');
             const isSent = msg.senderId === senderId;
             messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
-            // ...tickHtml and innerHTML as before...
             let tickHtml = '';
             if (isSent) {
               if (msg.status === 'sent') {
@@ -191,7 +204,6 @@ async function loadChatMessages(append = false) {
         if (!append) {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         } else {
-            // Maintain scroll position after prepending
             messagesContainer.scrollTop = messagesContainer.scrollHeight - oldScrollHeight;
         }
     } catch (err) {
@@ -217,6 +229,15 @@ messagesContainer.addEventListener('scroll', function() {
         }
     });
 
+
+   function moveContactToTop(userId) {
+  const contactList = document.querySelector('.contact-list');
+  const contactItem = contactList.querySelector(`.contact-item[data-userid="${userId}"]`);
+  if (contactItem) {
+    contactList.prepend(contactItem);
+  }
+}
+
     function sendMessage() {
         const input = document.querySelector('.message-input');
         const message = input.value.trim();
@@ -231,6 +252,7 @@ messagesContainer.addEventListener('scroll', function() {
         }
 
         socket.emit('chat message', { senderId, receiverId, message });
+        moveContactToTop(receiverId);
 
              input.value = '';
     }
@@ -253,7 +275,7 @@ messagesContainer.addEventListener('scroll', function() {
   socket.on("chat message", (msg) => {
   const senderId = localStorage.getItem("userId");
   const otherUserId = msg.senderId === senderId ? msg.receiverId : msg.senderId;
-
+  moveContactToTop(otherUserId);
   
     if (!contactMap[otherUserId]) {
     const name = "Unknown";
@@ -297,7 +319,7 @@ messagesContainer.addEventListener('scroll', function() {
 
         await loadChatMessages();
     });
-
+ 
     document.querySelector(".contact-list").appendChild(chatItem);
     updateEmptyChatMessage();
   }
@@ -501,4 +523,57 @@ document.querySelector('.crossbtn').addEventListener('click', function() {
   gsap.to("#userInfoSidebar", { right: -400, duration: 0.4, ease: "power2.in"});
   document.getElementById('userInfoOverlay').classList.remove('active');
 });
+
+// search bar functionality
+
+const input = document.getElementById('searchBar');
+const resultBox = document.getElementById('contactList')
+const emptyBox =  document.getElementById('emptyChatMsg')
+
+
+input.addEventListener('input', async (e) => {
+  const query = e.target.value;
+    try {
+    const res = await fetch(`/api/contacts/search?query=${encodeURIComponent(query)}`, {
+      credentials: 'include' // if you're using cookies/auth
+    });
+    const data = await res.json();
+    console.log('data',data)
+    resultBox.innerHTML = '';
+    data.forEach(contact => {
+    const userId = contact.contactId 
+   const newContact = document.createElement('div');
+   newContact.className = 'contact-item';
+   newContact.dataset.userid = userId;
+   newContact.innerHTML = `
+       <div class="contact-avatar">${contact.name.charAt(0)}</div>
+       <div class="contact-info">
+           <div class="contact-name">${contact.name}</div>
+           <div class="contact-last-msg">${contact.phone}</div>
+       </div>
+   `;
+
+      newContact.addEventListener('click', async function () {
+       document.querySelector('.nav-name').textContent = contact.name;
+       document.querySelector('.nav-avatar').textContent = contact.name.charAt(0);
+       window.currentReceiverId = userId;
+       document.querySelector('.empty-chat').style.display = 'none';
+       document.querySelector('.chattingArea').style.display = 'block';
+       document.getElementById('sidebar').classList.add('active');
+       document.getElementById('chatArea').classList.add('active');
+       messagesSkip = 0;
+       allMessagesLoaded = false;
+       await loadChatMessages(false);
+       });
+      resultBox.appendChild(newContact);
+
+    });
+ 
+
+
+  } catch (err) {
+    console.error('Search failed', err);
+  }
+})
+
 </script>

@@ -16,7 +16,7 @@ const Message = require("./modals/Message");
 const http = require("http");
 const authRoutes = require("./routes/auth");
 const homeRoute = require("./routes/home");
-const client = require('./redisClient.js')
+const client = require("./redisClient.js");
 
 async function main() {
   await mongoose.connect("mongodb://localhost:27017/harborchat");
@@ -79,9 +79,21 @@ io.on("connection", (socket) => {
 
     // Debug: show which rooms this socket is in
     console.log("🔍 Socket Rooms:", socket.rooms);
+    // console.log(senderId)
     const sender = await User.findById(senderId);
+    // console.log(sender)
     //    console.log(sender)
     const senderPhone = sender ? sender.phoneNo : "";
+
+    //   await Contact.findOneAndUpdate(
+    //   { userId: senderId, contactId: receiverId },
+    //   {
+    //     name: receiverName, // or "Unknown"
+    //     phone: receiverPhone,
+    //     messageTime: now,
+    //   },
+    //   { upsert: true, new: true }
+    // );
     //    console.log(senderPhone)
     // Save message to MongoDB with status 'sent'
     const savedMessage = await Message.create({
@@ -92,30 +104,40 @@ io.on("connection", (socket) => {
       status: "sent",
     });
 
-   const ids = [senderId, receiverId].sort();
-  const cacheKey = `chat:${ids[0]}:${ids[1]}`;
+    // Convert to plain object for cache and emit
+    const savedMessageObj = savedMessage.toObject();
 
+    await Contact.updateOne(
+      { userId: senderId, contactId: receiverId },
+      { $set: { messageTime: new Date() } }
+    );
 
-  let cached = await client.get(cacheKey);
-  let messages = cached ? JSON.parse(cached) : [];
+    await Contact.updateOne(
+      { userId: receiverId, contactId: senderId },
+      { $set: { messageTime: new Date() } }
+    );
 
-  
+    const ids = [senderId, receiverId].sort();
+    const cacheKey = `chat:${ids[0]}:${ids[1]}`;
 
-   messages.push(savedMessage);
+    let cached = await client.get(cacheKey);
+    let messages = cached ? JSON.parse(cached) : [];
 
-  // 5. Keep only latest 20 messages
-  if (messages.length > 30) {
-    messages = messages.slice(-30);
-  }
+    messages.push(savedMessageObj);
+
+    // 5. Keep only latest 30 messages
+    if (messages.length > 30) {
+      messages = messages.slice(-30);
+    }
 
     await client.set(cacheKey, JSON.stringify(messages), { EX: 300 });
 
     // Emit the message to the sender (with 'sent' status)
-    io.to(senderId).emit("chat message", savedMessage);
+    io.to(senderId).emit("chat message", savedMessageObj);
 
     // Emit the message to the receiver (with 'delivered' status)
     const deliveredMessage = {
-      ...savedMessage.toObject(),
+      ...savedMessageObj,
       status: "delivered",
     };
     io.to(receiverId).emit("chat message", deliveredMessage);
@@ -123,16 +145,30 @@ io.on("connection", (socket) => {
     // Update status in DB to 'delivered' when delivered to receiver
     await Message.findByIdAndUpdate(savedMessage._id, { status: "delivered" });
 
+    // Update status in Redis cache to 'delivered' for this message
+    let updatedMessages = messages.map((msg) => {
+      if (msg._id && msg._id.toString() === savedMessage._id.toString()) {
+        return { ...msg, status: "delivered" };
+      }
+      return msg;
+    });
+    await client.set(cacheKey, JSON.stringify(updatedMessages), { EX: 300 });
+
     // Emit 'message-delivered' to sender for real-time double tick
     io.to(senderId).emit("message-delivered", { messageId: savedMessage._id });
   });
 
   // Listen for 'message-read' event from client when user opens chat
   socket.on("message-read", async ({ messageIds, readerId }) => {
+    // Ensure all IDs are strings for comparison
+    const messageIdsStr = messageIds.map((id) => id.toString());
     // Update all messages to 'read' in DB
-    await Message.updateMany({ _id: { $in: messageIds } }, { status: "read" });
+    await Message.updateMany(
+      { _id: { $in: messageIdsStr } },
+      { status: "read" }
+    );
     // Notify sender(s) and receiver that their messages have been read
-    const messages = await Message.find({ _id: { $in: messageIds } });
+    const messages = await Message.find({ _id: { $in: messageIdsStr } });
     const senderIds = new Set();
     messages.forEach((msg) => {
       senderIds.add(msg.senderId);
@@ -141,13 +177,42 @@ io.on("connection", (socket) => {
     senderIds.forEach((senderId) => {
       const senderSocketId = onlineUsers.get(senderId);
       if (senderSocketId) {
-        io.to(senderSocketId).emit("message-read", { messageIds, readerId });
+        io.to(senderSocketId).emit("message-read", {
+          messageIds: messageIdsStr,
+          readerId,
+        });
       }
     });
     // Also emit to the reader (so their own UI updates instantly)
     const readerSocketId = onlineUsers.get(readerId);
     if (readerSocketId) {
-      io.to(readerSocketId).emit("message-read", { messageIds, readerId });
+      io.to(readerSocketId).emit("message-read", {
+        messageIds: messageIdsStr,
+        readerId,
+      });
+    }
+    // --- Redis cache update for read status ---
+    // Find the chat cache key for each message and update status in Redis
+    for (const msg of messages) {
+      const ids = [msg.senderId.toString(), msg.receiverId.toString()].sort();
+      const cacheKey = `chat:${ids[0]}:${ids[1]}`;
+      let cached = await client.get(cacheKey);
+      if (cached) {
+        let cachedMessages = JSON.parse(cached);
+        let updated = false;
+        cachedMessages = cachedMessages.map((m) => {
+          if (m._id && messageIdsStr.includes(m._id.toString())) {
+            updated = true;
+            return { ...m, status: "read" };
+          }
+          return m;
+        });
+        if (updated) {
+          await client.set(cacheKey, JSON.stringify(cachedMessages), {
+            EX: 300,
+          });
+        }
+      }
     }
   });
 
