@@ -15,9 +15,27 @@ module.exports.chat = asyncHandler(async (req, res) => {
   try {
     const contacts = await Contact.find({ userId: req.user._id })
       .sort({ messageTime: -1 }) // 🔥 Sort latest messageTime first
-      .populate("contactId", "about");
+      .populate("contactId", "about")
+ const contactsWithLastMsg = await Promise.all(
+      contacts.map(async (contact) => {
+        const lastMsg = await Message.findOne({
+          $or: [
+            { senderId: req.user._id, receiverId: contact.contactId._id },
+            { senderId: contact.contactId._id, receiverId: req.user._id }
+          ]
+        })
+          .sort({ timestamp: -1 })
+          .lean();
 
-    res.render("chatss", { contacts: contacts || [] });
+        // Attach lastMessage (or empty string if none)
+        return {
+          ...contact.toObject(),
+          lastMessage: lastMsg ? lastMsg.message : ""
+        };
+      })
+    );
+
+    res.render("chatss", { contacts: contactsWithLastMsg });
   } catch (err) {
     console.error(err);
     res.render("chatss", { contacts: [] });

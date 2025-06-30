@@ -13,8 +13,12 @@
                 <div class="contact-info">
                     <div class="contact-name"><%= contact.name %></div>
                     <div class="contact-last-msg"><%= contact.phone %></div>
+                     <div class="contact-last-message"><%= contact.lastMessage ? contact.lastMessage : '' %></div>
                     <div class="contact-about" style="display: none;"><%=contact.contactId.about%></div>
                 </div>
+                <% if (contact.unreadCount && contact.unreadCount > 0) { %>
+                  <span class="unread-badge"><%= contact.unreadCount %></span>
+                <% } %>
             </div>
         <% }) %>
     <% } %>
@@ -53,6 +57,8 @@
     const messagesLimit = 30;
     let allMessagesLoaded = false;
     let isLoadingMessages = false;
+    // --- Add unreadCounts object to track unread counts per contact ---
+    const unreadCounts = {};
 
     async function getUserInfo() {
         const res = await fetch("/api/me", {
@@ -70,16 +76,17 @@
 
 window.addEventListener("DOMContentLoaded", () => {
   getUserInfo();
-  
-
   document.querySelectorAll(".contact-item").forEach(contact => {
     const userId = contact.dataset.userid;
     const name = contact.querySelector('.contact-name')?.textContent.trim() || "";
     const phone = contact.querySelector('.contact-last-msg')?.textContent.trim() || "";
     contactMap[userId] = { name, phone };
+    // Initialize unreadCounts from DOM
+    const badge = contact.querySelector('.unread-badge');
+    unreadCounts[userId] = badge && badge.textContent ? parseInt(badge.textContent, 10) : 0;
     console.log("contact",contactMap);  
   });
-    updateEmptyChatMessage();
+  updateEmptyChatMessage();
 });
 
 
@@ -94,8 +101,11 @@ window.addEventListener("DOMContentLoaded", () => {
             const contactabout = this.querySelector('.contact-about').textContent
             const userId = this.dataset.userid;
             window.currentReceiverId = userId;
-            console.log("Receiver ID:", window.currentReceiverId);
-             const statusText = document.querySelector('.nav-info .user-status');
+            // --- Emit chat-open event to backend ---
+            const myUserId = localStorage.getItem('userId');
+            socket.emit('chat-open', { userId: myUserId, contactId: userId });
+
+            const statusText = document.querySelector('.nav-info .user-status');
                if (statusText) {
                    if (onlineUserIds.has(userId)) {
                        statusText.innerText = "Online";
@@ -123,6 +133,9 @@ window.addEventListener("DOMContentLoaded", () => {
             messagesSkip = 0
             allMessagesLoaded = false;
             await loadChatMessages(false); // fetch real messages
+            // --- Reset unread count for this contact when chat is opened ---
+            unreadCounts[userId] = 0;
+            updateUnreadBadge(userId, 0);
         });
     });
 
@@ -171,7 +184,11 @@ async function loadChatMessages(append = false) {
             }
         });
         if (unreadReceivedIds.length > 0) {
-            socket.emit('message-read', { messageIds: unreadReceivedIds, readerId: senderId });
+            socket.emit('message-read', {
+                messageIds: unreadReceivedIds,
+                readerId: senderId,
+                receiverId: window.currentReceiverId // <-- add this
+            });
         }
 
         // Render messages
@@ -276,6 +293,16 @@ messagesContainer.addEventListener('scroll', function() {
   const senderId = localStorage.getItem("userId");
   const otherUserId = msg.senderId === senderId ? msg.receiverId : msg.senderId;
   moveContactToTop(otherUserId);
+
+  // --- Update last message in contact list in real time ---
+  const contactItem = document.querySelector(`.contact-item[data-userid="${otherUserId}"]`);
+  if (contactItem) {
+    const lastMsgDiv = contactItem.querySelector('.contact-last-message');
+    if (lastMsgDiv) {
+      lastMsgDiv.textContent = msg.message;
+    }
+  }
+
   
     if (!contactMap[otherUserId]) {
     const name = "Unknown";
@@ -325,6 +352,13 @@ messagesContainer.addEventListener('scroll', function() {
   }
 
 
+  // --- Unread badge logic for real-time updates ---
+  // If this is a received message and the chat is NOT open, increment unread count
+  if (msg.receiverId === senderId && window.currentReceiverId !== msg.senderId) {
+    unreadCounts[msg.senderId] = (unreadCounts[msg.senderId] || 0) + 1;
+    updateUnreadBadge(msg.senderId, unreadCounts[msg.senderId]);
+  }
+
   if (
     (msg.senderId === window.currentReceiverId && msg.receiverId === senderId) ||
     (msg.senderId === senderId && msg.receiverId === window.currentReceiverId)
@@ -352,7 +386,10 @@ messagesContainer.addEventListener('scroll', function() {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
     // If this is a received message and the chat is open, emit read immediately
     if (!isSent && msg.status !== 'read' && msg._id) {
-      socket.emit('message-read', { messageIds: [msg._id], readerId: senderId });
+      socket.emit('message-read', { messageIds: [msg._id], readerId: senderId ,receiverId:receiverId});
+      // --- Reset unread count for this contact since chat is open ---
+      unreadCounts[msg.senderId] = 0;
+      updateUnreadBadge(msg.senderId, 0);
     }
   }
 });
@@ -430,6 +467,14 @@ socket.on("online-contacts", (onlineContactIds) => {
     }
 });
 
+// Listen for unread-counts and update badges on refresh
+socket.on('unread-counts', (unreadCountsObj) => {
+  Object.entries(unreadCountsObj).forEach(([userId, count]) => {
+    unreadCounts[userId] = count; // update local state
+    updateUnreadBadge(userId, count);
+  });
+});
+
 socket.on('typing', (senderId) => {
     // Only show typing if this is the current chat
     if (window.currentReceiverId === senderId) {
@@ -474,7 +519,6 @@ function showOfflineDot(userId) {
       statusText.style.color = "gray";
     }
   }
-
 }
 
 
@@ -575,5 +619,41 @@ input.addEventListener('input', async (e) => {
     console.error('Search failed', err);
   }
 })
+
+const style = document.createElement('style');
+style.textContent = `
+.unread-badge {
+  display: inline-block;
+  min-width: 10px;
+  height: 25px;
+  padding: 2px 7px;
+  background: #25d366;
+  color: #fff;
+  border-radius: 50%;
+  font-size: 0.85em;
+  font-weight: bold;
+  text-align: center;
+  margin-left: 8px;
+}
+`;
+document.head.appendChild(style);
+
+function updateUnreadBadge(userId, count) {
+  const contactItem = document.querySelector(`.contact-item[data-userid="${userId}"]`);
+  if (!contactItem) return;
+  let badge = contactItem.querySelector('.unread-badge');
+  if (count > 0) {
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'unread-badge';
+      contactItem.querySelector('.contact-info').appendChild(badge);
+    }
+    badge.textContent = count;
+    badge.style.display = '';
+  } else if (badge) {
+    badge.style.display = 'none';
+  }
+}
+
 
 </script>

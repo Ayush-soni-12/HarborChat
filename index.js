@@ -43,6 +43,8 @@ const io = socketIO(server);
 const users = {};
 const onlineUsers = new Map();
 const userContacts = new Map();
+// --- Track which chat each user currently has open ---
+const currentOpenChats = new Map();
 
 io.on("connection", (socket) => {
   console.log("🟢 New client connected:", socket.id);
@@ -54,7 +56,9 @@ io.on("connection", (socket) => {
     users[id] = socket.id;
     onlineUsers.set(userId, socket.id);
     socket.join(id);
-    const contacts = await Contact.find({ userId: id }).select("contactId");
+    const contacts = await Contact.find({ userId: id }).select(
+      "contactId unreadCount"
+    );
     const contactIds = contacts.map((c) => c.contactId.toString());
     userContacts.set(userId, contactIds);
 
@@ -64,6 +68,13 @@ io.on("connection", (socket) => {
     );
     socket.emit("online-contacts", onlineContactIds);
 
+    // Send unread counts for all contacts
+    const unreadCounts = {};
+    contacts.forEach((c) => {
+      unreadCounts[c.contactId.toString()] = c.unreadCount || 0;
+    });
+    socket.emit("unread-counts", unreadCounts);
+
     contactIds.forEach((contactId) => {
       const contactSocketId = onlineUsers.get(contactId);
       if (contactSocketId) {
@@ -71,6 +82,13 @@ io.on("connection", (socket) => {
       }
     });
     console.log(`User ${id} joined room ${id}`);
+  });
+
+  // Track which chat the user has open
+  socket.on("chat-open", ({ userId, contactId }) => {
+    if (userId && contactId) {
+      currentOpenChats.set(userId, contactId);
+    }
   });
 
   socket.on("chat message", async ({ senderId, receiverId, message }) => {
@@ -84,6 +102,23 @@ io.on("connection", (socket) => {
     // console.log(sender)
     //    console.log(sender)
     const senderPhone = sender ? sender.phoneNo : "";
+
+    // unread messages...............................
+
+    // Only increment unreadCount if receiver is NOT currently viewing this chat
+    const isChatOpen = currentOpenChats.get(receiverId) === senderId;
+    if (!isChatOpen) {
+      await Contact.updateOne(
+        { userId: receiverId, contactId: senderId },
+        { $inc: { unreadCount: 1 } }
+      );
+    } else {
+      // If chat is open, ensure unreadCount is 0 (defensive)
+      await Contact.updateOne(
+        { userId: receiverId, contactId: senderId },
+        { $set: { unreadCount: 0 } }
+      );
+    }
 
     //   await Contact.findOneAndUpdate(
     //   { userId: senderId, contactId: receiverId },
@@ -103,6 +138,16 @@ io.on("connection", (socket) => {
       senderPhone,
       status: "sent",
     });
+
+    // --- Update lastMessage for both sender and receiver contacts ---
+    await Contact.updateOne(
+      { userId: senderId, contactId: receiverId },
+      { $set: { lastMessage: message } }
+    );
+    await Contact.updateOne(
+      { userId: receiverId, contactId: senderId },
+      { $set: { lastMessage: message } }
+    );
 
     // Convert to plain object for cache and emit
     const savedMessageObj = savedMessage.toObject();
@@ -159,16 +204,31 @@ io.on("connection", (socket) => {
   });
 
   // Listen for 'message-read' event from client when user opens chat
-  socket.on("message-read", async ({ messageIds, readerId }) => {
+  socket.on("message-read", async ({ messageIds, readerId, receiverId }) => {
     // Ensure all IDs are strings for comparison
-    const messageIdsStr = messageIds.map((id) => id.toString());
+    const messageIdsStr = (messageIds || []).map((id) => id && id.toString());
+    // Defensive: skip if no receiverId or readerId
+    if (!receiverId || !readerId) {
+      console.warn("Missing receiverId or readerId in message-read event");
+      return;
+    }
     // Update all messages to 'read' in DB
-    await Message.updateMany(
-      { _id: { $in: messageIdsStr } },
-      { status: "read" }
+    if (messageIdsStr.length > 0) {
+      await Message.updateMany(
+        { _id: { $in: messageIdsStr } },
+        { status: "read" }
+      );
+    }
+    // Reset the unread message count for this chat
+    await Contact.updateOne(
+      { userId: readerId, contactId: receiverId },
+      { $set: { unreadCount: 0 } }
     );
     // Notify sender(s) and receiver that their messages have been read
-    const messages = await Message.find({ _id: { $in: messageIdsStr } });
+    const messages =
+      messageIdsStr.length > 0
+        ? await Message.find({ _id: { $in: messageIdsStr } })
+        : [];
     const senderIds = new Set();
     messages.forEach((msg) => {
       senderIds.add(msg.senderId);
@@ -237,6 +297,7 @@ io.on("connection", (socket) => {
       });
 
       userContacts.delete(userId);
+      currentOpenChats.delete(userId); // Clean up open chat info
     }
     for (const uid in users) {
       if (users[uid] === socket.id) {
