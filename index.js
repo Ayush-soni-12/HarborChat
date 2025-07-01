@@ -139,15 +139,15 @@ io.on("connection", (socket) => {
       status: "sent",
     });
 
-    // --- Update lastMessage for both sender and receiver contacts ---
-    await Contact.updateOne(
-      { userId: senderId, contactId: receiverId },
-      { $set: { lastMessage: message } }
-    );
-    await Contact.updateOne(
-      { userId: receiverId, contactId: senderId },
-      { $set: { lastMessage: message } }
-    );
+    // // --- Update lastMessage for both sender and receiver contacts ---
+    // await Contact.updateOne(
+    //   { userId: senderId, contactId: receiverId },
+    //   { $set: { lastMessage: message } }
+    // );
+    // await Contact.updateOne(
+    //   { userId: receiverId, contactId: senderId },
+    //   { $set: { lastMessage: message } }
+    // );
 
     // Convert to plain object for cache and emit
     const savedMessageObj = savedMessage.toObject();

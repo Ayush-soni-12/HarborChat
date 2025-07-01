@@ -14,7 +14,7 @@ module.exports.index = asyncHandler(async (req, res) => {
 module.exports.chat = asyncHandler(async (req, res) => {
   try {
     const contacts = await Contact.find({ userId: req.user._id })
-      .sort({ messageTime: -1 }) // 🔥 Sort latest messageTime first
+      .sort({ messageTime: -1 }) //  Sort latest messageTime first
       .populate("contactId", "about")
  const contactsWithLastMsg = await Promise.all(
       contacts.map(async (contact) => {

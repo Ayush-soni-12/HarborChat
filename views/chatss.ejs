@@ -49,62 +49,106 @@
 
    <%- include('partials/footer') %>
    <script src="/socket.io/socket.io.js"></script>
-   <script>
-    const socket = io();
-    const contactMap = {};
-    const onlineUserIds = new Set();
-    let messagesSkip = 0;
-    const messagesLimit = 30;
-    let allMessagesLoaded = false;
-    let isLoadingMessages = false;
-    // --- Add unreadCounts object to track unread counts per contact ---
-    const unreadCounts = {};
+   <script type="module" src="/js/main.js"></script>
+   
+    <!-- <script>
+/**
+ * HarborChat Main Client Script
+ * -----------------------------------
+ * All client-side logic for chat, contacts, UI, and socket events is organized below.
+ * Each section is clearly commented for maintainability.
+ */
 
-    async function getUserInfo() {
-        const res = await fetch("/api/me", {
-            method: "GET",
-            credentials: "include",
-        });
+// --- GLOBAL STATE ---
+const socket = io();
+const contactMap = {}; // { userId: { name, phone } }
+const onlineUserIds = new Set();
+let messagesSkip = 0;
+const messagesLimit = 30;
+let allMessagesLoaded = false;
+let isLoadingMessages = false;
+const unreadCounts = {}; // { userId: count }
 
-        const data = await res.json();
-        if (data.user) {
-            localStorage.setItem("userId", data.user._id);
-            const userId = localStorage.getItem("userId")
-            socket.emit("join",userId)
-        }
+// --- USER AUTH & INIT ---
+async function getUserInfo() {
+    const res = await fetch("/api/me", { method: "GET", credentials: "include" });
+    const data = await res.json();
+    if (data.user) {
+        localStorage.setItem("userId", data.user._id);
+        socket.emit("join", data.user._id);
     }
+}
 
 window.addEventListener("DOMContentLoaded", () => {
-  getUserInfo();
-  document.querySelectorAll(".contact-item").forEach(contact => {
-    const userId = contact.dataset.userid;
-    const name = contact.querySelector('.contact-name')?.textContent.trim() || "";
-    const phone = contact.querySelector('.contact-last-msg')?.textContent.trim() || "";
-    contactMap[userId] = { name, phone };
-    // Initialize unreadCounts from DOM
-    const badge = contact.querySelector('.unread-badge');
-    unreadCounts[userId] = badge && badge.textContent ? parseInt(badge.textContent, 10) : 0;
-    console.log("contact",contactMap);  
-  });
-  updateEmptyChatMessage();
+    getUserInfo();
+    document.querySelectorAll(".contact-item").forEach(contact => {
+        const userId = contact.dataset.userid;
+        const name = contact.querySelector('.contact-name')?.textContent.trim() || "";
+        const phone = contact.querySelector('.contact-last-msg')?.textContent.trim() || "";
+        contactMap[userId] = { name, phone };
+        const badge = contact.querySelector('.unread-badge');
+        unreadCounts[userId] = badge && badge.textContent ? parseInt(badge.textContent, 10) : 0;
+    });
+    updateEmptyChatMessage();
+    setupContactClickHandlers();
+    setupInputHandlers();
 });
 
+// --- CONTACTS & UI HELPERS ---
+function updateUnreadBadge(userId, count) {
+    const contactItem = document.querySelector(`.contact-item[data-userid="${userId}"]`);
+    if (!contactItem) return;
+    let badge = contactItem.querySelector('.unread-badge');
+    if (count > 0) {
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'unread-badge';
+            contactItem.querySelector('.contact-info').appendChild(badge);
+        }
+        badge.textContent = count;
+        badge.style.display = '';
+    } else if (badge) {
+        badge.style.display = 'none';
+    }
+}
 
-    const personalChats = document.querySelectorAll(".contact-item");
-    console.log(personalChats);
+function moveContactToTop(userId) {
+    const contactList = document.querySelector('.contact-list');
+    const contactItem = contactList.querySelector(`.contact-item[data-userid="${userId}"]`);
+    if (contactItem) contactList.prepend(contactItem);
+}
 
-    personalChats.forEach(contact => {
+function updateContactLastMessage(userId, message) {
+    const contactItem = document.querySelector(`.contact-item[data-userid="${userId}"]`);
+    if (contactItem) {
+        const lastMsgDiv = contactItem.querySelector('.contact-last-message');
+        if (lastMsgDiv) lastMsgDiv.textContent = message;
+    }
+}
+
+function updateEmptyChatMessage() {
+    const contactList = document.querySelector('.contact-list');
+    const emptyChatMsg = document.getElementById('emptyChatMsg');
+    if (contactList && emptyChatMsg) {
+        if (contactList.querySelectorAll('.contact-item').length === 0) {
+            emptyChatMsg.style.display = '';
+        } else {
+            emptyChatMsg.style.display = 'none';
+        }
+    }
+}
+
+// --- CONTACT CLICK HANDLERS ---
+function setupContactClickHandlers() {
+    document.querySelectorAll(".contact-item").forEach(contact => {
         contact.addEventListener('click', async function () {
             const contactName = this.querySelector('.contact-name').textContent;
             const contactAvatar = this.querySelector('.contact-avatar').textContent;
-            const contactPhone = this.querySelector('.contact-last-msg').textContent
-            const contactabout = this.querySelector('.contact-about').textContent
+            const contactPhone = this.querySelector('.contact-last-msg').textContent;
+            const contactabout = this.querySelector('.contact-about').textContent;
             const userId = this.dataset.userid;
             window.currentReceiverId = userId;
-            // --- Emit chat-open event to backend ---
-            const myUserId = localStorage.getItem('userId');
-            socket.emit('chat-open', { userId: myUserId, contactId: userId });
-
+            socket.emit('chat-open', { userId: localStorage.getItem('userId'), contactId: userId });
             const statusText = document.querySelector('.nav-info .user-status');
                if (statusText) {
                    if (onlineUserIds.has(userId)) {
@@ -115,42 +159,63 @@ window.addEventListener("DOMContentLoaded", () => {
                        statusText.style.color = "gray";
                    }
                }
-
-            document.querySelector('.nav-name').textContent = contactName;
-            document.querySelector('.nav-avatar').textContent = contactAvatar;
-
-            document.querySelector('.profile-name').textContent = contactName;
-            document.querySelector('.profile-avatar').textContent = contactAvatar;
-            document.querySelector('.profile-phone').textContent = contactPhone;
-            document.querySelector('.profile-about').textContent = contactabout;
-
+            updateProfileSidebar(contactName, contactAvatar, contactPhone, contactabout);
             document.querySelector('.empty-chat').style.display = 'none';
             document.querySelector('.chattingArea').style.display = 'block';
-
             document.getElementById('sidebar').classList.add('active');
             document.getElementById('chatArea').classList.add('active');
-            
-            messagesSkip = 0
+            messagesSkip = 0;
             allMessagesLoaded = false;
-            await loadChatMessages(false); // fetch real messages
-            // --- Reset unread count for this contact when chat is opened ---
+            await loadChatMessages(false);
             unreadCounts[userId] = 0;
             updateUnreadBadge(userId, 0);
         });
     });
+}
 
+function updateProfileSidebar(name, avatar, phone, about) {
+    document.querySelector('.nav-name').textContent = name;
+    document.querySelector('.nav-avatar').textContent = avatar;
+    document.querySelector('.profile-name').textContent = name;
+    document.querySelector('.profile-avatar').textContent = avatar;
+    document.querySelector('.profile-phone').textContent = phone;
+    document.querySelector('.profile-about').textContent = about;
+}
 
-    const messageInput = document.querySelector('.message-input');
-    messageInput.addEventListener('input', function() {
+// --- INPUT & SEND HANDLERS ---
+function setupInputHandlers() {
+    document.querySelector('.send-button').addEventListener('click', sendMessage);
+    document.querySelector('.message-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+    document.querySelector('.message-input').addEventListener('input', function() {
+        const senderId = localStorage.getItem('userId');
+        const receiverId = window.currentReceiverId;
+        if (receiverId) {
+            socket.emit('typing', { senderId, receiverId });
+        }
+    });
+}
+
+function sendMessage() {
+    const input = document.querySelector('.message-input');
+    const message = input.value.trim();
     const senderId = localStorage.getItem('userId');
     const receiverId = window.currentReceiverId;
-    if (receiverId) {
-        socket.emit('typing', { senderId, receiverId });
+    if (!message) return;
+    if (!receiverId) {
+        alert("Select a user to chat with");
+        return;
     }
-});
+    socket.emit('chat message', { senderId, receiverId, message });
+    moveContactToTop(receiverId);
+    input.value = '';
+}
 
-
-// When loading messages, emit 'message-read' for all unread received messages
+// --- LOAD CHAT MESSAGES ---
 async function loadChatMessages(append = false) {
     if (isLoadingMessages || allMessagesLoaded) return;
     isLoadingMessages = true;
@@ -166,15 +231,12 @@ async function loadChatMessages(append = false) {
     }
     try {
         const res = await fetch(`/api/messages/${receiverId}?skip=${messagesSkip}&limit=${messagesLimit}`, {
-            method: 'GET',
-            credentials: 'include'
+            method: 'GET', credentials: 'include'
         });
         const data = await res.json();
-        console.log('messages',data)
         const oldScrollHeight = messagesContainer.scrollHeight;
         if (data.messages.length < messagesLimit) allMessagesLoaded = true;
         messagesSkip += data.messages.length;
-
         // Collect unread received message IDs
         const unreadReceivedIds = [];
         data.messages.forEach(msg => {
@@ -187,10 +249,9 @@ async function loadChatMessages(append = false) {
             socket.emit('message-read', {
                 messageIds: unreadReceivedIds,
                 readerId: senderId,
-                receiverId: window.currentReceiverId // <-- add this
+                receiverId: window.currentReceiverId
             });
         }
-
         // Render messages
         data.messages.forEach(msg => {
             const messageDiv = document.createElement('div');
@@ -198,158 +259,86 @@ async function loadChatMessages(append = false) {
             messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
             let tickHtml = '';
             if (isSent) {
-              if (msg.status === 'sent') {
-                tickHtml = '<span class="tick-icon">✔️</span>';
-              } else if (msg.status === 'delivered') {
-                tickHtml = '<span class="tick-icon">✔✔️</span>';
-              } else if (msg.status === 'read') {
-                tickHtml = '<span class="tick-icon" style="color: #34B7F1">✔✔️</span>';
-              }
+                if (msg.status === 'sent') tickHtml = '<span class="tick-icon">✔️</span>';
+                else if (msg.status === 'delivered') tickHtml = '<span class="tick-icon">✔✔️</span>';
+                else if (msg.status === 'read') tickHtml = '<span class="tick-icon" style="color: #34B7F1">✔✔️</span>';
             }
             messageDiv.innerHTML = `
                 ${msg.message}
                 <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
             `;
             if (msg._id) messageDiv.dataset.messageId = msg._id;
-            if (append) {
-                messagesContainer.insertBefore(messageDiv, messagesContainer.firstChild);
-            } else {
-                messagesContainer.appendChild(messageDiv);
-            }
+            if (append) messagesContainer.insertBefore(messageDiv, messagesContainer.firstChild);
+            else messagesContainer.appendChild(messageDiv);
         });
-
-        if (!append) {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        } else {
-            messagesContainer.scrollTop = messagesContainer.scrollHeight - oldScrollHeight;
-        }
+        if (!append) messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        else messagesContainer.scrollTop = messagesContainer.scrollHeight - oldScrollHeight;
     } catch (err) {
         console.error("Failed to load messages:", err);
     }
     isLoadingMessages = false;
-    document.getElementById('loader').style.display = 'none'; 
+    document.getElementById('loader').style.display = 'none';
 }
 
-
-const messagesContainer = document.getElementById('messagesContainer');
-messagesContainer.addEventListener('scroll', function() {
-    if (messagesContainer.scrollTop === 0 && !allMessagesLoaded && !isLoadingMessages) {
-        loadChatMessages(true); // Load more and prepend
+document.getElementById('messagesContainer').addEventListener('scroll', function() {
+    if (this.scrollTop === 0 && !allMessagesLoaded && !isLoadingMessages) {
+        loadChatMessages(true);
     }
 });
 
-    document.querySelector('.send-button').addEventListener('click', sendMessage);
-    document.querySelector('.message-input').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
+// --- SOCKET EVENTS ---
+socket.on("chat message", (msg) => {
+    const senderId = localStorage.getItem("userId");
+    const otherUserId = msg.senderId === senderId ? msg.receiverId : msg.senderId;
+    moveContactToTop(otherUserId);
+    updateContactLastMessage(otherUserId, msg.message);
 
-
-   function moveContactToTop(userId) {
-  const contactList = document.querySelector('.contact-list');
-  const contactItem = contactList.querySelector(`.contact-item[data-userid="${userId}"]`);
-  if (contactItem) {
-    contactList.prepend(contactItem);
-  }
-}
-
-    function sendMessage() {
-        const input = document.querySelector('.message-input');
-        const message = input.value.trim();
-        const senderId = localStorage.getItem('userId');
-        const receiverId = window.currentReceiverId;
-        console.log('receiver',receiverId)
-
-        if (!message) return;
-        if (!receiverId) {
-            alert("Select a user to chat with");
-            return;
-        }
-
-        socket.emit('chat message', { senderId, receiverId, message });
-        moveContactToTop(receiverId);
-
-             input.value = '';
-    }
-
-
-
-    function updateEmptyChatMessage() {
-    const contactList = document.querySelector('.contact-list');
-    const emptyChatMsg = document.getElementById('emptyChatMsg');
-    if (contactList && emptyChatMsg) {
-        if (contactList.querySelectorAll('.contact-item').length === 0) {
-            emptyChatMsg.style.display = '';
-        } else {
-            emptyChatMsg.style.display = 'none';
-        }
-    }
-}
-
-
-  socket.on("chat message", (msg) => {
-  const senderId = localStorage.getItem("userId");
-  const otherUserId = msg.senderId === senderId ? msg.receiverId : msg.senderId;
-  moveContactToTop(otherUserId);
-
-  // --- Update last message in contact list in real time ---
-  const contactItem = document.querySelector(`.contact-item[data-userid="${otherUserId}"]`);
-  if (contactItem) {
-    const lastMsgDiv = contactItem.querySelector('.contact-last-message');
-    if (lastMsgDiv) {
-      lastMsgDiv.textContent = msg.message;
-    }
-  }
-
-  
     if (!contactMap[otherUserId]) {
-    const name = "Unknown";
-    const phone = msg.senderPhone ? msg.senderPhone.replace(/\D/g, '').slice(-10) : "";
+        const name = "Unknown";
+        const phone = msg.senderPhone ? msg.senderPhone.replace(/\D/g, '').slice(-10) : "";
 
-    contactMap[otherUserId] = { name, phone };
+        contactMap[otherUserId] = { name, phone };
 
 
-    async function unKnownUser(){
-      const res = await fetch("/contacts/ajax/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone })
-      });
-    }
-       unKnownUser()
+        async function unKnownUser(){
+          const res = await fetch("/contacts/ajax/add", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, phone })
+          });
+        }
+           unKnownUser()
 
-     const emptyChat = document.querySelector('.empty');
-    if (emptyChat) emptyChat.style.display = 'none';
-    // Also show in your contact list UI
-    const chatItem = document.createElement("div");
-    chatItem.className = "contact-item";
-    chatItem.dataset.userid = otherUserId;
-        chatItem.innerHTML = `
-            <div class="contact-avatar">?</div>
-            <div class="contact-info">
-                <div class="contact-name">Unknown</div>
-                <div class="contact-last-msg">${msg.senderPhone}</div>
-            </div>
-        `;
-    chatItem.addEventListener('click', async function () {
-        document.querySelector('.nav-name').textContent = name;
-        document.querySelector('.nav-avatar').textContent = name.charAt(0);
-        window.currentReceiverId = otherUserId;
+         const emptyChat = document.querySelector('.empty');
+        if (emptyChat) emptyChat.style.display = 'none';
+        // Also show in your contact list UI
+        const chatItem = document.createElement("div");
+        chatItem.className = "contact-item";
+        chatItem.dataset.userid = otherUserId;
+            chatItem.innerHTML = `
+                <div class="contact-avatar">?</div>
+                <div class="contact-info">
+                    <div class="contact-name">Unknown</div>
+                    <div class="contact-last-msg">${msg.senderPhone}</div>
+                </div>
+            `;
+        chatItem.addEventListener('click', async function () {
+            document.querySelector('.nav-name').textContent = name;
+            document.querySelector('.nav-avatar').textContent = name.charAt(0);
+            window.currentReceiverId = otherUserId;
 
-        document.querySelector('.empty-chat').style.display = 'none';
-        document.querySelector('.chattingArea').style.display = 'block';
+            document.querySelector('.empty-chat').style.display = 'none';
+            document.querySelector('.chattingArea').style.display = 'block';
 
-        document.getElementById('sidebar').classList.add('active');
-        document.getElementById('chatArea').classList.add('active');
+            document.getElementById('sidebar').classList.add('active');
+            document.getElementById('chatArea').classList.add('active');
 
-        await loadChatMessages();
-    });
- 
-    document.querySelector(".contact-list").appendChild(chatItem);
-    updateEmptyChatMessage();
-  }
+            await loadChatMessages();
+        });
+     
+        document.querySelector(".contact-list").appendChild(chatItem);
+        updateEmptyChatMessage();
+      }
 
 
   // --- Unread badge logic for real-time updates ---
@@ -386,8 +375,9 @@ messagesContainer.addEventListener('scroll', function() {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
     // If this is a received message and the chat is open, emit read immediately
     if (!isSent && msg.status !== 'read' && msg._id) {
-      socket.emit('message-read', { messageIds: [msg._id], readerId: senderId ,receiverId:receiverId});
-      // --- Reset unread count for this contact since chat is open ---
+      // Fix: define receiverId here
+      const receiverId = window.currentReceiverId;
+      socket.emit('message-read', { messageIds: [msg._id], readerId: senderId, receiverId });
       unreadCounts[msg.senderId] = 0;
       updateUnreadBadge(msg.senderId, 0);
     }
@@ -524,8 +514,6 @@ function showOfflineDot(userId) {
 
 
 
-
-
     function getCurrentTime() {
         const now = new Date();
         let hours = now.getHours();
@@ -588,12 +576,12 @@ input.addEventListener('input', async (e) => {
     const userId = contact.contactId 
    const newContact = document.createElement('div');
    newContact.className = 'contact-item';
-   newContact.dataset.userid = userId;
    newContact.innerHTML = `
        <div class="contact-avatar">${contact.name.charAt(0)}</div>
        <div class="contact-info">
            <div class="contact-name">${contact.name}</div>
            <div class="contact-last-msg">${contact.phone}</div>
+           <div class="user-status" style="font-size: 0.8em; color: gray;">Offline</div>
        </div>
    `;
 
@@ -638,22 +626,4 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-function updateUnreadBadge(userId, count) {
-  const contactItem = document.querySelector(`.contact-item[data-userid="${userId}"]`);
-  if (!contactItem) return;
-  let badge = contactItem.querySelector('.unread-badge');
-  if (count > 0) {
-    if (!badge) {
-      badge = document.createElement('span');
-      badge.className = 'unread-badge';
-      contactItem.querySelector('.contact-info').appendChild(badge);
-    }
-    badge.textContent = count;
-    badge.style.display = '';
-  } else if (badge) {
-    badge.style.display = 'none';
-  }
-}
-
-
-</script>
+</script> -->
