@@ -9,13 +9,22 @@ const messageSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  type: {
+    type: String,
+    enum: ["text", "image", "audio", "multi-image"],
+    default: "text",
+  },
+
   message: {
     type: String,
-    required: true,
+    // required: true,
+  },
+  mediaUrls: {
+    type: [String], // used for image/audio/multiple image URLs
+    default: [],
   },
   senderPhone: {
     type: String,
-    required: true,
   },
   timestamp: {
     type: Date,

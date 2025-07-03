@@ -93,10 +93,26 @@ export async function loadChatMessages(append = false) {
                 else if (msg.status === 'delivered') tickHtml = '<span class="tick-icon">✔✔️</span>';
                 else if (msg.status === 'read') tickHtml = '<span class="tick-icon" style="color: #34B7F1">✔✔️</span>';
             }
-            messageDiv.innerHTML = `
-                ${msg.message}
-                <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
-            `;
+    // --- Fix: Render image if message is an image ---
+    if (msg.type === "image" && msg.mediaUrls && msg.mediaUrls.length > 0) {
+        messageDiv.innerHTML = `
+            <img src="${msg.mediaUrls[0]}" style="max-width:200px;display:block;">
+            <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
+        `;
+  if (msg.message && msg.message.trim() !== "") {
+        const captionEl = document.createElement("div");
+        captionEl.innerText = msg.message;
+        captionEl.style.fontSize = "0.9em";
+        captionEl.style.marginTop = "5px";
+        captionEl.style.color = "#555";
+        messageDiv.insertBefore(captionEl, messageDiv.querySelector('.message-time'));
+      }
+    } else {
+        messageDiv.innerHTML = `
+            ${msg.message}
+            <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
+        `;
+    }
             if (msg._id) messageDiv.dataset.messageId = msg._id;
             if (append) messagesContainer.insertBefore(messageDiv, messagesContainer.firstChild);
             else messagesContainer.appendChild(messageDiv);
@@ -110,20 +126,6 @@ export async function loadChatMessages(append = false) {
     document.getElementById('loader').style.display = 'none';
 }
 
-export function sendMessage() {
-    const input = document.querySelector('.message-input');
-    const message = input.value.trim();
-    const senderId = localStorage.getItem('userId');
-    const receiverId = window.currentReceiverId;
-    if (!message) return;
-    if (!receiverId) {
-        alert("Select a user to chat with");
-        return;
-    }
-    socket.emit('chat message', { senderId, receiverId, message });
-    moveContactToTop(receiverId);
-    input.value = '';
-}
 
 export function showOnlineDot(userId) {
   // Update chat header if open

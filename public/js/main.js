@@ -1,5 +1,5 @@
 
-import {updateEmptyChatMessage,sendMessage,loadChatMessages,updateUnreadBadge,moveContactToTop,updateContactLastMessage,showOnlineDot,showOfflineDot,getCurrentTime,formatTime} from './contactFunction.js'
+import {updateEmptyChatMessage,loadChatMessages,updateUnreadBadge,moveContactToTop,updateContactLastMessage,showOnlineDot,showOfflineDot,getCurrentTime,formatTime} from './contactFunction.js'
 import {setupInputHandlers,updateProfileSidebar} from './uiFunction.js'
 import state from './state.js'
 import socket from './socket.js';
@@ -256,10 +256,27 @@ socket.on("chat message", (msg) => {
         tickHtml = '<span class="tick-icon" style="color: #34B7F1">✔✔️</span>';
       }
     }
-    messageDiv.innerHTML = `
-      ${msg.message}
-      <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
-    `;
+
+    // For image message
+if (msg.type === "image" && msg.mediaUrls && msg.mediaUrls.length > 0) {
+  messageDiv.innerHTML = `
+    <img src="${msg.mediaUrls[0]}" style="max-width:200px;display:block;">
+    <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
+  `;
+  if (msg.message && msg.message.trim() !== "") {
+    const captionEl = document.createElement("div");
+    captionEl.innerText = msg.message;
+    captionEl.style.fontSize = "0.9em";
+    captionEl.style.marginTop = "5px";
+    captionEl.style.color = "#555";
+    messageDiv.insertBefore(captionEl, messageDiv.querySelector('.message-time'));
+  }
+} else {
+  messageDiv.innerHTML = `
+    ${msg.message}
+    <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
+  `;
+}
     if (msg._id) messageDiv.dataset.messageId = msg._id;
     messagesContainer.appendChild(messageDiv);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -376,3 +393,19 @@ socket.on('typing', (senderId) => {
         }
     }
 });
+
+// socket.on('receive-image', function({ senderId, image, messageId, timestamp }) {
+//     // Create an image element and append to your messages container
+//     const img = document.createElement('img');
+//     img.src = image; // This will be the Cloudinary URL from the server
+//     img.style.maxWidth = '200px';
+//     img.style.display = 'block';
+
+//     const msgDiv = document.createElement('div');
+//     msgDiv.className = senderId === localStorage.getItem('userId') ? 'message sent' : 'message received';
+//     msgDiv.appendChild(img);
+
+//     document.getElementById('messagesContainer').appendChild(msgDiv);
+//     // Optionally scroll to bottom
+//     document.getElementById('messagesContainer').scrollTop = document.getElementById('messagesContainer').scrollHeight;
+// });

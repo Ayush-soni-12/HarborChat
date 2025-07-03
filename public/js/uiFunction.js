@@ -1,4 +1,4 @@
-import {sendMessage} from './contactFunction.js'
+import {sendMessage} from './footer.js'
 import socket from './socket.js';
 
 export function updateProfileSidebar(name, avatar, phone, about) {

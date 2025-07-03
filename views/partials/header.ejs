@@ -16,6 +16,9 @@
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
+    <link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
 
     <style>
       :root {
@@ -560,153 +563,462 @@
         display: none;
         z-index: 999;
       }
-/* WhatsApp-like user info sidebar */
-.user-info {
+      /* WhatsApp-like user info sidebar */
+      .user-info {
+        position: fixed;
+        top: 0;
+        right: -400px; /* Hidden by default */
+        width: 400px;
+        height: 100vh;
+        background: #fff;
+        box-shadow: -2px 0 8px rgba(0,0,0,0.08);
+        z-index: 2000;
+        opacity: 1;
+        transition: none;
+        padding: 32px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        /* transition: box-shadow 0.2s, background 0.2s; */
+      }
+
+
+      .user-info .profile-avatar {
+        width: 96px;
+        height: 96px;
+        border-radius: 50%;
+        background: #ece5dd;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 48px;
+        margin: 0 auto 16px auto;
+      }
+
+      .user-info .profile-name {
+        font-size: 1.5rem;
+        font-weight: bold;
+        text-align: center;
+      }
+
+      .user-info .profile-phone {
+        font-size: 1rem;
+        color: #888;
+        text-align: center;
+      }
+
+      .user-info .profile-about {
+        margin-top: 16px;
+        font-size: 1rem;
+        color: #555;
+        text-align: center;
+      }
+
+      .user-info .crossEdit{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .crossEdit i {
+        font-size: larger;
+        font-weight: bolder;
+      }
+
+
+      /* Overlay for background blur */
+      .user-info-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.2);
+        z-index: 1999;
+        display: none;
+      }
+      .user-info-overlay.active {
+        display: block;
+      }
+      .iconImage {
+        min-width: 220px;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 1.5px 4px rgba(0,0,0,0.08);
+        padding: 0.5rem 0;
+        border: none;
+        margin-top: 8px;
+        font-family: inherit;
+      }
+
+      .iconImage li {
+        margin: 0;
+        padding: 0;
+      }
+
+      .iconImage .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 24px;
+        font-size: 1rem;
+        color: #222;
+        border-radius: 6px;
+        transition: background 0.18s, color 0.18s;
+        cursor: pointer;
+        background: none;
+        border: none;
+      }
+
+      .iconImage .dropdown-item i {
+        font-size: 1.1em;
+        color: #128c7e;
+        min-width: 22px;
+        text-align: center;
+      }
+
+      .iconImage .dropdown-item:hover,
+      .iconImage .dropdown-item:focus {
+        background: #e5f7ed;
+        color: #128c7e;
+      }
+
+      .iconImage hr.dropdown-divider {
+        margin: 6px 0;
+        border-top: 1px solid #e0e0e0;
+      }
+
+      .iconImage .danger:hover,
+      .iconImage .danger:focus{
+        background: #f7e9e5;
+        color: #ff0000;
+        
+      }
+      .iconImage .danger:hover i,
+      .iconImage .danger:focus i {
+        color: #ff0000;
+      }
+
+      .spinner {
+        width: 25px;
+        height: 25px;
+        margin-left: 50%;
+        border: 3px solid rgba(0,0,0,0.1);
+        border-top: 3px solid #333;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+      }
+
+
+
+
+
+      /* WhatsApp-style full-page overlay for image editing */
+      /* #imageEditModal {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(40, 50, 60, 0.75);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        overflow: auto;
+      }
+      #imageEditModal.active {
+        display: flex !important;
+      }
+      .edit-modal-content {
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+        padding: 32px 28px 24px 28px;
+        min-width: 340px;
+        max-width: 95vw;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+      }
+      #imageEditModal h3 {
+        margin-top: 0;
+        margin-bottom: 18px;
+        font-size: 1.3em;
+        color: #333;
+        font-weight: 600;
+      }
+      #imageToEdit {
+        display: block;
+        margin: 0 auto 16px auto;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        background: #f8f8f8;
+        border: 1px solid #eee;
+        max-width: 90vw;
+        max-height: 40vh;
+      }
+      #imageCaption {
+        display: block;
+        margin: 10px auto 18px auto;
+        width: 90%;
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid #d0d0d0;
+        font-size: 1em;
+        background: #fafbfc;
+        transition: border 0.2s;
+      }
+      #imageCaption:focus {
+        border: 1.5px solid #34b7f1;
+        outline: none;
+      }
+      .button-group {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        margin-bottom: 10px;
+      }
+      .left-buttons, .right-buttons {
+        display: flex;
+        gap: 10px;
+      }
+      #imageEditModal button {
+        padding: 7px 18px;
+        border-radius: 6px;
+        border: none;
+        font-size: 1em;
+        cursor: pointer;
+        background: #34b7f1;
+        color: #fff;
+        font-weight: 500;
+        transition: background 0.2s;
+      }
+      #imageEditModal button#cancelEdit {
+        background: #eee;
+        color: #333;
+      }
+      #imageEditModal button#drawButton {
+        background: #f7b731;
+        color: #fff;
+      }
+      #imageEditModal button:hover {
+        filter: brightness(0.95);
+      }
+      #fabricCanvas {
+        display: block;
+        margin: 18px auto 0 auto;
+        border-radius: 8px;
+        border: 1.5px solid #d0d0d0;
+        background: #fafbfc;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        max-width: 90vw;
+        max-height: 40vh;
+      }
+      #fabricControls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        margin-top: 12px;
+        margin-bottom: 0;
+        font-size: 1em;
+      }
+      #fabricControls label {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 1em;
+      }
+      #fabricClear {
+        background: #ff7675 !important;
+        color: #fff !important;
+        border: none;
+        padding: 6px 14px;
+        border-radius: 5px;
+        margin-left: 10px;
+      } */  
+
+
+
+      /* Modal Container */
+.modal {
+  display: none;
   position: fixed;
   top: 0;
-  right: -400px; /* Hidden by default */
-  width: 400px;
-  height: 100vh;
-  background: #fff;
-  box-shadow: -2px 0 8px rgba(0,0,0,0.08);
-  z-index: 2000;
-  opacity: 1;
-  transition: none;
-  padding: 32px 24px;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal.active {
+  display: flex;
+}
+
+.edit-modal-content {
+  background-color: #fff;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  /* transition: box-shadow 0.2s, background 0.2s; */
+  overflow: hidden;
 }
 
+.modal-header {
+  padding: 15px;
+  border-bottom: 1px solid #eee;
+}
 
-.user-info .profile-avatar {
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  background: #ece5dd;
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.modal-body {
+  padding: 15px;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.image-preview {
+  max-width: 100%;
+  max-height: 300px;
+  display: block;
+  margin: 0 auto 15px;
+}
+
+.caption-input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+#fabricCanvas {
+  display: none;
+  border: 1px dashed #ccc;
+  margin-bottom: 15px;
+}
+
+.drawing-controls {
+  display: none;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}
+
+.control-label {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 48px;
-  margin: 0 auto 16px auto;
+  gap: 5px;
+  font-size: 14px;
 }
 
-.user-info .profile-name {
-  font-size: 1.5rem;
-  font-weight: bold;
-  text-align: center;
+.clear-button {
+  background-color: #ff4444;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
 }
 
-.user-info .profile-phone {
-  font-size: 1rem;
-  color: #888;
-  text-align: center;
+.clear-button:hover {
+  background-color: #cc0000;
 }
 
-.user-info .profile-about {
-  margin-top: 16px;
-  font-size: 1rem;
-  color: #555;
-  text-align: center;
-}
-
-.user-info .crossEdit{
+.modal-footer {
+  padding: 15px;
+  border-top: 1px solid #eee;
   display: flex;
   justify-content: space-between;
-  align-items: center;
 }
 
-.crossEdit i {
-  font-size: larger;
-  font-weight: bolder;
-}
-
-
-/* Overlay for background blur */
-.user-info-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.2);
-  z-index: 1999;
-  display: none;
-}
-.user-info-overlay.active {
-  display: block;
-}
-.iconImage {
-  min-width: 220px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 1.5px 4px rgba(0,0,0,0.08);
-  padding: 0.5rem 0;
-  border: none;
-  margin-top: 8px;
-  font-family: inherit;
-}
-
-.iconImage li {
-  margin: 0;
-  padding: 0;
-}
-
-.iconImage .dropdown-item {
+.button-group {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 24px;
-  font-size: 1rem;
-  color: #222;
-  border-radius: 6px;
-  transition: background 0.18s, color 0.18s;
-  cursor: pointer;
-  background: none;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.draw-btn, .cancel-btn, .crop-btn {
+  padding: 8px 15px;
   border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
 }
 
-.iconImage .dropdown-item i {
-  font-size: 1.1em;
-  color: #128c7e;
-  min-width: 22px;
-  text-align: center;
+.draw-btn {
+  background-color: #4CAF50;
+  color: white;
 }
 
-.iconImage .dropdown-item:hover,
-.iconImage .dropdown-item:focus {
-  background: #e5f7ed;
-  color: #128c7e;
+.draw-btn:hover {
+  background-color: #45a049;
 }
 
-.iconImage hr.dropdown-divider {
-  margin: 6px 0;
-  border-top: 1px solid #e0e0e0;
+.cancel-btn {
+  background-color: #f44336;
+  color: white;
+  margin-right: 10px;
 }
 
-.iconImage .danger:hover,
-.iconImage .danger:focus{
-  background: #f7e9e5;
-  color: #ff0000;
-  
-}
-.iconImage .danger:hover i,
-.iconImage .danger:focus i {
-  color: #ff0000;
+.cancel-btn:hover {
+  background-color: #d32f2f;
 }
 
-.spinner {
-  width: 25px;
-  height: 25px;
-  margin-left: 50%;
-  border: 3px solid rgba(0,0,0,0.1);
-  border-top: 3px solid #333;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
+.crop-btn {
+  background-color: #2196F3;
+  color: white;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg);}
-  100% { transform: rotate(360deg);}
+.crop-btn:hover {
+  background-color: #0b7dda;
 }
+
+      /* Chat message images */
+      .messages-container .message img {
+        display: block;
+        max-width: 320px;
+        max-height: 260px;
+        width: 100%;
+        height: auto;
+        border-radius: 12px;
+        margin: 0.25rem 0 0.35rem 0;
+        object-fit: contain;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+        background: #f8f8f8;
+        border: 1px solid #e2e8f0;
+        transition: box-shadow 0.2s;
+      }
+      .messages-container .message img:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+        cursor: pointer;
+      }
+      @media (max-width: 600px) {
+        .messages-container .message img {
+          max-width: 90vw;
+          max-height: 35vh;
+        }
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg);}
+        100% { transform: rotate(360deg);}
+      }
 
       @keyframes fadeIn {
         from {
@@ -823,6 +1135,10 @@
           <input type="text" id="searchBar" placeholder="Search or start new chat" />
         </div>
       </div>
+
+
     <!-- </div> -->
+
+
   </body>
 </html>

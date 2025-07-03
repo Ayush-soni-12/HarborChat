@@ -17,6 +17,9 @@ const http = require("http");
 const authRoutes = require("./routes/auth");
 const homeRoute = require("./routes/home");
 const client = require("./redisClient.js");
+const { cloudinary } = require("./ cloudConfig.js");
+const { createAdapter } = require("@socket.io/redis-adapter");
+const { createClient } = require("redis");
 
 async function main() {
   await mongoose.connect("mongodb://localhost:27017/harborchat");
@@ -40,9 +43,19 @@ app.use("/auth", authRoutes);
 app.use("/", homeRoute);
 
 const io = socketIO(server);
-const users = {};
-const onlineUsers = new Map();
-const userContacts = new Map();
+const pubClient = createClient({
+  url: "redis://default:myStrongRedisPass123@localhost:6379",
+});
+const subClient = pubClient.duplicate();
+
+Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+  io.adapter(createAdapter(pubClient, subClient));
+  console.log("✅ Socket.IO Redis adapter enabled");
+});
+
+const users = {}; // (optional, can remove)
+// const onlineUsers = new Map(); // REMOVE
+const userContacts = new Map(); // keep for now, or move to Redis for full scaling
 // --- Track which chat each user currently has open ---
 const currentOpenChats = new Map();
 
@@ -53,8 +66,9 @@ io.on("connection", (socket) => {
   // Step 1: Store userId with socket
   socket.on("join", async (id) => {
     userId = id;
-    users[id] = socket.id;
-    onlineUsers.set(userId, socket.id);
+    users[id] = socket.id; // (optional, can remove)
+    // onlineUsers.set(userId, socket.id); // REMOVE
+    await client.set(`online:${userId}`, socket.id);
     socket.join(id);
     const contacts = await Contact.find({ userId: id }).select(
       "contactId unreadCount"
@@ -63,9 +77,11 @@ io.on("connection", (socket) => {
     userContacts.set(userId, contactIds);
 
     // Send the list of online contacts to the user who just joined
-    const onlineContactIds = contactIds.filter((contactId) =>
-      onlineUsers.has(contactId)
-    );
+    const onlineContactIds = [];
+    for (const contactId of contactIds) {
+      const contactSocketId = await client.get(`online:${contactId}`);
+      if (contactSocketId) onlineContactIds.push(contactId);
+    }
     socket.emit("online-contacts", onlineContactIds);
 
     // Send unread counts for all contacts
@@ -75,12 +91,13 @@ io.on("connection", (socket) => {
     });
     socket.emit("unread-counts", unreadCounts);
 
-    contactIds.forEach((contactId) => {
-      const contactSocketId = onlineUsers.get(contactId);
+    // Notify contacts that this user is online
+    for (const contactId of contactIds) {
+      const contactSocketId = await client.get(`online:${contactId}`);
       if (contactSocketId) {
         io.to(contactSocketId).emit("user-online", userId);
       }
-    });
+    }
     console.log(`User ${id} joined room ${id}`);
   });
 
@@ -136,6 +153,7 @@ io.on("connection", (socket) => {
       receiverId,
       message,
       senderPhone,
+      type: "text",
       status: "sent",
     });
 
@@ -203,6 +221,98 @@ io.on("connection", (socket) => {
     io.to(senderId).emit("message-delivered", { messageId: savedMessage._id });
   });
 
+  socket.on(
+    "image-message",
+    async ({ senderId, receiverId, image, caption = "" }) => {
+      try {
+        // Upload image to Cloudinary
+        const uploadRes = await cloudinary.uploader.upload(image, {
+          folder: "harborchat/images",
+          resource_type: "image",
+        });
+
+        const imageUrl = uploadRes.secure_url;
+
+        // Save to MongoDB
+        const newImageMessage = await Message.create({
+          senderId,
+          receiverId,
+          type: "image",
+          message: caption,
+          mediaUrls: [imageUrl],
+          status: "sent",
+          timestamp: new Date(),
+        });
+
+        const isChatOpen = currentOpenChats.get(receiverId) === senderId;
+        if (!isChatOpen) {
+          await Contact.updateOne(
+            { userId: receiverId, contactId: senderId },
+            { $inc: { unreadCount: 1 } }
+          );
+        } else {
+          // If chat is open, ensure unreadCount is 0 (defensive)
+          await Contact.updateOne(
+            { userId: receiverId, contactId: senderId },
+            { $set: { unreadCount: 0 } }
+          );
+        }
+
+        // Convert to plain object for cache and emit
+        const savedImageObj = newImageMessage.toObject();
+
+        // --- Redis cache logic (same as text) ---
+        const ids = [senderId, receiverId].sort();
+        const cacheKey = `chat:${ids[0]}:${ids[1]}`;
+
+        let cached = await client.get(cacheKey);
+        let messages = cached ? JSON.parse(cached) : [];
+
+        messages.push(savedImageObj);
+
+        // Keep only latest 30 messages
+        if (messages.length > 30) {
+          messages = messages.slice(-30);
+        }
+
+        await client.set(cacheKey, JSON.stringify(messages), { EX: 300 });
+
+        // Emit to sender (status: sent)
+        io.to(senderId).emit("chat message", savedImageObj);
+
+        // Emit to receiver (status: delivered)
+        const deliveredImage = { ...savedImageObj, status: "delivered" };
+        io.to(receiverId).emit("chat message", deliveredImage);
+
+        // Update status in DB to 'delivered'
+        await Message.findByIdAndUpdate(newImageMessage._id, {
+          status: "delivered",
+        });
+
+        // Update status in Redis cache to 'delivered'
+        let updatedMessages = messages.map((msg) => {
+          if (
+            msg._id &&
+            msg._id.toString() === newImageMessage._id.toString()
+          ) {
+            return { ...msg, status: "delivered" };
+          }
+          return msg;
+        });
+        await client.set(cacheKey, JSON.stringify(updatedMessages), {
+          EX: 300,
+        });
+
+        // Emit 'message-delivered' to sender for real-time double tick
+        io.to(senderId).emit("message-delivered", {
+          messageId: newImageMessage._id,
+        });
+      } catch (err) {
+        console.error("Image upload error:", err);
+      }
+    }
+  );
+
   // Listen for 'message-read' event from client when user opens chat
   socket.on("message-read", async ({ messageIds, readerId, receiverId }) => {
     // Ensure all IDs are strings for comparison
@@ -234,8 +344,8 @@ io.on("connection", (socket) => {
       senderIds.add(msg.senderId);
     });
     // Emit to all senders
-    senderIds.forEach((senderId) => {
-      const senderSocketId = onlineUsers.get(senderId);
+    senderIds.forEach(async (senderId) => {
+      const senderSocketId = await client.get(`online:${senderId}`);
       if (senderSocketId) {
         io.to(senderSocketId).emit("message-read", {
           messageIds: messageIdsStr,
@@ -244,7 +354,7 @@ io.on("connection", (socket) => {
       }
     });
     // Also emit to the reader (so their own UI updates instantly)
-    const readerSocketId = onlineUsers.get(readerId);
+    const readerSocketId = await client.get(`online:${readerId}`);
     if (readerSocketId) {
       io.to(readerSocketId).emit("message-read", {
         messageIds: messageIdsStr,
@@ -276,26 +386,42 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("typing", ({ senderId, receiverId }) => {
-    const receiverSocketId = onlineUsers.get(receiverId);
+  // --- TYPING INDICATOR (multi-server robust) ---
+  // Store who is typing to whom in Redis for a short TTL
+  // Key: typing:<senderId>:<receiverId> = 1 (EX 5)
+
+  socket.on("typing", async ({ senderId, receiverId }) => {
+    if (!senderId || !receiverId) return;
+    // Mark typing in Redis (optional, for advanced anti-spam/UX)
+    await client.set(`typing:${senderId}:${receiverId}`, 1, { EX: 5 });
+    // Find receiver's socketId from Redis
+    const receiverSocketId = await client.get(`online:${receiverId}`);
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("typing", senderId);
     }
   });
 
-  socket.on("disconnect", () => {
-    if (userId) {
-      onlineUsers.delete(userId);
+  // Optionally, you can add a 'stop-typing' event for more accurate UX:
+  socket.on("stop-typing", async ({ senderId, receiverId }) => {
+    if (!senderId || !receiverId) return;
+    await client.del(`typing:${senderId}:${receiverId}`);
+    const receiverSocketId = await client.get(`online:${receiverId}`);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("stop-typing", senderId);
+    }
+  });
 
+  socket.on("disconnect", async () => {
+    if (userId) {
+      await client.del(`online:${userId}`);
       // Notify only contacts that this user is offline
       const contactIds = userContacts.get(userId) || [];
-      contactIds.forEach((contactId) => {
-        const contactSocketId = onlineUsers.get(contactId);
+      for (const contactId of contactIds) {
+        const contactSocketId = await client.get(`online:${contactId}`);
         if (contactSocketId) {
           io.to(contactSocketId).emit("user-offline", userId);
         }
-      });
-
+      }
       userContacts.delete(userId);
       currentOpenChats.delete(userId); // Clean up open chat info
     }
