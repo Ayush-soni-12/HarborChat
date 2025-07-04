@@ -150,7 +150,15 @@ export function showOfflineDot(userId) {
     }
   }
 }
-
+// --- TOAST NOTIFICATION ---
+export function showToast(message) {
+  const toast = document.getElementById("toastNotification");
+  toast.textContent = message;
+  toast.classList.add("show");
+  setTimeout(() => {
+    toast.classList.remove("show");
+  }, 3000);
+}
 
 
 

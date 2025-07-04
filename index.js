@@ -102,9 +102,10 @@ io.on("connection", (socket) => {
   });
 
   // Track which chat the user has open
-  socket.on("chat-open", ({ userId, contactId }) => {
+  socket.on("chat-open", async ({ userId, contactId }) => {
     if (userId && contactId) {
-      currentOpenChats.set(userId, contactId);
+      // Store in Redis instead of local Map for multi-server
+      await client.set(`openchat:${userId}`, contactId, { EX: 600 }); // 10 min expiry
     }
   });
 
@@ -115,20 +116,32 @@ io.on("connection", (socket) => {
     // Debug: show which rooms this socket is in
     console.log("🔍 Socket Rooms:", socket.rooms);
     // console.log(senderId)
-    const sender = await User.findById(senderId);
-    // console.log(sender)
+    const sender = await User.findById(senderId).select("name phoneNo");
+    console.log(sender);
     //    console.log(sender)
     const senderPhone = sender ? sender.phoneNo : "";
 
     // unread messages...............................
 
     // Only increment unreadCount if receiver is NOT currently viewing this chat
-    const isChatOpen = currentOpenChats.get(receiverId) === senderId;
+    const openChat = await client.get(`openchat:${receiverId}`);
+    const isChatOpen = openChat === senderId;
     if (!isChatOpen) {
       await Contact.updateOne(
         { userId: receiverId, contactId: senderId },
         { $inc: { unreadCount: 1 } }
       );
+
+      // Only send notification if chat is NOT open
+      const socketId = await client.get(`online:${receiverId}`);
+      if (socketId) {
+        const sender = await User.findById(senderId).select("name");
+        io.to(socketId).emit("notify-new-message", {
+          from: sender.name,
+          message: message,
+          type: "text",
+        });
+      }
     } else {
       // If chat is open, ensure unreadCount is 0 (defensive)
       await Contact.updateOne(
@@ -204,7 +217,7 @@ io.on("connection", (socket) => {
       status: "delivered",
     };
     io.to(receiverId).emit("chat message", deliveredMessage);
-
+    // Removed duplicate notification emit here
     // Update status in DB to 'delivered' when delivered to receiver
     await Message.findByIdAndUpdate(savedMessage._id, { status: "delivered" });
 
@@ -244,12 +257,22 @@ io.on("connection", (socket) => {
           timestamp: new Date(),
         });
 
-        const isChatOpen = currentOpenChats.get(receiverId) === senderId;
+        const openChat = await client.get(`openchat:${receiverId}`);
+        const isChatOpen = openChat === senderId;
         if (!isChatOpen) {
           await Contact.updateOne(
             { userId: receiverId, contactId: senderId },
             { $inc: { unreadCount: 1 } }
           );
+          const sender = await User.findById(senderId).select("name");
+          const socketId = await client.get(`online:${receiverId}`);
+          if (socketId) {
+            io.to(socketId).emit("notify-new-message", {
+              from: sender.name,
+              message: caption,
+              type: "image",
+            });
+          }
         } else {
           // If chat is open, ensure unreadCount is 0 (defensive)
           await Contact.updateOne(
@@ -412,8 +435,10 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", async () => {
+    console.log("user",userId)
     if (userId) {
       await client.del(`online:${userId}`);
+      await client.del(`openchat:${userId}`); // Clean up open chat info in Redis
       // Notify only contacts that this user is offline
       const contactIds = userContacts.get(userId) || [];
       for (const contactId of contactIds) {
@@ -423,7 +448,7 @@ io.on("connection", (socket) => {
         }
       }
       userContacts.delete(userId);
-      currentOpenChats.delete(userId); // Clean up open chat info
+      // currentOpenChats.delete(userId); // Clean up open chat info
     }
     for (const uid in users) {
       if (users[uid] === socket.id) {

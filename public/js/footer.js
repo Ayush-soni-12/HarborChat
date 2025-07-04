@@ -1,5 +1,5 @@
 import { updateEmptyChatMessage, loadChatMessages } from "./contactFunction.js";
-import { moveContactToTop } from "./contactFunction.js";
+import { moveContactToTop,showToast } from "./contactFunction.js";
 import state from "./state.js";
 import socket from "./socket.js";
 
@@ -63,15 +63,7 @@ document
     }
   });
 
-// --- TOAST NOTIFICATION ---
-function showToast(message) {
-  const toast = document.getElementById("toastNotification");
-  toast.textContent = message;
-  toast.classList.add("show");
-  setTimeout(() => {
-    toast.classList.remove("show");
-  }, 3000);
-}
+
 
 // --- EMOJI PICKER LOGIC ---
 const emojiButton = document.getElementById("emoji-button");
