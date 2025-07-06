@@ -23,6 +23,9 @@ const messageSchema = new mongoose.Schema({
     type: [String], // used for image/audio/multiple image URLs
     default: [],
   },
+  audioUrl:{
+    type :String,
+  },
   senderPhone: {
     type: String,
   },

@@ -1,10 +1,12 @@
 const asyncHandler = require("../middlewares/asyncHandler");
 const Contact = require("../modals/contactModal");
 const User = require("../modals/UserModal");
-const { cloudinary } = require("../ cloudConfig");
+const { cloudinary } = require("../ cloudConfig.js"); // fixed import path
 const { sendMail } = require("../Helpers/mailer");
 const Message = require("../modals/Message");
 const client = require("../redisClient.js");
+const streamifier = require("streamifier");
+
 // const generateToken = require("../middlewares/generateToken");
 const jwt = require("jsonwebtoken");
 
@@ -15,14 +17,14 @@ module.exports.chat = asyncHandler(async (req, res) => {
   try {
     const contacts = await Contact.find({ userId: req.user._id })
       .sort({ messageTime: -1 }) //  Sort latest messageTime first
-      .populate("contactId", "about")
- const contactsWithLastMsg = await Promise.all(
+      .populate("contactId", "about");
+    const contactsWithLastMsg = await Promise.all(
       contacts.map(async (contact) => {
         const lastMsg = await Message.findOne({
           $or: [
             { senderId: req.user._id, receiverId: contact.contactId._id },
-            { senderId: contact.contactId._id, receiverId: req.user._id }
-          ]
+            { senderId: contact.contactId._id, receiverId: req.user._id },
+          ],
         })
           .sort({ timestamp: -1 })
           .lean();
@@ -30,7 +32,7 @@ module.exports.chat = asyncHandler(async (req, res) => {
         // Attach lastMessage (or empty string if none)
         return {
           ...contact.toObject(),
-          lastMessage: lastMsg ? lastMsg.message : ""
+          lastMessage: lastMsg ? lastMsg.message : "",
         };
       })
     );
@@ -278,4 +280,22 @@ module.exports.searchContact = asyncHandler(async (req, res) => {
   }
 
   return res.json(contacts);
+});
+
+module.exports.audioMessage = asyncHandler(async (req, res) => {
+  try {
+    const { senderId, receiverId } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({ error: "No audio file uploaded" });
+    }
+    console.log("Uploaded mimetype:", req.file.mimetype);
+
+    console.log("Audio uploaded to Cloudinary:", req.file);
+
+    res.json({ audioUrl: req.file.path }); // <-- Cloudinary secure URL
+  } catch (err) {
+    console.error("Upload error:", err);
+    res.status(500).json({ error: "Upload failed" });
+  }
 });

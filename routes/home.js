@@ -1,15 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const {index,chat,contact,setting,Status,profile,updateProfile,updateEmail,me,personalChat,searchContact} = require("../controllers/homeController");
+const {index,chat,contact,setting,Status,profile,updateProfile,updateEmail,me,personalChat,searchContact,audioMessage} = require("../controllers/homeController");
 const validToken= require('../middlewares/verifytoken');
 const {verifyemail, newContactSchema }= require("../validations/authValidation.js")
 const validation = require("../middlewares/validate");
 const multer =  require("multer");
 const {cloudinary} = require("../ cloudConfig.js");
-const {storage} = require("../ cloudConfig.js");
+const { storage } = require("../ cloudConfig.js");
 const multerUpload = multer({ storage });
+// const upload = multer();
 function setUserFolder(req, res, next) {
     req.cloudinaryFolder = "userImage";
+    next();
+}
+function setaudioFolder(req, res, next) {
+    req.cloudinaryFolder = "HarborChat/audio";
     next();
 }
 
@@ -29,6 +34,7 @@ router.patch("/update-email",validToken,validation(verifyemail),updateEmail)
 router.get("/api/me",validToken,me)
 router.get("/api/messages/:receiverId",validToken,personalChat)
 router.get("/api/contacts/search",validToken,searchContact)
+router.post('/upload-audio',validToken,setaudioFolder,multerUpload.single('audio'),audioMessage)
 
 
 module.exports= router

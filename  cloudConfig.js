@@ -8,15 +8,24 @@ cloudinary.config({
 
 })
 
+function getResourceType(mimetype) {
+  if (mimetype.startsWith("image/")) return "image";
+  if (mimetype.startsWith("video/") || mimetype.startsWith("audio/")) return "video";
+  return "raw";
+}
+
 const storage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => {
-      return {
-          folder: req.cloudinaryFolder || "HarborChat", // Folder name in Cloudinary
-          allowed_formats: ["jpeg", "png", "jpg"], // Allowed file formats
-          public_id: `${Date.now()}-${file.originalname}`, // Optional: Custom public ID
-      };
-  },
+    const resource_type = getResourceType(file.mimetype);
+
+    return {
+      folder: req.cloudinaryFolder || "HarborChat",
+      resource_type, // <-- Important for audio/video
+      allowed_formats: ["jpeg", "png", "jpg", "mp3", "wav", "webm", "mp4", "mov", "ogg"], // ✅ add "ogg"
+      public_id: `${Date.now()}-${file.originalname}`
+    };
+  }
 });
 
 

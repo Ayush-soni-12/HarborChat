@@ -62,6 +62,39 @@
 <div class="type-bar">
   <button class="icon-btn"><i class="far fa-smile" id="emoji-button"></i></button>
   <emoji-picker id="emoji-picker"></emoji-picker>
+<div class="audio-recorder-container">
+  <button id="micButton" class="audio-btn mic-btn" title="Start Recording">
+    <i class="fa-solid fa-microphone"></i>
+  </button>
+  
+  <div id="recordingControls" class="recording-controls" style="display: none;">
+    <div class="waveform-container">
+      <canvas id="waveformCanvas" width="200" height="40"></canvas>
+    </div>
+    
+    <button id="stopButton" class="audio-btn stop-btn" title="Pause Recording">
+      <i class="fa-solid fa-pause"></i>
+    </button>
+    <button id="resumeButton" class="audio-btn resume-btn" title="Resume Recording" style="display: none;">
+      <i class="fa-solid fa-microphone"></i>
+    </button>
+    <span id="recordingTimer" class="timer">00:00</span>
+    
+    <button id="playPreviewBtn" class="audio-btn preview-btn" title="Play Preview" style="display: none;">
+      <i class="fa-solid fa-play"></i>
+    </button>
+    <button id="deleteRecordingBtn" class="audio-btn delete-btn" title="Delete Recording">
+      <i class="fa-solid fa-trash"></i>
+    </button>
+    <button id="sendRecordingBtn" class="audio-btn send-btn" title="Send Recording">
+      <i class="fa-solid fa-paper-plane"></i>
+    </button>
+  </div>
+</div>
+
+<audio id="audioPreview" style="display: none;"></audio>
+
+
 
   <input type="text" class="type-input message-input" placeholder="Type a message" id="textMessage" />
 

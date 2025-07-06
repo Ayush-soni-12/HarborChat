@@ -309,6 +309,14 @@ socket.on("chat message", (msg) => {
           messageDiv.querySelector(".message-time")
         );
       }
+    } else if (msg.type === "audio" && msg.audioUrl) {
+      messageDiv.innerHTML = `
+    <audio controls style="max-width:200px;">
+      <source src="${msg.audioUrl}" type="audio/webm">
+      Your browser does not support the audio element.
+    </audio>
+    <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
+  `;
     } else {
       messageDiv.innerHTML = `
     ${msg.message}
@@ -456,6 +464,8 @@ socket.on("notify-new-message", ({ from, message, type }) => {
 
   if (type === "image") {
     showToast(`🖼️ New image from ${from}`);
+  } else if (type === "audio") {
+    showToast(`🎤 New audio message from ${from}`);
   } else {
     showToast(`💬 New message from ${from}: ${message}`);
   }

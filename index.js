@@ -336,6 +336,87 @@ io.on("connection", (socket) => {
     }
   );
 
+  socket.on("audioMessage", async ({ audioUrl, senderId, receiverId }) => {
+  try {
+    // Save to MongoDB
+    const newAudioMessage = await Message.create({
+      senderId,
+      receiverId,
+      type: "audio",
+      audioUrl,
+      status: "sent",
+      timestamp: new Date(),
+    });
+
+    // --- Redis cache logic (same as text/image) ---
+    const ids = [senderId, receiverId].sort();
+    const cacheKey = `chat:${ids[0]}:${ids[1]}`;
+
+    let cached = await client.get(cacheKey);
+    let messages = cached ? JSON.parse(cached) : [];
+
+    messages.push(newAudioMessage.toObject());
+
+    // Keep only latest 30 messages
+    if (messages.length > 30) {
+      messages = messages.slice(-30);
+    }
+
+    await client.set(cacheKey, JSON.stringify(messages), { EX: 300 });
+
+    // Emit to sender (status: sent)
+    io.to(senderId).emit("chat message", newAudioMessage.toObject());
+
+    // Emit to receiver (status: delivered)
+    const deliveredAudio = { ...newAudioMessage.toObject(), status: "delivered" };
+    io.to(receiverId).emit("chat message", deliveredAudio);
+
+    // Update status in DB to 'delivered'
+    await Message.findByIdAndUpdate(newAudioMessage._id, { status: "delivered" });
+
+    // Update status in Redis cache to 'delivered'
+    let updatedMessages = messages.map((msg) => {
+      if (msg._id && msg._id.toString() === newAudioMessage._id.toString()) {
+        return { ...msg, status: "delivered" };
+      }
+      return msg;
+    });
+    await client.set(cacheKey, JSON.stringify(updatedMessages), { EX: 300 });
+
+    // Emit 'message-delivered' to sender for real-time double tick
+    io.to(senderId).emit("message-delivered", { messageId: newAudioMessage._id });
+
+    // Optionally: notification logic (if chat not open)
+    const openChat = await client.get(`openchat:${receiverId}`);
+    const isChatOpen = openChat === senderId;
+    if (!isChatOpen) {
+      await Contact.updateOne(
+        { userId: receiverId, contactId: senderId },
+        { $inc: { unreadCount: 1 } }
+      );
+      const senderUser = await User.findById(senderId).select("name");
+      const socketId = await client.get(`online:${receiverId}`);
+      if (socketId) {
+        io.to(socketId).emit("notify-new-message", {
+          from: senderUser.name,
+          message: "[Audio]",
+          type: "audio",
+        });
+      }
+    } else {
+      // If chat is open, ensure unreadCount is 0 (defensive)
+      await Contact.updateOne(
+        { userId: receiverId, contactId: senderId },
+        { $set: { unreadCount: 0 } }
+      );
+    }
+  } catch (err) {
+    console.error("Audio message error:", err);
+  }
+});
+
+
+
   // Listen for 'message-read' event from client when user opens chat
   socket.on("message-read", async ({ messageIds, readerId, receiverId }) => {
     // Ensure all IDs are strings for comparison
@@ -460,4 +541,12 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`))
+
+
+
+
+app.use((err, req, res, next) => {
+  console.error("Unhandled error:", err.stack || err);
+  res.status(500).json({ error: "Something went wrong", details: err.message });
+});
