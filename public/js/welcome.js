@@ -1,3 +1,5 @@
+import { handleLogin } from "../Security/loadPrivatekey.js";
+
  // Register GSAP plugins
     gsap.registerPlugin(ScrollTrigger, MotionPathPlugin);
     const loginForm = document.getElementById('loginForm')
@@ -19,13 +21,15 @@
         });
 
         const result = await response.json();
-
         if (response.ok && result.success) {
             if (result.redirect) {
                  window.location.href = result.redirect; // redirect to pin page
                }else{
             // Login successful - show animation
-            simulateLogin();
+            await handleLogin(result.userId)
+             simulateLogin();
+            
+            
                }
         } else {
             // Handle error (show message to user)
@@ -55,13 +59,16 @@ document.getElementById('pinForm').addEventListener('submit',async function(e){
         });
 
           const result = await response.json();
-          console.log( 'result',result)
+        //   console.log( 'result',result)
 
         if (response.ok && result.success) {
-            console.log('result',result)
-    
+            // console.log('result',result)
+            
             // Login successful - show animation
+            await handleLogin(result.userId)
             simulateLogin();
+            
+
                
         } else {
             // Handle error (show message to user)

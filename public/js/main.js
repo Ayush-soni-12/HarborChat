@@ -11,7 +11,8 @@ import {
 } from "./contactFunction.js";
 import { setupInputHandlers, updateProfileSidebar } from "./uiFunction.js";
 import state from "./state.js";
-import socket from "./socket.js";
+// import socket from "./socket.js";
+import { decryptMessage } from "../Security/decryptMessage.js";
 // import showToast from './footer.js'
 
 // --- GLOBAL STATE ---
@@ -208,9 +209,20 @@ style.textContent = `
 document.head.appendChild(style);
 
 //// --- SOCKET EVENTS ---
-socket.on("chat message", (msg) => {
+socket.on("chat message",async (msg) => {
   const senderId = localStorage.getItem("userId");
   const otherUserId = msg.senderId === senderId ? msg.receiverId : msg.senderId;
+  msg.encryptedMessage = msg.message;
+
+  if (msg.encryptedAESKey && msg.iv && msg.message) {
+  const decrypted = await decryptMessage({
+      encryptedMessage: msg.encryptedMessage,
+      encryptedAESKey: senderId === msg.senderId ? msg.encryptedsenderAESKey : msg.encryptedAESKey,
+      iv: msg.iv,
+    });
+    msg.message = decrypted; // Overwrite plaintext message field
+  }
+
   moveContactToTop(otherUserId);
   updateContactLastMessage(otherUserId, msg.message);
 

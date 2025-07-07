@@ -1,7 +1,8 @@
 import { updateEmptyChatMessage, loadChatMessages } from "./contactFunction.js";
 import { moveContactToTop, showToast } from "./contactFunction.js";
 import state from "./state.js";
-import socket from "./socket.js";
+// import socket from "./socket.js";
+import { sendEncryptedMessage } from "../Security/encryptAeskey.js";
 
 // --- ADD CONTACT FORM SUBMISSION ---
 document
@@ -338,7 +339,7 @@ export async function sendMessage() {
 
   // 1. Send text message
   if (message) {
-    socket.emit("chat message", { senderId, receiverId, message });
+    await sendEncryptedMessage(senderId,receiverId,message);
     moveContactToTop(receiverId);
     input.value = "";
   }

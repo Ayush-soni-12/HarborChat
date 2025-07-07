@@ -7,4 +7,5 @@
     next();
   };
 };
-module.exports = validation;
+export default validation;
+

@@ -1,3 +1,6 @@
+ import { getPrivateKey } from "../Security/keyStorage.js";
+ import { generateAndStoreRSAKeys } from "../Security/generateKey.js";
+
  document.getElementById('signupForm').addEventListener('submit', async function(e) {
             e.preventDefault(); // prevent normal form submission
     const name = document.getElementById('name').value;
@@ -15,11 +18,20 @@
         });
 
         const result = await response.json();
-          console.log(result)
-
         if (response.ok && result.success) {
+             const userId = result.userId;
+
+    // 🔐 Check if private key exists in IndexedDB
+
             // Login successful - show animation
             simulateSignup();
+            
+          const privateKey = await getPrivateKey();
+           if (!privateKey) {
+             // 🔑 Generate RSA key pair and upload public key
+             await generateAndStoreRSAKeys(userId);
+           }
+        //    simulateSignup();
         } else {
           
             // Handle error (show message to user)

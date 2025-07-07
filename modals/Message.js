@@ -1,4 +1,5 @@
-const mongoose = require("mongoose");
+
+import mongoose from "mongoose";
 
 const messageSchema = new mongoose.Schema({
   senderId: {
@@ -19,6 +20,19 @@ const messageSchema = new mongoose.Schema({
     type: String,
     // required: true,
   },
+  encryptedAESKey: {
+    type: String,
+    required: true,
+  },
+  encryptedsenderAESKey:{
+    type :String,
+    required: true,
+  },
+  iv: {
+    type: String,
+    required: true,
+  },
+
   mediaUrls: {
     type: [String], // used for image/audio/multiple image URLs
     default: [],
@@ -45,4 +59,4 @@ messageSchema.index({ senderId: 1, receiverId: 1, timestamp: 1 });
 messageSchema.index({ receiverId: 1, senderId: 1, timestamp: 1 });
 
 
-module.exports = mongoose.model("Message", messageSchema);
+export default mongoose.model("Message", messageSchema);

@@ -1,19 +1,19 @@
-const asyncHandler = require("../middlewares/asyncHandler");
-const Contact = require("../modals/contactModal");
-const User = require("../modals/UserModal");
-const { cloudinary } = require("../ cloudConfig.js"); // fixed import path
-const { sendMail } = require("../Helpers/mailer");
-const Message = require("../modals/Message");
-const client = require("../redisClient.js");
-const streamifier = require("streamifier");
+import asyncHandler from "../middlewares/asyncHandler.js";
+import Contact from "../modals/contactModal.js";
+import User from "../modals/UserModal.js";
+import { cloudinary } from "../ cloudConfig.js"; // fixed import path
+import { sendMail } from "../Helpers/mailer.js";
+import Message from "../modals/Message.js";
+import client from "../redisClient.js";
+import streamifier from "streamifier";
 
-// const generateToken = require("../middlewares/generateToken");
-const jwt = require("jsonwebtoken");
+// const generateToken = require"../middlewares/generateToken";
+import jwt from  "jsonwebtoken";
 
-module.exports.index = asyncHandler(async (req, res) => {
+export const  index = asyncHandler(async (req, res) => {
   return res.render("home.ejs");
 });
-module.exports.chat = asyncHandler(async (req, res) => {
+export const chat = asyncHandler(async (req, res) => {
   try {
     const contacts = await Contact.find({ userId: req.user._id })
       .sort({ messageTime: -1 }) //  Sort latest messageTime first
@@ -43,7 +43,7 @@ module.exports.chat = asyncHandler(async (req, res) => {
     res.render("chatss", { contacts: [] });
   }
 });
-module.exports.contact = asyncHandler(async (req, res) => {
+export const contact = asyncHandler(async (req, res) => {
   try {
     let { name, phone } = req.body;
     console.log(req.body);
@@ -101,7 +101,7 @@ module.exports.contact = asyncHandler(async (req, res) => {
   }
 });
 
-module.exports.setting = asyncHandler(async (req, res) => {
+export const setting = asyncHandler(async (req, res) => {
   if (!req.user) {
     return res.send("User not exist");
   }
@@ -110,13 +110,13 @@ module.exports.setting = asyncHandler(async (req, res) => {
   return res.render("setting.ejs", { userDetail });
 });
 
-module.exports.Status = asyncHandler(async (req, res) => {
+export const Status = asyncHandler(async (req, res) => {
   return res.render("status.ejs");
 });
-module.exports.profile = asyncHandler(async (req, res) => {
+export const profile = asyncHandler(async (req, res) => {
   return res.render("profile.ejs");
 });
-module.exports.updateProfile = asyncHandler(async (req, res) => {
+export const updateProfile = asyncHandler(async (req, res) => {
   const { name, about } = req.body;
   const data = { name, about };
   const user_id = req.user._id;
@@ -151,7 +151,7 @@ module.exports.updateProfile = asyncHandler(async (req, res) => {
   return res.redirect("/chat/setting");
 });
 
-module.exports.updateEmail = asyncHandler(async (req, res) => {
+export const updateEmail = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
   const userExist = await User.findOne({ email });
@@ -182,7 +182,7 @@ module.exports.updateEmail = asyncHandler(async (req, res) => {
   return res.redirect("/chat/setting");
 });
 
-module.exports.verifyEmailChange = asyncHandler(async (req, res) => {
+export const verifyEmailChange = asyncHandler(async (req, res) => {
   const { token } = req.query;
 
   try {
@@ -206,12 +206,12 @@ module.exports.verifyEmailChange = asyncHandler(async (req, res) => {
   }
 });
 
-module.exports.me = asyncHandler(async (req, res) => {
+export const me = asyncHandler(async (req, res) => {
   const user = req.user;
   console.log(req.user);
   return res.json({ user });
 });
-module.exports.personalChat = asyncHandler(async (req, res) => {
+export const personalChat = asyncHandler(async (req, res) => {
   try {
     const senderId = req.user._id.toString(); // from JWT
     const receiverId = req.params.receiverId;
@@ -257,7 +257,7 @@ module.exports.personalChat = asyncHandler(async (req, res) => {
   }
 });
 
-module.exports.searchContact = asyncHandler(async (req, res) => {
+export const searchContact = asyncHandler(async (req, res) => {
   const userId = req.user._id; // from JWT middleware
   const query = req.query.query?.trim();
   console.log("query", query);
@@ -282,7 +282,7 @@ module.exports.searchContact = asyncHandler(async (req, res) => {
   return res.json(contacts);
 });
 
-module.exports.audioMessage = asyncHandler(async (req, res) => {
+export const audioMessage = asyncHandler(async (req, res) => {
   try {
     const { senderId, receiverId } = req.body;
 

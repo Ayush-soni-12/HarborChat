@@ -1,12 +1,12 @@
-const express = require('express');
+import  express from "express";
 const router = express.Router();
-const {index,chat,contact,setting,Status,profile,updateProfile,updateEmail,me,personalChat,searchContact,audioMessage} = require("../controllers/homeController");
-const validToken= require('../middlewares/verifytoken');
-const {verifyemail, newContactSchema }= require("../validations/authValidation.js")
-const validation = require("../middlewares/validate");
-const multer =  require("multer");
-const {cloudinary} = require("../ cloudConfig.js");
-const { storage } = require("../ cloudConfig.js");
+import  {index,chat,contact,setting,Status,profile,updateProfile,updateEmail,me,personalChat,searchContact,audioMessage} from "../controllers/homeController.js";
+import  validToken from '../middlewares/verifytoken.js';
+import  {verifyemail, newContactSchema }from "../validations/authValidation.js"
+import  validation from "../middlewares/validate.js";
+import  multer from  "multer";
+import  {cloudinary} from "../ cloudConfig.js";
+import  { storage } from "../ cloudConfig.js";
 const multerUpload = multer({ storage });
 // const upload = multer();
 function setUserFolder(req, res, next) {
@@ -37,4 +37,4 @@ router.get("/api/contacts/search",validToken,searchContact)
 router.post('/upload-audio',validToken,setaudioFolder,multerUpload.single('audio'),audioMessage)
 
 
-module.exports= router
+export default router

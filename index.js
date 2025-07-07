@@ -1,25 +1,31 @@
 if (process.env.NODE_ENV !== "production") {
-  require("dotenv").config();
+  const dotenv = await import("dotenv");
+  dotenv.config();
 }
 
-const express = require("express");
-const app = express();
-const mongoose = require("mongoose");
-const path = require("path");
-const cookieParser = require("cookie-parser");
-const methodOverride = require("method-override");
-const setCurrentUser = require("./middlewares/setCurrentuser");
-const User = require("./modals/UserModal");
-const Contact = require("./modals/contactModal");
-const socketIO = require("socket.io");
-const Message = require("./modals/Message");
-const http = require("http");
-const authRoutes = require("./routes/auth");
-const homeRoute = require("./routes/home");
-const client = require("./redisClient.js");
-const { cloudinary } = require("./ cloudConfig.js");
-const { createAdapter } = require("@socket.io/redis-adapter");
-const { createClient } = require("redis");
+import express from "express";
+const app = express(); 
+import mongoose from "mongoose";
+import path from "path";
+import cookieParser from "cookie-parser";
+import methodOverride from "method-override";
+import setCurrentUser from "./middlewares/setCurrentuser.js";
+import User from "./modals/UserModal.js";
+import Contact from "./modals/contactModal.js";
+import { Server } from "socket.io";
+import Message from "./modals/Message.js";
+import http from "http";
+import authRoutes from "./routes/auth.js";
+import homeRoute from "./routes/home.js";
+import client from "./redisClient.js";
+import { cloudinary } from "./ cloudConfig.js";
+import { createAdapter } from "@socket.io/redis-adapter";
+import { createClient } from "redis";
+import { fileURLToPath } from "url";
+
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function main() {
   await mongoose.connect("mongodb://localhost:27017/harborchat");
@@ -38,11 +44,11 @@ app.set("view engine", "ejs");
 app.use(setCurrentUser);
 
 const server = http.createServer(app);
+const io = new Server(server);
 
 app.use("/auth", authRoutes);
 app.use("/", homeRoute);
 
-const io = socketIO(server);
 const pubClient = createClient({
   url: "redis://default:myStrongRedisPass123@localhost:6379",
 });
@@ -109,8 +115,8 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("chat message", async ({ senderId, receiverId, message }) => {
-    console.log("📨 Message received:", { senderId, receiverId, message });
+  socket.on("chat message", async ({ senderId, receiverId, encryptedMessage, encryptedAESKey,encryptedsenderAESKey,iv,messageId }) => {
+    console.log("📨 Message received:", { senderId, receiverId, encryptedMessage });
     console.log(`📤 Sending message from ${senderId} to ${receiverId}`);
 
     // Debug: show which rooms this socket is in
@@ -138,7 +144,7 @@ io.on("connection", (socket) => {
         const sender = await User.findById(senderId).select("name");
         io.to(socketId).emit("notify-new-message", {
           from: sender.name,
-          message: message,
+          message: "🔐 Encrypted message",
           type: "text",
         });
       }
@@ -161,14 +167,14 @@ io.on("connection", (socket) => {
     // );
     //    console.log(senderPhone)
     // Save message to MongoDB with status 'sent'
-    const savedMessage = await Message.create({
-      senderId,
-      receiverId,
-      message,
-      senderPhone,
-      type: "text",
-      status: "sent",
-    });
+    // const savedMessage = await Message.create({
+    //   senderId,
+    //   receiverId,
+    //   message,
+    //   senderPhone,
+    //   type: "text",
+    //   status: "sent",
+    // });
 
     // // --- Update lastMessage for both sender and receiver contacts ---
     // await Contact.updateOne(
@@ -181,7 +187,22 @@ io.on("connection", (socket) => {
     // );
 
     // Convert to plain object for cache and emit
-    const savedMessageObj = savedMessage.toObject();
+    // const savedMessageObj = savedMessage.toObject();
+
+    const saveMessage = {
+    _id: messageId,
+    senderId,
+    receiverId,
+    message: encryptedMessage,
+    encryptedAESKey,
+    encryptedsenderAESKey,
+    iv,
+    type : "text",
+    status: "sent",
+    senderPhone,
+    timestamp: new Date()
+  };
+
 
     await Contact.updateOne(
       { userId: senderId, contactId: receiverId },
@@ -199,7 +220,7 @@ io.on("connection", (socket) => {
     let cached = await client.get(cacheKey);
     let messages = cached ? JSON.parse(cached) : [];
 
-    messages.push(savedMessageObj);
+    messages.push(saveMessage);
 
     // 5. Keep only latest 30 messages
     if (messages.length > 30) {
@@ -209,21 +230,21 @@ io.on("connection", (socket) => {
     await client.set(cacheKey, JSON.stringify(messages), { EX: 300 });
 
     // Emit the message to the sender (with 'sent' status)
-    io.to(senderId).emit("chat message", savedMessageObj);
+    io.to(senderId).emit("chat message", saveMessage);
 
     // Emit the message to the receiver (with 'delivered' status)
     const deliveredMessage = {
-      ...savedMessageObj,
+      ...saveMessage,
       status: "delivered",
     };
     io.to(receiverId).emit("chat message", deliveredMessage);
     // Removed duplicate notification emit here
     // Update status in DB to 'delivered' when delivered to receiver
-    await Message.findByIdAndUpdate(savedMessage._id, { status: "delivered" });
+    await Message.findByIdAndUpdate(messageId, { status: "delivered" });
 
     // Update status in Redis cache to 'delivered' for this message
     let updatedMessages = messages.map((msg) => {
-      if (msg._id && msg._id.toString() === savedMessage._id.toString()) {
+      if (msg._id && msg._id.toString() === messageId.toString()) {
         return { ...msg, status: "delivered" };
       }
       return msg;
@@ -231,7 +252,7 @@ io.on("connection", (socket) => {
     await client.set(cacheKey, JSON.stringify(updatedMessages), { EX: 300 });
 
     // Emit 'message-delivered' to sender for real-time double tick
-    io.to(senderId).emit("message-delivered", { messageId: savedMessage._id });
+    io.to(senderId).emit("message-delivered", { messageId });
   });
 
   socket.on(

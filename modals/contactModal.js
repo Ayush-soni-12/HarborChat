@@ -1,5 +1,5 @@
 // models/Contact.js
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const contactSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
@@ -18,5 +18,5 @@ contactSchema.index({ userId: 1, phone: 1 },{unique:true});
 contactSchema.index({ userId: 1, contactId: 1 }, { unique: true });
 contactSchema.index({ userId: 1, messageTime: -1 });
 
-module.exports = mongoose.model("Contact", contactSchema);
+export default mongoose.model("Contact", contactSchema);
 

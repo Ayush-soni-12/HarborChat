@@ -1,13 +1,17 @@
-const asyncHandler = require("../middlewares/asyncHandler");
-const generateToken = require("../middlewares/generateToken");
-const User= require("../modals/UserModal")
-const bcrypt = require('bcrypt');
-const admin = require("../firebaseAdmin/firebaseInit")
-const  {parsePhoneNumber}  = require('libphonenumber-js');
+import asyncHandler  from "../middlewares/asyncHandler.js";
+import generateToken  from "../middlewares/generateToken.js";
+import User from "../modals/UserModal.js"
+import UserKey  from "../modals/UserKey.js"
+import Message from "../modals/Message.js";
+import bcrypt  from 'bcrypt';
+import admin  from "../firebaseAdmin/firebaseInit.js"
+import  {parsePhoneNumber}   from 'libphonenumber-js';
+import mongoose  from "mongoose";
 
 
 
-module.exports.firebaseAuth = asyncHandler(async(req ,res)=>{
+
+export const firebaseAuth = asyncHandler(async(req ,res)=>{
       console.log("Incoming token:", req.body.token);
       const { token } = req.body;
 
@@ -36,7 +40,8 @@ module.exports.firebaseAuth = asyncHandler(async(req ,res)=>{
     }else{
 
     generateToken(res, user._id);
-   return res.status(200).json({ message: "Authenticated", user });
+    // handleLogin(user._id);
+   return res.status(200).json({success:true, message: "Authenticated", userId:user._id });
 
     }
 
@@ -46,7 +51,7 @@ module.exports.firebaseAuth = asyncHandler(async(req ,res)=>{
     res.status(401).send({ err: "Invalid Firebase Token" });
   }
 })
-module.exports.login = asyncHandler(async(req,res)=>{
+export const login = asyncHandler(async(req,res)=>{
      if (req.cookies.jwt) {
         return res.json({ success: false, message: "Already logged in" });
     }
@@ -61,13 +66,13 @@ res.render('logins', {
   }
 });
 })
-module.exports.signup = asyncHandler(async(req,res)=>{
+export const signup = asyncHandler(async(req,res)=>{
      if (req.cookies.jwt) {
         return res.json({ success: false, message: "Already signup " });
     }
   return res.render('signup');
 })
-module.exports.registerUser = asyncHandler(async(req,res)=>{
+export const registerUser = asyncHandler(async(req,res)=>{
      if (req.cookies.jwt) {
         return res.json({ success: false, message: "Already logged in" });
     }
@@ -109,12 +114,13 @@ const newUser = new User({
   await newUser.save();
 console.log("user created Successfully");
 generateToken(res,newUser._id);
-        return res.json({ success: true, message: "User login successfully" });
+// generateAndStoreRSAKeys(newUser._id);
+   return res.json({ success: true, message: "User register successfully",userId: newUser._id});
 
 })
 
 
-module.exports.logoutUser = asyncHandler(async(req,res)=>{
+export const logoutUser = asyncHandler(async(req,res)=>{
   res.clearCookie("jwt",{
     httpOnly:true,
     secure:false,
@@ -125,7 +131,7 @@ module.exports.logoutUser = asyncHandler(async(req,res)=>{
 })
 
 
-module.exports.loginwithPassword =asyncHandler(async(req,res)=>{
+export const loginwithPassword =asyncHandler(async(req,res)=>{
      if (req.cookies.jwt) {
         return res.json({ success: false, message: "Already logged in" });
     }
@@ -134,7 +140,7 @@ return res.render("welcome.ejs");
 })
 
 
-module.exports.loginConfirm = asyncHandler(async (req, res) => {
+export const loginConfirm = asyncHandler(async (req, res) => {
     if (req.cookies.jwt) {
         return res.json({ success: false, message: "Already logged in" });
     }
@@ -166,7 +172,8 @@ module.exports.loginConfirm = asyncHandler(async (req, res) => {
 
    else{
      generateToken(res,user._id)
-     return res.json({ success: true, message: "Login successful" });
+    //  handleLogin(user._id)
+     return res.json({ success: true, message: "Login successful",userId: user._id });
 
    } 
 
@@ -174,7 +181,7 @@ module.exports.loginConfirm = asyncHandler(async (req, res) => {
 
 });
 
-module.exports.changePassword = asyncHandler(async(req,res)=>{
+export const changePassword = asyncHandler(async(req,res)=>{
   const {currentPassword,newPassword,confirmPassword} = req.body;
   console.log(req.body)
   if(!currentPassword || !newPassword || !confirmPassword){
@@ -206,14 +213,14 @@ module.exports.changePassword = asyncHandler(async(req,res)=>{
 
 
 })
-module.exports.pinform = asyncHandler(async(req,res)=>{
+export const pinform = asyncHandler(async(req,res)=>{
      if (req.cookies.jwt) {
         return res.json({ success: false, message: "Already logged in" });
     }
   return res.render("pin.ejs")
 })
 
-module.exports.pinCreate = asyncHandler(async(req,res)=>{
+export const pinCreate = asyncHandler(async(req,res)=>{
      let {pin,isPin} = req.body
      if(!pin){
        pin = null;
@@ -229,7 +236,7 @@ module.exports.pinCreate = asyncHandler(async(req,res)=>{
      await userDetail.save()
      return res.send("Pin Created")
 })
-module.exports.pinVerify = asyncHandler(async(req,res)=>{
+export const pinVerify = asyncHandler(async(req,res)=>{
    if (req.cookies.jwt) {
     return res.json({ success: false, message: "Already logged in" });
     }
@@ -246,14 +253,100 @@ module.exports.pinVerify = asyncHandler(async(req,res)=>{
    res.clearCookie("tempUser");
 
   generateToken(res,user._id)
-   return res.json({ success: true, message: "Login successful" });
+  // handleLogin(user._id);
+   return res.json({ success: true, message: "Login successful",userId:user._id });
 })
 
 
-module.exports.deleteAccount = asyncHandler(async(req,res)=>{
+export const savePublicKey = asyncHandler(async(req,res)=>{
+    try {
+    const { userId, publicKey } = req.body;
+
+    if (!userId || !publicKey) {
+      return res.status(400).json({ error: "Missing userId or publicKey" });
+    }
+
+    // ✅ Safely cast string to ObjectId
+    const objectUserId = new mongoose.Types.ObjectId(String(userId));
+
+    const result = await UserKey.findOneAndUpdate(
+      { userId: objectUserId },
+      { publicKey },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    console.log("✅ Public key saved for user:", objectUserId);
+    res.status(200).json({ message: "Public key saved." });
+  } catch (err) {
+    console.error("❌ Error saving public key:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+})
+
+export const fetchPublicKey = asyncHandler(async(req,res)=>{
+    try {
+    const userId = req.params.id;
+    const userKey = await UserKey.findOne({ userId });
+    if (!userKey) return res.status(404).json({ error: "Public key not found" });
+
+    res.status(200).json({ publicKey: userKey.publicKey });
+  } catch (err) {
+    console.error("Error fetching public key:", err);
+    res.status(500).json({ error: "Internal error" });
+  }
+})
+
+export const sendEncryptData = asyncHandler(async(req,res)=>{
+   try {
+    const {
+      senderId,
+      receiverId,
+      encryptedMessage,
+      encryptedAESKey,
+      encryptedsenderAESKey,
+      iv,
+      type = "text", // fallback
+    } = req.body;
+
+    const sender = await User.findById(req.user._id).select("phoneNo");
+    //    console.log(sender)
+    const senderPhone = sender ? sender.phoneNo : "";
+
+    // 🔁 Convert Uint8Array to base64 (for clean storage)
+    const base64EncryptedMessage = Buffer.from(encryptedMessage).toString("base64");
+    const base64EncryptedAESKey = Buffer.from(encryptedAESKey).toString("base64");
+    const base64EncryptedsenderAESKey = Buffer.from(encryptedsenderAESKey).toString("base64");
+    const base64IV = Buffer.from(iv).toString("base64");
+
+    // 📝 Save encrypted message
+    const newMessage = new Message({
+      senderId,
+      receiverId,
+      message: base64EncryptedMessage,
+      encryptedAESKey: base64EncryptedAESKey,
+      encryptedsenderAESKey:base64EncryptedsenderAESKey,
+      iv: base64IV,
+      type,
+      senderPhone,
+      timestamp: new Date(),
+    });
+
+    await newMessage.save();
+
+    res.status(201).json({ message: "Encrypted message saved successfully", messageId: newMessage._id.toString() });
+  } catch (err) {
+    console.error("❌ Error saving encrypted message:", err);
+    res.status(500).json({ error: "Failed to save encrypted message" });
+  }
+})
+
+
+
+export const deleteAccount = asyncHandler(async(req,res)=>{
   console.log(req.user)
   const deletedUser = await User.findByIdAndDelete(req.user._id)  
   console.log(deletedUser)
+     console.log("🧼 Private key deleted. Re-generate on next login.");
   // return res.json({ success: true, message: "User deleted successfully" });
   res.clearCookie("jwt");
   return res.json({ success: true, message: "User deleted", redirect: "/" });

@@ -1,6 +1,6 @@
-const Joi = require('joi');
+import Joi from "joi";
 
-exports.registerSchema = Joi.object({
+export const registerSchema = Joi.object({
   name: Joi.string()
     .min(3)
     .max(30)
@@ -39,7 +39,7 @@ phoneNo: Joi.string()
     
 });
 
-exports.loginSchema = Joi.object({
+export const loginSchema = Joi.object({
   email: Joi.string().email()
     .required()
     .messages({
@@ -53,7 +53,7 @@ exports.loginSchema = Joi.object({
     })
 });
 
-exports.newContactSchema = Joi.object({
+export const newContactSchema = Joi.object({
 
 
     name: Joi.string().required().messages({
@@ -69,12 +69,12 @@ phone: Joi.string()
   })
 
 });
-exports.verifyemail = Joi.object({
+export const verifyemail = Joi.object({
     email: Joi.string().email().required().messages({
         'string.empty': 'Email is required'
     }),
 })
-exports.passwordChange = Joi.object({
+export const passwordChange = Joi.object({
    currentPassword: Joi.string()
     .pattern(
       new RegExp(
@@ -114,7 +114,7 @@ exports.passwordChange = Joi.object({
 })
 
 
-exports.pinSchema = Joi.object({
+export const pinSchema = Joi.object({
   pin: Joi.alternatives().try(
     Joi.string().pattern(/^\d{6}$/).messages({
       'string.pattern.base': 'PIN must be exactly 6 digits',

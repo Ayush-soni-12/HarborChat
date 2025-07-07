@@ -1,5 +1,5 @@
 import {sendMessage} from './footer.js'
-import socket from './socket.js';
+// import socket from './socket.js';
 
 export function updateProfileSidebar(name, avatar, phone, about) {
     document.querySelector('.nav-name').textContent = name;

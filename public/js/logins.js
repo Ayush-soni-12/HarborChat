@@ -4,6 +4,7 @@
                 RecaptchaVerifier,
                 signInWithPhoneNumber,
             } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-auth.js";
+import { handleLogin } from "../Security/loadPrivatekey.js";
 
             // Your Firebase configuration
         const firebaseConfig = window.firebaseConfig;
@@ -133,8 +134,12 @@
 
                     const data = await response.json()
 
+
                     if (response.ok) {
                         showStatus("Login successful! Redirecting...");
+                        if(data.success){
+                        await handleLogin(data.userId)
+                        }
                 if (data.redirect) {
                        window.location.href = data.redirect; // redirect to pin page
                    }

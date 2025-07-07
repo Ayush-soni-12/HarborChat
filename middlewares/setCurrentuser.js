@@ -1,5 +1,5 @@
-const jwt = require("jsonwebtoken");
-const User = require("../modals/UserModal");
+import jwt from "jsonwebtoken";
+import User from "../modals/UserModal.js";
 
 const setCurrentUser = async (req, res, next) => {
      let token = req.cookies.jwt;
@@ -29,4 +29,4 @@ const setCurrentUser = async (req, res, next) => {
   next();
 };
 
-module.exports = setCurrentUser;
+ export default  setCurrentUser;

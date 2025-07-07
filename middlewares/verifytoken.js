@@ -1,9 +1,9 @@
-const jwt = require("jsonwebtoken");
-const asyncHandler = require("../middlewares/asyncHandler.js");
-const User = require("../modals/UserModal.js")
+import jwt from "jsonwebtoken";
+import asyncHandler from "../middlewares/asyncHandler.js" ;
+import User from "../modals/UserModal.js"
 
 
-const validToken = asyncHandler(async (req, res, next) => {
+  const validToken = asyncHandler(async (req, res, next) => {
     let token = req.cookies.jwt;
 
     // Check for token in Authorization header if not in cookies
@@ -49,5 +49,5 @@ const validToken = asyncHandler(async (req, res, next) => {
     }
 });
 
+export default validToken
 
-module.exports = validToken;

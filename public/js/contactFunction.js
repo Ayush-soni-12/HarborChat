@@ -1,5 +1,6 @@
 import state from "./state.js";
-import socket from "./socket.js";
+import { decryptMessage } from "../Security/decryptMessage.js";
+// import socket from "./socket.js";
 
 export function updateUnreadBadge(userId, count) {
   const contactItem = document.querySelector(
@@ -93,9 +94,23 @@ export async function loadChatMessages(append = false) {
       });
     }
     // Render messages
-    data.messages.forEach((msg) => {
+    for (const msg of data.messages) {
+    // data.messages.forEach((msg) => {
       const messageDiv = document.createElement("div");
       const isSent = msg.senderId === senderId;
+    if (msg.encryptedsenderAESKey && msg.encryptedAESKey && msg.iv && msg.message) {
+    try {
+      const decrypted = await decryptMessage({
+        encryptedMessage: msg.message,
+        encryptedAESKey: isSent ? msg.encryptedsenderAESKey : msg.encryptedAESKey,
+        iv: msg.iv,
+      });
+      msg.message = decrypted;
+    } catch (err) {
+      console.warn("⚠️ Failed to decrypt message", err);
+      msg.message = "[Decryption failed]";
+    }
+  }
       messageDiv.className = `message ${isSent ? "sent" : "received"}`;
       let tickHtml = "";
       if (isSent) {
@@ -153,7 +168,7 @@ export async function loadChatMessages(append = false) {
           messagesContainer.firstChild
         );
       else messagesContainer.appendChild(messageDiv);
-    });
+      }// });
     if (!append) messagesContainer.scrollTop = messagesContainer.scrollHeight;
     else
       messagesContainer.scrollTop =
