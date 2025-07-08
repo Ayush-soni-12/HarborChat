@@ -11,23 +11,16 @@ function base64ToUint8Array(base64) {
   return bytes;
 }
 
-export async function decryptMessage({ encryptedMessage, encryptedAESKey, iv }) {
+export async function decryptMessage({
+  encryptedMessage,
+  encryptedAESKey,
+  iv,
+}) {
   try {
     const privateKey = await loadPrivateKey();
-
-    console.log("🔐 Trying to decrypt message:");
-console.log("AES Key (base64):", encryptedAESKey);
-console.log("IV (base64):", iv);
-console.log("Encrypted message (base64):", encryptedMessage);
-
     const aesKeyBuffer = base64ToUint8Array(encryptedAESKey);
     const ivBuffer = base64ToUint8Array(iv);
     const encryptedMessageBuffer = base64ToUint8Array(encryptedMessage);
-
-    console.log("AES Key Length:", aesKeyBuffer.length);
-console.log("IV Length:", ivBuffer.length);
-console.log("Encrypted Message Length:", encryptedMessageBuffer.length);
-
     const rawAESKey = await window.crypto.subtle.decrypt(
       { name: "RSA-OAEP" },
       privateKey,

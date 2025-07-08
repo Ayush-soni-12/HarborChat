@@ -20,14 +20,15 @@ const messageSchema = new mongoose.Schema({
     type: String,
     // required: true,
   },
-  encryptedAESKey: {
-    type: String,
-    required: true,
-  },
-  encryptedsenderAESKey:{
-    type :String,
-    required: true,
-  },
+encryptedKeys: {
+  type: [
+    {
+      deviceId: { type: String, required: true },
+      encryptedAESKey: { type: String, required: true }, // base64
+    },
+  ],
+  default: [],
+},
   iv: {
     type: String,
     required: true,

@@ -260,20 +260,20 @@ export const pinVerify = asyncHandler(async(req,res)=>{
 
 export const savePublicKey = asyncHandler(async(req,res)=>{
     try {
-    const { userId, publicKey } = req.body;
+    const { userId, publicKey ,deviceId} = req.body;
 
-    if (!userId || !publicKey) {
-      return res.status(400).json({ error: "Missing userId or publicKey" });
+    if (!userId || !publicKey || !deviceId) {
+      return res.status(400).json({ error: "Missing userId or publicKey or deviceId" });
     }
 
     // ✅ Safely cast string to ObjectId
     const objectUserId = new mongoose.Types.ObjectId(String(userId));
 
-    const result = await UserKey.findOneAndUpdate(
-      { userId: objectUserId },
-      { publicKey },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+const result = await UserKey.findOneAndUpdate(
+  { userId: objectUserId, deviceId }, // <- filter includes deviceId
+  { publicKey, userId: objectUserId, deviceId }, // <- update data
+  { upsert: true, new: true, setDefaultsOnInsert: true } // <- options
+);
 
     console.log("✅ Public key saved for user:", objectUserId);
     res.status(200).json({ message: "Public key saved." });
@@ -283,18 +283,28 @@ export const savePublicKey = asyncHandler(async(req,res)=>{
   }
 })
 
-export const fetchPublicKey = asyncHandler(async(req,res)=>{
-    try {
+export const fetchPublicKeys = asyncHandler(async (req, res) => {
+  try {
     const userId = req.params.id;
-    const userKey = await UserKey.findOne({ userId });
-    if (!userKey) return res.status(404).json({ error: "Public key not found" });
 
-    res.status(200).json({ publicKey: userKey.publicKey });
+    const userKeys = await UserKey.find({ userId });
+
+    if (!userKeys || userKeys.length === 0) {
+      return res.status(404).json({ error: "No public keys found for this user" });
+    }
+
+    const keys = userKeys.map(key => ({
+      deviceId: key.deviceId,
+      publicKey: key.publicKey, // base64 or JWK string
+    }));
+
+    res.status(200).json({ keys });
   } catch (err) {
-    console.error("Error fetching public key:", err);
-    res.status(500).json({ error: "Internal error" });
+    console.error("❌ Error fetching public keys:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
-})
+});
+
 
 export const sendEncryptData = asyncHandler(async(req,res)=>{
    try {
@@ -302,30 +312,28 @@ export const sendEncryptData = asyncHandler(async(req,res)=>{
       senderId,
       receiverId,
       encryptedMessage,
-      encryptedAESKey,
-      encryptedsenderAESKey,
+       encryptedKeys, 
       iv,
       type = "text", // fallback
     } = req.body;
+
+      if (!senderId || !receiverId || !encryptedMessage || !iv || !Array.isArray(encryptedKeys)) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
 
     const sender = await User.findById(req.user._id).select("phoneNo");
     //    console.log(sender)
     const senderPhone = sender ? sender.phoneNo : "";
 
     // 🔁 Convert Uint8Array to base64 (for clean storage)
-    const base64EncryptedMessage = Buffer.from(encryptedMessage).toString("base64");
-    const base64EncryptedAESKey = Buffer.from(encryptedAESKey).toString("base64");
-    const base64EncryptedsenderAESKey = Buffer.from(encryptedsenderAESKey).toString("base64");
-    const base64IV = Buffer.from(iv).toString("base64");
 
     // 📝 Save encrypted message
     const newMessage = new Message({
       senderId,
       receiverId,
-      message: base64EncryptedMessage,
-      encryptedAESKey: base64EncryptedAESKey,
-      encryptedsenderAESKey:base64EncryptedsenderAESKey,
-      iv: base64IV,
+      message: encryptedMessage,
+      encryptedKeys,
+      iv,
       type,
       senderPhone,
       timestamp: new Date(),

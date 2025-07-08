@@ -6,5 +6,5 @@ export async function getPublicKeyFromServer(userId) {
     throw new Error("Could not fetch public key from server");
   }
   const data = await res.json();
-  return data.publicKey; // base64-encoded
+  return data.keys; // base64-encoded
 }

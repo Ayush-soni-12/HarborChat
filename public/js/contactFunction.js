@@ -94,18 +94,28 @@ export async function loadChatMessages(append = false) {
       });
     }
     // Render messages
+
+
     for (const msg of data.messages) {
     // data.messages.forEach((msg) => {
       const messageDiv = document.createElement("div");
       const isSent = msg.senderId === senderId;
-    if (msg.encryptedsenderAESKey && msg.encryptedAESKey && msg.iv && msg.message) {
+ if (msg.encryptedKeys && msg.iv && msg.message) {
     try {
-      const decrypted = await decryptMessage({
-        encryptedMessage: msg.message,
-        encryptedAESKey: isSent ? msg.encryptedsenderAESKey : msg.encryptedAESKey,
-        iv: msg.iv,
-      });
-      msg.message = decrypted;
+      const deviceId = localStorage.getItem("deviceId");
+      const keyObj = msg.encryptedKeys.find(k => k.deviceId === deviceId);
+
+      if (keyObj) {
+        const decrypted = await decryptMessage({
+          encryptedMessage: msg.message, // base64
+          encryptedAESKey: keyObj.encryptedAESKey, // base64
+          iv: msg.iv, // base64
+        });
+
+        msg.message = decrypted;
+      } else {
+        msg.message = "[No key for this device]";
+      }
     } catch (err) {
       console.warn("⚠️ Failed to decrypt message", err);
       msg.message = "[Decryption failed]";

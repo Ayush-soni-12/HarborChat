@@ -20,12 +20,21 @@ export async function generateAndStoreRSAKeys(userId) {
   const jwkPrivateKey = await crypto.subtle.exportKey("jwk", keyPair.privateKey);
   await storePrivateKey(jwkPrivateKey);
 
+  let deviceId = localStorage.getItem("deviceId");
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    localStorage.setItem("deviceId", deviceId);
+    console.log("🆕 Generated new deviceId:", deviceId);
+  } else {
+    console.log("📱 Existing deviceId:", deviceId);
+  }
+
   // Upload public key to server
 try {
   const res = await fetch("/auth/savePublicKey", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId, publicKey: publicKeyBase64 }),
+    body: JSON.stringify({ userId,deviceId, publicKey: publicKeyBase64 }),
   });
 
   if (!res.ok) {

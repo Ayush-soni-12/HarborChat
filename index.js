@@ -115,9 +115,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("chat message", async ({ senderId, receiverId, encryptedMessage, encryptedAESKey,encryptedsenderAESKey,iv,messageId }) => {
-    console.log("📨 Message received:", { senderId, receiverId, encryptedMessage });
-    console.log(`📤 Sending message from ${senderId} to ${receiverId}`);
+  socket.on("chat message", async ({ senderId, receiverId,encryptedMessage , encryptedKeys,iv,messageId }) => {
 
     // Debug: show which rooms this socket is in
     console.log("🔍 Socket Rooms:", socket.rooms);
@@ -155,47 +153,12 @@ io.on("connection", (socket) => {
         { $set: { unreadCount: 0 } }
       );
     }
-
-    //   await Contact.findOneAndUpdate(
-    //   { userId: senderId, contactId: receiverId },
-    //   {
-    //     name: receiverName, // or "Unknown"
-    //     phone: receiverPhone,
-    //     messageTime: now,
-    //   },
-    //   { upsert: true, new: true }
-    // );
-    //    console.log(senderPhone)
-    // Save message to MongoDB with status 'sent'
-    // const savedMessage = await Message.create({
-    //   senderId,
-    //   receiverId,
-    //   message,
-    //   senderPhone,
-    //   type: "text",
-    //   status: "sent",
-    // });
-
-    // // --- Update lastMessage for both sender and receiver contacts ---
-    // await Contact.updateOne(
-    //   { userId: senderId, contactId: receiverId },
-    //   { $set: { lastMessage: message } }
-    // );
-    // await Contact.updateOne(
-    //   { userId: receiverId, contactId: senderId },
-    //   { $set: { lastMessage: message } }
-    // );
-
-    // Convert to plain object for cache and emit
-    // const savedMessageObj = savedMessage.toObject();
-
     const saveMessage = {
     _id: messageId,
     senderId,
     receiverId,
     message: encryptedMessage,
-    encryptedAESKey,
-    encryptedsenderAESKey,
+    encryptedKeys,
     iv,
     type : "text",
     status: "sent",

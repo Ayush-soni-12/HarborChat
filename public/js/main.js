@@ -211,16 +211,25 @@ document.head.appendChild(style);
 //// --- SOCKET EVENTS ---
 socket.on("chat message",async (msg) => {
   const senderId = localStorage.getItem("userId");
+  const deviceId = localStorage.getItem("deviceId");
   const otherUserId = msg.senderId === senderId ? msg.receiverId : msg.senderId;
   msg.encryptedMessage = msg.message;
+  const encryptedKeyObj = msg.encryptedKeys?.find(k => k.deviceId === deviceId);
+if (encryptedKeyObj && msg.iv && msg.encryptedMessage) {
+    try {
+      const decrypted = await decryptMessage({
+        encryptedMessage: msg.encryptedMessage,
+        encryptedAESKey: encryptedKeyObj.encryptedAESKey, // base64 string
+        iv: msg.iv,
+      });
 
-  if (msg.encryptedAESKey && msg.iv && msg.message) {
-  const decrypted = await decryptMessage({
-      encryptedMessage: msg.encryptedMessage,
-      encryptedAESKey: senderId === msg.senderId ? msg.encryptedsenderAESKey : msg.encryptedAESKey,
-      iv: msg.iv,
-    });
-    msg.message = decrypted; // Overwrite plaintext message field
+      msg.message = decrypted; // Replace encrypted text with decrypted text
+    } catch (err) {
+      console.error("🔐 Failed to decrypt message:", err);
+      msg.message = "[Decryption Failed]";
+    }
+  } else {
+    msg.message = "[No valid key for this device]";
   }
 
   moveContactToTop(otherUserId);
@@ -364,6 +373,7 @@ socket.on("chat message",async (msg) => {
 
 // Listen for message-delivered event to update tick to double tick in real time
 socket.on("message-delivered", ({ messageId }) => {
+    console.log("✅ Message delivered for ID:", messageId);
   const messagesContainer = document.getElementById("messagesContainer");
   if (!messagesContainer) return;
   const msgDiv = messagesContainer.querySelector(
