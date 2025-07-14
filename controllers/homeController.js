@@ -216,46 +216,70 @@ export const personalChat = asyncHandler(async (req, res) => {
     const senderId = req.user._id.toString(); // from JWT
     const receiverId = req.params.receiverId;
 
-    const ids = [senderId, receiverId].sort(); // consistent cache key
-    const cacheKey = `chat:${ids[0]}:${ids[1]}`;
+    const ids = [senderId, receiverId].sort();
+    const baseKey = `chat:${ids[0]}:${ids[1]}`;
 
     const { skip = 0, limit = 30 } = req.query;
 
-    // ✅ 1. Check Redis cache
+    // 🔑 Redis keys
+    const normalKey = `${baseKey}:normal`;
+    const secretKey = `${baseKey}:secret`;
+
+    let messages = [];
+
+    // ✅ 1. If first page, try Redis cache
     if (Number(skip) === 0) {
-      const cached = await client.get(cacheKey);
-      if (cached) {
+      const [normalCached, secretCached] = await Promise.all([
+        client.get(normalKey),
+        client.get(secretKey),
+      ]);
+
+      if (normalCached || secretCached) {
         console.log("✅ Redis cache hit");
-        return res.json({ messages: JSON.parse(cached) });
+
+        const normalMessages = normalCached ? JSON.parse(normalCached) : [];
+        const secretMessages = secretCached ? JSON.parse(secretCached) : [];
+
+        // Merge both and sort by timestamp (oldest to newest)
+        messages = [...normalMessages, ...secretMessages].sort(
+          (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+        );
+
+        return res.json({ messages });
       }
     }
 
     // ❌ 2. Redis miss → Load from MongoDB
-    const messages = await Message.find({
+    const mongoMessages = await Message.find({
       $or: [
         { senderId, receiverId },
         { senderId: receiverId, receiverId: senderId },
       ],
     })
-      .sort({ timestamp: -1 })
+      .sort({ timestamp: -1 }) // newest first
       .skip(Number(skip))
       .limit(Number(limit));
 
-    const result = messages.reverse(); // oldest to newest for UI
-    console.log("mongodb hit");
+    messages = mongoMessages.reverse(); // oldest first for UI
 
-    // ✅ 3. Store only the first page in Redis
+    console.log("📦 MongoDB hit");
+
+    // ✅ 3. Cache only the first page of normal messages
     if (Number(skip) === 0) {
-      await client.set(cacheKey, JSON.stringify(result), { EX: 300 }); // 1 min cache
-      console.log("💾 Cached first page to Redis");
+      const normalMessagesToCache = messages.filter((msg) => !msg.isSecretChat);
+      if (normalMessagesToCache.length > 0) {
+        await client.set(normalKey, JSON.stringify(normalMessagesToCache), { EX: 300 });
+        console.log("💾 Cached normal messages to Redis");
+      }
     }
 
-    return res.json({ messages: result });
+    return res.json({ messages });
   } catch (err) {
-    console.error("Redis or DB error:", err);
+    console.error("❌ Redis or DB error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
+
 
 export const searchContact = asyncHandler(async (req, res) => {
   const userId = req.user._id; // from JWT middleware

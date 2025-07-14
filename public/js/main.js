@@ -362,6 +362,13 @@ if (msg.type === "image" && msg.mediaUrls?.length && encryptedKeyObj && msg.iv) 
     if (msg._id) messageDiv.dataset.messageId = msg._id;
     messagesContainer.appendChild(messageDiv);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    if (msg.isSecretChat && msg._id) {
+      setTimeout(() => {
+        const secretEl = document.querySelector(`[data-message-id='${msg._id}']`);
+        if (secretEl) secretEl.remove();
+      }, 60000);
+    }   
     // If this is a received message and the chat is open, emit read immediately
     if (!isSent && msg.status !== "read" && msg._id) {
       const receiverId = window.currentReceiverId;

@@ -307,40 +307,37 @@ export const fetchPublicKeys = asyncHandler(async (req, res) => {
 });
 
 
-export const sendEncryptData = asyncHandler(async(req,res)=>{
-   try {
+export const sendEncryptData = asyncHandler(async (req, res) => {
+  try {
     const {
       senderId,
       receiverId,
       encryptedMessage,
-      encryptedKeys, 
+      encryptedKeys,
       caption,
       mediaUrls,
+      isSecretChat,
       audioUrl,
       iv,
       status,
-      type , // fallback
+      type,
     } = req.body;
 
-      if (!senderId || !receiverId  || !iv || !Array.isArray(encryptedKeys)) {
+    if (!senderId || !receiverId || !iv || !Array.isArray(encryptedKeys)) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
     const sender = await User.findById(req.user._id).select("phoneNo");
-    //    console.log(sender)
-    const senderPhone = sender ? sender.phoneNo : "";
+    const senderPhone = sender?.phoneNo || "";
 
-    // 🔁 Convert Uint8Array to base64 (for clean storage)
-
-    // 📝 Save encrypted message
     const newMessage = new Message({
       senderId,
       receiverId,
-      // message: encryptedMessage,
       encryptedKeys,
       iv,
       type,
       senderPhone,
+      isSecretChat,
       status,
       timestamp: new Date(),
     });
@@ -349,7 +346,6 @@ export const sendEncryptData = asyncHandler(async(req,res)=>{
       newMessage.message = encryptedMessage;
     }
 
-        // ✅ Assign mediaUrls for i    timestamp: new Date()mage/audio/multi-image
     if (["image", "audio", "multi-image"].includes(type)) {
       if (mediaUrls?.length > 0) {
         newMessage.mediaUrls = mediaUrls;
@@ -359,15 +355,27 @@ export const sendEncryptData = asyncHandler(async(req,res)=>{
         newMessage.audioUrl = audioUrl;
       }
     }
+    console.log('Secret chat:', isSecretChat);
 
-    await newMessage.save();
 
-    res.status(201).json({ message: "Encrypted message saved successfully", messageId: newMessage._id.toString() });
+    // ✅ For secret messages, add deleteAt field for TTL auto-delete
+    if (isSecretChat) {
+      newMessage.deleteAt = new Date(Date.now() + 1 * 60 * 1000); // 1 minutes from now
+    }
+
+    const savedMessage = await newMessage.save();
+    const messageId = savedMessage._id.toString();
+
+    res.status(201).json({
+      message: "Encrypted message saved successfully",
+      messageId,
+    });
   } catch (err) {
     console.error("❌ Error saving encrypted message:", err);
     res.status(500).json({ error: "Failed to save encrypted message" });
   }
-})
+});
+
 
 export const uploadImage = asyncHandler(async(req,res)=>{
    const timestamp = Math.round(Date.now() / 1000);

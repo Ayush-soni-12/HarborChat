@@ -53,11 +53,21 @@ encryptedKeys: {
     enum: ["sent", "delivered", "read"],
     default: "sent",
   },
+  deleteAt: {
+    type: Date,
+    default: null,
+  },
+  isSecretChat: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 
 messageSchema.index({ senderId: 1, receiverId: 1, timestamp: 1 });
 messageSchema.index({ receiverId: 1, senderId: 1, timestamp: 1 });
+messageSchema.index({ deleteAt: 1 }, { expireAfterSeconds: 0 });
+
 
 
 export default mongoose.model("Message", messageSchema);

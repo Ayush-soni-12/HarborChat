@@ -115,7 +115,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("chat message", async ({ senderId, receiverId,encryptedMessage ,status, encryptedKeys,iv,messageId }) => {
+  socket.on("chat message", async ({ senderId, receiverId,encryptedMessage ,status, encryptedKeys,iv,messageId,isSecretChat}) => {
 
     // Debug: show which rooms this socket is in
     console.log("🔍 Socket Rooms:", socket.rooms);
@@ -163,6 +163,7 @@ io.on("connection", (socket) => {
     type : "text",
     status,
     senderPhone,
+    isSecretChat,
     timestamp: new Date(),
   };
 
@@ -178,7 +179,7 @@ io.on("connection", (socket) => {
     );
 
     const ids = [senderId, receiverId].sort();
-    const cacheKey = `chat:${ids[0]}:${ids[1]}`;
+    const cacheKey = `chat:${ids[0]}:${ids[1]}:${isSecretChat ? "secret" : "normal"}`;
 
     let cached = await client.get(cacheKey);
     let messages = cached ? JSON.parse(cached) : [];
@@ -189,8 +190,8 @@ io.on("connection", (socket) => {
     if (messages.length > 30) {
       messages = messages.slice(-30);
     }
-
-    await client.set(cacheKey, JSON.stringify(messages), { EX: 300 });
+    const ttl = isSecretChat ? 60 : 300;
+    await client.set(cacheKey, JSON.stringify(messages), { EX: ttl });
 
     // Emit the message to the sender (with 'sent' status)
     io.to(senderId).emit("chat message", saveMessage);
@@ -205,6 +206,7 @@ io.on("connection", (socket) => {
     // Update status in DB to 'delivered' when delivered to receiver
     await Message.findByIdAndUpdate(messageId, { status: "delivered" });
 
+
     // Update status in Redis cache to 'delivered' for this message
     let updatedMessages = messages.map((msg) => {
       if (msg._id && msg._id.toString() === messageId.toString()) {
@@ -212,7 +214,7 @@ io.on("connection", (socket) => {
       }
       return msg;
     });
-    await client.set(cacheKey, JSON.stringify(updatedMessages), { EX: 300 });
+    await client.set(cacheKey, JSON.stringify(updatedMessages), { EX: ttl });
 
     // Emit 'message-delivered' to sender for real-time double tick
     io.to(senderId).emit("message-delivered", { messageId });

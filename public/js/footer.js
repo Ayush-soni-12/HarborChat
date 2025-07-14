@@ -341,6 +341,59 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 
+let isSecretChat = false;
+// let burnAfterRead = false;
+let secretChatTimer = null;
+const secretChatTimeout = 5 * 60 * 1000;
+
+
+document.getElementById("startSecretChat").addEventListener("click", () => {
+  if (isSecretChat) {
+    // 🔴 If already active, end early
+    endSecretChat();
+  } else {
+    // 🟢 Start secret chat
+    isSecretChat = true;
+    // burnAfterRead = document.getElementById("burnAfterReadToggle").checked;
+
+    // socket.emit("chat message", { senderId, receiverId });
+    console.log("Secret chat")
+    // sendMessage(isSecretChat)
+
+    document.getElementById("secretStatus").style.display = "block";
+    startSecretCountdown(secretChatTimeout);
+
+    secretChatTimer = setTimeout(() => {
+      endSecretChat();
+    }, secretChatTimeout);
+  }
+});
+
+
+function endSecretChat() {
+  isSecretChat = false;
+  // socket.emit("end-secret-chat", { senderId, receiverId });
+  document.getElementById("secretStatus").style.display = "none";
+  clearInterval(secretCountdownInterval);
+  clearTimeout(secretChatTimer);
+}
+
+
+let secretCountdownInterval;
+
+function startSecretCountdown(duration) {
+  let remaining = duration / 1000;
+  const timerEl = document.getElementById("secretTimer");
+
+  secretCountdownInterval = setInterval(() => {
+    const mins = String(Math.floor(remaining / 60)).padStart(2, "0");
+    const secs = String(remaining % 60).padStart(2, "0");
+    timerEl.textContent = `${mins}:${secs}`;
+    if (remaining-- <= 0) clearInterval(secretCountdownInterval);
+  }, 1000);
+}
+
+
 
 
 
@@ -363,7 +416,8 @@ export async function sendMessage() {
 
   // 1. Send text message
   if (message) {
-    await sendEncryptedMessage(senderId,receiverId,message);
+    console.log('Secretmessage:', isSecretChat);
+    await sendEncryptedMessage(senderId,receiverId,message,isSecretChat);
     moveContactToTop(receiverId);
     input.value = "";
   }
@@ -411,6 +465,7 @@ let dataArray;
 let canvasCtx;
 let animationId;
 let isPlayingPreview = false;
+
 
 // DOM elements
 const micButton = document.getElementById("micButton");
@@ -806,3 +861,10 @@ function resetRecordingUI() {
         audioContext.close().then(() => console.log('AudioContext closed.'));
     }
 }
+
+
+
+// secret chat /////////////////////////////////////////
+
+
+

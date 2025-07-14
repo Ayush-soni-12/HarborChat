@@ -197,6 +197,13 @@ export async function loadChatMessages(append = false) {
           messagesContainer.firstChild
         );
       else messagesContainer.appendChild(messageDiv);
+      if (msg.isSecretChat && msg._id) {
+         setTimeout(() => {
+          const el = document.querySelector(`[data-message-id='${msg._id}']`);
+          if (el) el.remove();
+        }, 60000);
+      }
+      
       }// });
     if (!append) messagesContainer.scrollTop = messagesContainer.scrollHeight;
     else

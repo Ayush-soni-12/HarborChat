@@ -99,7 +99,7 @@ import { getPublicKeyFromServer } from "./publicKeyUtils.js"; // NEW: fetch all 
 import { importPublicKey } from "./rsaHelper.js";
 import { uploadToCloudinary } from "./uploadFunction.js";
 
-export async function sendEncryptedMessage(senderId, receiverId, plainText) {
+export async function sendEncryptedMessage(senderId, receiverId, plainText,isSecretChat) {
   try {
     // 1. Generate AES Key
     const aesKey = await generateAESKey();
@@ -134,6 +134,7 @@ export async function sendEncryptedMessage(senderId, receiverId, plainText) {
     const messagePayload = {
       senderId,
       receiverId,
+      isSecretChat,
       encryptedMessage: btoa(String.fromCharCode(...encryptedData)),
       iv: btoa(String.fromCharCode(...iv)),
       encryptedKeys, // array of encrypted keys with deviceId
@@ -150,7 +151,7 @@ export async function sendEncryptedMessage(senderId, receiverId, plainText) {
 
     const data = await res.json();
     const messageId = data.messageId;
-
+     
     if (!res.ok) {
       console.error("❌ Failed to send encrypted message");
     } else {
@@ -164,6 +165,7 @@ export async function sendEncryptedMessage(senderId, receiverId, plainText) {
 
       console.log("✅ Encrypted message sent & emitted");
     }
+    
   } catch (err) {
     console.error("❌ Error sending encrypted message:", err);
   }
