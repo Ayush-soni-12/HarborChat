@@ -1,5 +1,5 @@
 import state from "./state.js";
-import { decryptMessage } from "../Security/decryptMessage.js";
+import { decryptMessage,decryptImage } from "../Security/decryptMessage.js";
 // import socket from "./socket.js";
 
 export function updateUnreadBadge(userId, count) {
@@ -100,7 +100,7 @@ export async function loadChatMessages(append = false) {
     // data.messages.forEach((msg) => {
       const messageDiv = document.createElement("div");
       const isSent = msg.senderId === senderId;
- if (msg.encryptedKeys && msg.iv && msg.message) {
+ if (msg.encryptedKeys && msg.iv && msg.type==="text") {
     try {
       const deviceId = localStorage.getItem("deviceId");
       const keyObj = msg.encryptedKeys.find(k => k.deviceId === deviceId);
@@ -133,10 +133,29 @@ export async function loadChatMessages(append = false) {
             '<span class="tick-icon" style="color: #34B7F1">✔✔️</span>';
       }
       // --- Fix: Render image/audio if message is an image or audio ---
-      if (msg.type === "image" && msg.mediaUrls && msg.mediaUrls.length > 0) {
+      if (msg.type === "image" && msg.mediaUrls && msg.mediaUrls.length > 0 ) {
+        try {
+          const deviceId = localStorage.getItem("deviceId");
+          const keyObj = msg.encryptedKeys.find(k => k.deviceId === deviceId);
+          if(keyObj){
+          const blob = await decryptImage({
+            encryptedAESKey: keyObj.encryptedAESKey,
+            iv: msg.iv,
+            fileUrl: msg.mediaUrls[0],
+           
+          });
+           msg.decryptedImageURL = blob ? URL.createObjectURL(blob) : null;
+        } else {
+        msg.message = "[No key for this device]";
+        }
+         
+        } catch (err) {
+          console.warn("⚠️ Failed to decrypt image blob", err);
+          msg.decryptedImageURL = null;
+        }
         messageDiv.innerHTML = `
             <img src="${
-              msg.mediaUrls[0]
+              msg.decryptedImageURL
             }" style="max-width:200px;display:block;">
             <div class="message-time">${formatTime(
               msg.timestamp

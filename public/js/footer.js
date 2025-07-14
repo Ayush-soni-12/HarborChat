@@ -2,7 +2,7 @@ import { updateEmptyChatMessage, loadChatMessages } from "./contactFunction.js";
 import { moveContactToTop, showToast } from "./contactFunction.js";
 import state from "./state.js";
 // import socket from "./socket.js";
-import { sendEncryptedMessage } from "../Security/encryptAeskey.js";
+import { sendEncryptedMessage,sendEncryptedImage ,sendMultipleEncryptedImages} from "../Security/encryptAeskey.js";
 
 // --- ADD CONTACT FORM SUBMISSION ---
 document
@@ -244,8 +244,26 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
+
+  function dataURLToBlob(dataURL) {
+  const parts = dataURL.split(',');
+  const byteString = atob(parts[1]);
+  const mimeType = parts[0].match(/:(.*?);/)[1];
+
+  const arrayBuffer = new ArrayBuffer(byteString.length);
+  const intArray = new Uint8Array(arrayBuffer);
+
+  for (let i = 0; i < byteString.length; i++) {
+    intArray[i] = byteString.charCodeAt(i);
+  }
+
+  return new Blob([arrayBuffer], { type: mimeType });
+}
+
+
+
   // Crop and send single image
-  document.getElementById("cropButton").addEventListener("click", function () {
+  document.getElementById("cropButton").addEventListener("click",async function () {
     const senderId = localStorage.getItem("userId");
     const receiverId = window.currentReceiverId;
     const caption = document.getElementById("imageCaption").value.trim();
@@ -277,13 +295,16 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
+      const imageBlob = dataURLToBlob(finalImage);
+      await sendEncryptedImage(senderId, receiverId, imageBlob, caption);
+
       // Emit the image message
-      socket.emit("image-message", {
-        senderId,
-        receiverId,
-        image: finalImage,
-        caption,
-      });
+      // socket.emit("image-message", {
+      //   senderId,
+      //   receiverId,
+      //   image: finalImage,
+      //   caption,
+      // });
 
       resetEditor();
     } catch (error) {
@@ -326,7 +347,10 @@ document.addEventListener("DOMContentLoaded", function () {
 // Main sendMessage handler
 export async function sendMessage() {
   const input = document.querySelector(".message-input");
-  const files = Array.from(imageInput.files);
+  const imageInput = document.getElementById("imageInput");
+  const fileNameSpan = document.getElementById("fileName");
+  // const files = Array.from(imageInput.files);
+  const files = imageInput.files;
   const message = input.value.trim();
   const senderId = localStorage.getItem("userId");
   const receiverId = window.currentReceiverId;
@@ -345,23 +369,30 @@ export async function sendMessage() {
   }
 
   // 2. Send multiple images only if more than 1 selected
-  if (files.length > 1) {
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64Image = reader.result;
-        socket.emit("image-message", {
-          senderId,
-          receiverId,
-          image: base64Image,
-        });
-      };
-      reader.readAsDataURL(file);
-    });
+  // if (files.length > 1) {
+  //   files.forEach((file) => {
+  //     const reader = new FileReader();
+  //     reader.onloadend = () => {
+  //       const base64Image = reader.result;
+  //       socket.emit("image-message", {
+  //         senderId,
+  //         receiverId,
+  //         image: base64Image,
+  //       });
+  //     };
+  //     reader.readAsDataURL(file);
+  //   });
 
-    imageInput.value = "";
+  //   imageInput.value = "";
+  //   fileNameSpan.innerText = "";
+  // }
+
+
+if (files.length > 0) {
+  await sendMultipleEncryptedImages(senderId, receiverId, files);
+   imageInput.value = "";
     fileNameSpan.innerText = "";
-  }
+}
 
   // 3. Send audio if recorded
 }

@@ -683,439 +683,302 @@
         animation: spin 0.7s linear infinite;
       }
 
-
-
-
-
-      /* WhatsApp-style full-page overlay for image editing */
-      /* #imageEditModal {
+      
+      
+            /* Modal Container */
+      .modal {
         display: none;
         position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        width: 100vw;
-        height: 100vh;
-        background: rgba(40, 50, 60, 0.75);
-        z-index: 9999;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 2000;
         justify-content: center;
         align-items: center;
-        overflow: auto;
       }
-      #imageEditModal.active {
-        display: flex !important;
+      
+      .modal.active {
+        display: flex;
       }
+      
       .edit-modal-content {
-        background: #fff;
-        border-radius: 16px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.25);
-        padding: 32px 28px 24px 28px;
-        min-width: 340px;
-        max-width: 95vw;
+        background-color: #fff;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 600px;
         max-height: 90vh;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        position: relative;
+        overflow: hidden;
       }
-      #imageEditModal h3 {
-        margin-top: 0;
-        margin-bottom: 18px;
-        font-size: 1.3em;
+      
+      .modal-header {
+        padding: 15px;
+        border-bottom: 1px solid #eee;
+      }
+      
+      .modal-header h3 {
+        margin: 0;
+        font-size: 1.2rem;
         color: #333;
-        font-weight: 600;
       }
-      #imageToEdit {
+      
+      .modal-body {
+        padding: 15px;
+        overflow-y: auto;
+        flex-grow: 1;
+      }
+      
+      .image-preview {
+        max-width: 100%;
+        max-height: 300px;
         display: block;
-        margin: 0 auto 16px auto;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        background: #f8f8f8;
-        border: 1px solid #eee;
-        max-width: 90vw;
-        max-height: 40vh;
+        margin: 0 auto 15px;
       }
-      #imageCaption {
-        display: block;
-        margin: 10px auto 18px auto;
-        width: 90%;
-        padding: 8px 12px;
-        border-radius: 6px;
-        border: 1px solid #d0d0d0;
-        font-size: 1em;
-        background: #fafbfc;
-        transition: border 0.2s;
+      
+      .caption-input {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 15px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
       }
-      #imageCaption:focus {
-        border: 1.5px solid #34b7f1;
-        outline: none;
+      
+      #fabricCanvas {
+        display: none;
+        border: 1px dashed #ccc;
+        margin-bottom: 15px;
       }
+      
+      .drawing-controls {
+        display: none;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 15px;
+        padding: 10px;
+        background-color: #f5f5f5;
+        border-radius: 4px;
+      }
+      
+      .control-label {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 14px;
+      }
+      
+      .clear-button {
+        background-color: #ff4444;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      
+      .clear-button:hover {
+        background-color: #cc0000;
+      }
+      
+      .modal-footer {
+        padding: 15px;
+        border-top: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+      }
+      
       .button-group {
         display: flex;
         justify-content: space-between;
         width: 100%;
-        margin-bottom: 10px;
       }
-      .left-buttons, .right-buttons {
-        display: flex;
-        gap: 10px;
-      }
-      #imageEditModal button {
-        padding: 7px 18px;
-        border-radius: 6px;
+      
+      .draw-btn, .cancel-btn, .crop-btn {
+        padding: 8px 15px;
         border: none;
-        font-size: 1em;
+        border-radius: 4px;
         cursor: pointer;
-        background: #34b7f1;
-        color: #fff;
-        font-weight: 500;
-        transition: background 0.2s;
+        font-size: 14px;
+        transition: all 0.3s;
       }
-      #imageEditModal button#cancelEdit {
-        background: #eee;
-        color: #333;
+      
+      .draw-btn {
+        background-color: #4CAF50;
+        color: white;
       }
-      #imageEditModal button#drawButton {
-        background: #f7b731;
-        color: #fff;
+      
+      .draw-btn:hover {
+        background-color: #45a049;
       }
-      #imageEditModal button:hover {
-        filter: brightness(0.95);
+      
+      .cancel-btn {
+        background-color: #f44336;
+        color: white;
+        margin-right: 10px;
       }
-      #fabricCanvas {
-        display: block;
-        margin: 18px auto 0 auto;
-        border-radius: 8px;
-        border: 1.5px solid #d0d0d0;
-        background: #fafbfc;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        max-width: 90vw;
-        max-height: 40vh;
+      
+      .cancel-btn:hover {
+        background-color: #d32f2f;
       }
-      #fabricControls {
+      
+      .crop-btn {
+        background-color: #2196F3;
+        color: white;
+      }
+      
+      .crop-btn:hover {
+        background-color: #0b7dda;
+      }
+      /*   audio css  */
+      .audio-recorder-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background-color: white;
+      }
+      
+      .audio-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 18px;
-        margin-top: 12px;
-        margin-bottom: 0;
-        font-size: 1em;
+        transition: all 0.2s;
       }
-      #fabricControls label {
+      
+      .mic-btn {
+        background: #4CAF50;
+        color: white;
+      }
+      
+      .mic-btn:hover {
+        background: #3e8e41;
+        transform: scale(1.1);
+      }
+      
+      .stop-btn {
+        background: #FF9800;
+        color: white;
+      }
+      
+      .stop-btn:hover {
+        background: #e68a00;
+        transform: scale(1.1);
+      }
+      
+      .resume-btn {
+        background: #f44336;
+        color: white;
+      }
+      
+      .resume-btn:hover {
+        background: #d32f2f;
+        transform: scale(1.1);
+      }
+      
+      .delete-btn {
+        background: #f44336;
+        color: white;
+      }
+      
+      .delete-btn:hover {
+        background: #d32f2f;
+        transform: scale(1.1);
+      }
+      
+      .send-recording {
+         background: #4CAF50;
+         color: white;
+      }
+      
+      .send-recording:hover {
+        background: #3e8e41;
+        transform: scale(1.1);
+      }
+      
+      .timer {
+        font-family: monospace;
+        font-size: 14px;
+        color: #333;
+        min-width: 50px;
+        text-align: center;
+      }
+      
+      .recording-controls {
         display: flex;
         align-items: center;
-        gap: 5px;
-        font-size: 1em;
+        gap: 8px;
+        animation: pulse 2s infinite;
       }
-      #fabricClear {
-        background: #ff7675 !important;
-        color: #fff !important;
-        border: none;
-        padding: 6px 14px;
-        border-radius: 5px;
-        margin-left: 10px;
-      } */  
-
-
-
-      /* Modal Container */
-.modal {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.7);
-  z-index: 2000;
-  justify-content: center;
-  align-items: center;
-}
-
-.modal.active {
-  display: flex;
-}
-
-.edit-modal-content {
-  background-color: #fff;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.modal-header {
-  padding: 15px;
-  border-bottom: 1px solid #eee;
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 1.2rem;
-  color: #333;
-}
-
-.modal-body {
-  padding: 15px;
-  overflow-y: auto;
-  flex-grow: 1;
-}
-
-.image-preview {
-  max-width: 100%;
-  max-height: 300px;
-  display: block;
-  margin: 0 auto 15px;
-}
-
-.caption-input {
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 15px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-#fabricCanvas {
-  display: none;
-  border: 1px dashed #ccc;
-  margin-bottom: 15px;
-}
-
-.drawing-controls {
-  display: none;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 15px;
-  padding: 10px;
-  background-color: #f5f5f5;
-  border-radius: 4px;
-}
-
-.control-label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 14px;
-}
-
-.clear-button {
-  background-color: #ff4444;
-  color: white;
-  border: none;
-  padding: 5px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.clear-button:hover {
-  background-color: #cc0000;
-}
-
-.modal-footer {
-  padding: 15px;
-  border-top: 1px solid #eee;
-  display: flex;
-  justify-content: space-between;
-}
-
-.button-group {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-}
-
-.draw-btn, .cancel-btn, .crop-btn {
-  padding: 8px 15px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s;
-}
-
-.draw-btn {
-  background-color: #4CAF50;
-  color: white;
-}
-
-.draw-btn:hover {
-  background-color: #45a049;
-}
-
-.cancel-btn {
-  background-color: #f44336;
-  color: white;
-  margin-right: 10px;
-}
-
-.cancel-btn:hover {
-  background-color: #d32f2f;
-}
-
-.crop-btn {
-  background-color: #2196F3;
-  color: white;
-}
-
-.crop-btn:hover {
-  background-color: #0b7dda;
-}
-/*   audio css  */
-.audio-recorder-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background-color: white;
-}
-
-.audio-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.mic-btn {
-  background: #4CAF50;
-  color: white;
-}
-
-.mic-btn:hover {
-  background: #3e8e41;
-  transform: scale(1.1);
-}
-
-.stop-btn {
-  background: #FF9800;
-  color: white;
-}
-
-.stop-btn:hover {
-  background: #e68a00;
-  transform: scale(1.1);
-}
-
-.resume-btn {
-  background: #f44336;
-  color: white;
-}
-
-.resume-btn:hover {
-  background: #d32f2f;
-  transform: scale(1.1);
-}
-
-.delete-btn {
-  background: #f44336;
-  color: white;
-}
-
-.delete-btn:hover {
-  background: #d32f2f;
-  transform: scale(1.1);
-}
-
-.send-recording {
-   background: #4CAF50;
-   color: white;
-}
-
-.send-recording:hover {
-  background: #3e8e41;
-  transform: scale(1.1);
-}
-
-.timer {
-  font-family: monospace;
-  font-size: 14px;
-  color: #333;
-  min-width: 50px;
-  text-align: center;
-}
-
-.recording-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  animation: pulse 2s infinite;
-}
-.waveform-container {
-  width: 200px;
-  height: 40px;
-  background: #f0f0f0;
-  border-radius: 20px;
-  overflow: hidden;
-  margin-right: 8px;
-}
-
-#waveformCanvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.preview-btn {
-  background: #9c27b0;
-  color: white;
-}
-
-.preview-btn:hover {
-  background: #7b1fa2;
-  transform: scale(1.1);
-}
-
-.playing {
-  animation: pulse 0.5s infinite;
-}
-
-@keyframes pulse {
-  0% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-
-.chat-audio-message {
-  background-color: #f1f0f0;
-  border-radius: 12px;
-  padding: 10px;
-  margin: 5px 0;
-  max-width: 300px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.chat-audio-message audio {
-  width: 100%;
-}
-.recording {
-  animation: pulse 1s infinite;
-}
-
-/* @keyframes pulse {
-  0% { background-color: #ff4d4d; }
-  50% { background-color: #ff0000; }
-  100% { background-color: #ff4d4d; }
-} */
-
-
-      /* Chat message images */
+      .waveform-container {
+        width: 200px;
+        height: 40px;
+        background: #f0f0f0;
+        border-radius: 20px;
+        overflow: hidden;
+        margin-right: 8px;
+      }
+      
+      #waveformCanvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      
+      .preview-btn {
+        background: #9c27b0;
+        color: white;
+      }
+      
+      .preview-btn:hover {
+        background: #7b1fa2;
+        transform: scale(1.1);
+      }
+      
+      .playing {
+        animation: pulse 0.5s infinite;
+      }
+      
+      @keyframes pulse {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.7;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+      
+      .chat-audio-message {
+        background-color: #f1f0f0;
+        border-radius: 12px;
+        padding: 10px;
+        margin: 5px 0;
+        max-width: 300px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      
+      .chat-audio-message audio {
+        width: 100%;
+      }
+      .recording {
+        animation: pulse 1s infinite;
+      }
+      
+      
+            /* Chat message images */
       .messages-container .message img {
         display: block;
         max-width: 320px;

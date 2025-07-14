@@ -7,6 +7,7 @@ import bcrypt  from 'bcrypt';
 import admin  from "../firebaseAdmin/firebaseInit.js"
 import  {parsePhoneNumber}   from 'libphonenumber-js';
 import mongoose  from "mongoose";
+import crypto from "crypto";
 
 
 
@@ -312,12 +313,16 @@ export const sendEncryptData = asyncHandler(async(req,res)=>{
       senderId,
       receiverId,
       encryptedMessage,
-       encryptedKeys, 
+      encryptedKeys, 
+      caption,
+      mediaUrls,
+      audioUrl,
       iv,
-      type = "text", // fallback
+      status,
+      type , // fallback
     } = req.body;
 
-      if (!senderId || !receiverId || !encryptedMessage || !iv || !Array.isArray(encryptedKeys)) {
+      if (!senderId || !receiverId  || !iv || !Array.isArray(encryptedKeys)) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -331,13 +336,29 @@ export const sendEncryptData = asyncHandler(async(req,res)=>{
     const newMessage = new Message({
       senderId,
       receiverId,
-      message: encryptedMessage,
+      // message: encryptedMessage,
       encryptedKeys,
       iv,
       type,
       senderPhone,
+      status,
       timestamp: new Date(),
     });
+
+    if (type === "text" && encryptedMessage) {
+      newMessage.message = encryptedMessage;
+    }
+
+        // ✅ Assign mediaUrls for i    timestamp: new Date()mage/audio/multi-image
+    if (["image", "audio", "multi-image"].includes(type)) {
+      if (mediaUrls?.length > 0) {
+        newMessage.mediaUrls = mediaUrls;
+        newMessage.message = caption;
+      }
+      if (audioUrl) {
+        newMessage.audioUrl = audioUrl;
+      }
+    }
 
     await newMessage.save();
 
@@ -346,6 +367,26 @@ export const sendEncryptData = asyncHandler(async(req,res)=>{
     console.error("❌ Error saving encrypted message:", err);
     res.status(500).json({ error: "Failed to save encrypted message" });
   }
+})
+
+export const uploadImage = asyncHandler(async(req,res)=>{
+   const timestamp = Math.round(Date.now() / 1000);
+  const folder = req.body.folder || "harborchat/images"; // optional folder name
+
+  const paramsToSign = `folder=${folder}&timestamp=${timestamp}`;
+  const signature = crypto
+    .createHash("sha1")
+    .update(paramsToSign + process.env.CLOUD_API_SECRET)
+    .digest("hex");
+
+  res.json({
+    timestamp,
+    folder,
+    signature,
+    apiKey: process.env.CLOUD_API_KEY,
+    cloudName: process.env.CLOUD_NAME,
+  });
+
 })
 
 

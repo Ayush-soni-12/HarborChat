@@ -31,7 +31,7 @@ encryptedKeys: {
 },
   iv: {
     type: String,
-    required: true,
+    // required: true,
   },
 
   mediaUrls: {

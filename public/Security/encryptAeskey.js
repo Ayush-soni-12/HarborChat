@@ -97,6 +97,7 @@
 import { generateAESKey, encryptWithAESKey, exportAESKeyRaw } from "./aesHelper.js";
 import { getPublicKeyFromServer } from "./publicKeyUtils.js"; // NEW: fetch all public keys by userId
 import { importPublicKey } from "./rsaHelper.js";
+import { uploadToCloudinary } from "./uploadFunction.js";
 
 export async function sendEncryptedMessage(senderId, receiverId, plainText) {
   try {
@@ -137,6 +138,7 @@ export async function sendEncryptedMessage(senderId, receiverId, plainText) {
       iv: btoa(String.fromCharCode(...iv)),
       encryptedKeys, // array of encrypted keys with deviceId
       type: "text",
+      status :"sent"
     };
 
     // 7. Send to backend
@@ -164,5 +166,119 @@ export async function sendEncryptedMessage(senderId, receiverId, plainText) {
     }
   } catch (err) {
     console.error("❌ Error sending encrypted message:", err);
+  }
+}
+
+export async function sendEncryptedImage(senderId, receiverId, imageBlob, caption = "") {
+  try {
+    // 1. Convert image to ArrayBuffer (binary)
+    const fileBuffer = await imageBlob.arrayBuffer();
+
+    // 2. Generate AES key
+    const aesKey = await generateAESKey();
+
+    // 3. Encrypt image binary using AES-GCM
+    const { encryptedData, iv } = await encryptWithAESKey(aesKey, fileBuffer);
+
+    // 4. Convert encrypted ArrayBuffer to Blob
+    const encryptedBlob = new Blob([encryptedData], { type: imageBlob.type });
+
+    // 5. Upload encrypted Blob to Cloudinary
+    const cloudinaryRes = await uploadToCloudinary(encryptedBlob);
+    const imageUrl = cloudinaryRes.secure_url;
+
+    // 6. Export AES key in raw format (Uint8Array)
+    const rawAESKey = await exportAESKeyRaw(aesKey);
+
+    // 7. Fetch all public keys for sender and receiver
+    const senderKeys = await getPublicKeyFromServer(senderId);
+    const receiverKeys = await getPublicKeyFromServer(receiverId);
+    const allKeys = [...senderKeys, ...receiverKeys];
+
+    // 8. Encrypt AES key for each device using RSA public keys
+    const encryptedKeys = [];
+    for (const { deviceId, publicKey: base64Key } of allKeys) {
+      const cryptoKey = await importPublicKey(base64Key);
+      const encryptedAESKeyBuffer = await window.crypto.subtle.encrypt(
+        { name: "RSA-OAEP" },
+        cryptoKey,
+        rawAESKey
+      );
+      const encryptedAESKey = btoa(String.fromCharCode(...new Uint8Array(encryptedAESKeyBuffer)));
+      encryptedKeys.push({ deviceId, encryptedAESKey });
+    }
+
+    // 9. Prepare payload for your schema
+    const messagePayload = {
+      senderId,
+      receiverId,
+      mediaUrls: [imageUrl], // ✅ your schema expects an array
+      caption,
+      iv: btoa(String.fromCharCode(...iv)),
+      encryptedKeys,
+      type: "image",
+      status :"sent",
+      fileType: imageBlob.type, 
+    };
+
+    // 10. Send encrypted message to backend
+    const res = await fetch("/auth/messages/sendEncrypted", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(messagePayload),
+    });
+
+    const data = await res.json();
+    const messageId = data.messageId;
+
+    if (!res.ok) {
+      console.error("❌ Failed to send encrypted image");
+    } else {
+      // 11. Emit message over Socket.IO
+      socket.emit("image-message", {
+        senderId,
+        receiverId,
+        messageId,
+        ...messagePayload,
+      });
+
+      console.log("✅ Encrypted image sent & emitted");
+    }
+  } catch (err) {
+    console.error("❌ Error in sendEncryptedImage:", err);
+  }
+}
+
+
+export async function sendMultipleEncryptedImages(senderId, receiverId, fileList, captions = []) {
+  const loader = document.getElementById("loader");
+  const fileInput = document.getElementById("imageInput");
+  const sendButton = document.querySelector(".send-button");
+  const paperclipBtn = document.getElementById('paperclip-btn');
+
+  // 🔒 Disable input and button + show loader
+  loader.style.display = "block";
+  fileInput.disabled = true;
+  sendButton.disabled = true;
+  paperclipBtn.disabled = true;
+
+  const files = Array.from(fileList);
+
+  try {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const blob = new Blob([file], { type: file.type });
+      const caption = captions[i] || "";
+
+      await sendEncryptedImage(senderId, receiverId, blob, caption);
+    }
+  } catch (error) {
+    console.error("❌ Error sending images:", error);
+  } finally {
+    // ✅ Re-enable input and button + hide loader
+    loader.style.display = "none";
+    fileInput.disabled = false;
+    sendButton.disabled = false;
+    paperclipBtn.disabled = false;
   }
 }

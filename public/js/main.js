@@ -12,7 +12,8 @@ import {
 import { setupInputHandlers, updateProfileSidebar } from "./uiFunction.js";
 import state from "./state.js";
 // import socket from "./socket.js";
-import { decryptMessage } from "../Security/decryptMessage.js";
+import { decryptMessage,decryptImage } from "../Security/decryptMessage.js";
+
 // import showToast from './footer.js'
 
 // --- GLOBAL STATE ---
@@ -215,7 +216,7 @@ socket.on("chat message",async (msg) => {
   const otherUserId = msg.senderId === senderId ? msg.receiverId : msg.senderId;
   msg.encryptedMessage = msg.message;
   const encryptedKeyObj = msg.encryptedKeys?.find(k => k.deviceId === deviceId);
-if (encryptedKeyObj && msg.iv && msg.encryptedMessage) {
+if (encryptedKeyObj && msg.iv && msg.encryptedMessage && msg.type === "text") {
     try {
       const decrypted = await decryptMessage({
         encryptedMessage: msg.encryptedMessage,
@@ -229,12 +230,11 @@ if (encryptedKeyObj && msg.iv && msg.encryptedMessage) {
       msg.message = "[Decryption Failed]";
     }
   } else {
-    msg.message = "[No valid key for this device]";
+    // msg.message = "[No valid key for this device]";
   }
 
   moveContactToTop(otherUserId);
   updateContactLastMessage(otherUserId, msg.message);
-
   if (!contactMap[otherUserId]) {
     const name = "Unknown";
     const phone = msg.senderPhone
@@ -314,9 +314,24 @@ if (encryptedKeyObj && msg.iv && msg.encryptedMessage) {
     }
 
     // For image message
-    if (msg.type === "image" && msg.mediaUrls && msg.mediaUrls.length > 0) {
+if (msg.type === "image" && msg.mediaUrls?.length && encryptedKeyObj && msg.iv) {
+  try {
+    const blob = await decryptImage({
+      encryptedAESKey: encryptedKeyObj.encryptedAESKey,
+      iv: msg.iv,
+      fileUrl: msg.mediaUrls[0],
+    });
+      if (blob) {
+      msg.decryptedImageURL = URL.createObjectURL(blob); // Temporary URL
+    } else {
+      msg.decryptedImageURL = null;
+    }
+      } catch (err) {
+    console.error("🔐 Failed to decrypt image:", err);
+    msg.decryptedImageURL = null;
+  }
       messageDiv.innerHTML = `
-    <img src="${msg.mediaUrls[0]}" style="max-width:200px;display:block;">
+  <img src="${msg.decryptedImageURL || msg.mediaUrls[0]}" style="max-width:200px;display:block;">
     <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
   `;
       if (msg.message && msg.message.trim() !== "") {

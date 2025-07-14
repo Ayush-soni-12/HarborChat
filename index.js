@@ -1,7 +1,5 @@
-if (process.env.NODE_ENV !== "production") {
-  const dotenv = await import("dotenv");
-  dotenv.config();
-}
+import dotenv from 'dotenv';
+dotenv.config();
 
 import express from "express";
 const app = express(); 
@@ -18,7 +16,7 @@ import http from "http";
 import authRoutes from "./routes/auth.js";
 import homeRoute from "./routes/home.js";
 import client from "./redisClient.js";
-import { cloudinary } from "./ cloudConfig.js";
+import { cloudinary } from "./ cloudConfig.js"
 import { createAdapter } from "@socket.io/redis-adapter";
 import { createClient } from "redis";
 import { fileURLToPath } from "url";
@@ -58,6 +56,8 @@ Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
   io.adapter(createAdapter(pubClient, subClient));
   console.log("✅ Socket.IO Redis adapter enabled");
 });
+console.log("Cloudinary config:", cloudinary.config());
+
 
 const users = {}; // (optional, can remove)
 // const onlineUsers = new Map(); // REMOVE
@@ -115,7 +115,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("chat message", async ({ senderId, receiverId,encryptedMessage , encryptedKeys,iv,messageId }) => {
+  socket.on("chat message", async ({ senderId, receiverId,encryptedMessage ,status, encryptedKeys,iv,messageId }) => {
 
     // Debug: show which rooms this socket is in
     console.log("🔍 Socket Rooms:", socket.rooms);
@@ -161,9 +161,9 @@ io.on("connection", (socket) => {
     encryptedKeys,
     iv,
     type : "text",
-    status: "sent",
+    status,
     senderPhone,
-    timestamp: new Date()
+    timestamp: new Date(),
   };
 
 
@@ -220,26 +220,30 @@ io.on("connection", (socket) => {
 
   socket.on(
     "image-message",
-    async ({ senderId, receiverId, image, caption = "" }) => {
+    async ({ senderId, receiverId, mediaUrls,iv,encryptedKeys,fileType,messageId, status ,type,caption = "" }) => {
       try {
-        // Upload image to Cloudinary
-        const uploadRes = await cloudinary.uploader.upload(image, {
-          folder: "harborchat/images",
-          resource_type: "image",
-        });
+        // // Upload image to Cloudinary
+        // const uploadRes = await cloudinary.uploader.upload(image, {
+        //   folder: "harborchat/images",
+        //   resource_type: "image",
+        // });
 
-        const imageUrl = uploadRes.secure_url;
+        // const imageUrl = uploadRes.secure_url;
 
         // Save to MongoDB
-        const newImageMessage = await Message.create({
-          senderId,
-          receiverId,
-          type: "image",
-          message: caption,
-          mediaUrls: [imageUrl],
-          status: "sent",
-          timestamp: new Date(),
-        });
+        // const newImageMessage = await Message.create({
+        //   senderId,
+        //   receiverId,
+        //   type: "image",
+        //   message: caption,
+        //   mediaUrls: [imageUrl],
+        //   status: "sent",
+        //   timestamp: new Date(),
+        // });
+        const sender = await User.findById(senderId).select("name phoneNo");
+        console.log(sender);
+        //    console.log(sender)
+        const senderPhone = sender ? sender.phoneNo : "";        
 
         const openChat = await client.get(`openchat:${receiverId}`);
         const isChatOpen = openChat === senderId;
@@ -265,8 +269,23 @@ io.on("connection", (socket) => {
           );
         }
 
+       const savedImageObj = {
+      _id: messageId,
+      senderId,
+      receiverId,
+      type,
+      mediaUrls,
+      message:caption,
+      iv,
+      encryptedKeys,
+      senderPhone,
+      fileType,
+      timestamp: new Date(),
+      status,
+    };
+
         // Convert to plain object for cache and emit
-        const savedImageObj = newImageMessage.toObject();
+        // const savedImageObj = newImageMessage.toObject();
 
         // --- Redis cache logic (same as text) ---
         const ids = [senderId, receiverId].sort();
@@ -292,7 +311,7 @@ io.on("connection", (socket) => {
         io.to(receiverId).emit("chat message", deliveredImage);
 
         // Update status in DB to 'delivered'
-        await Message.findByIdAndUpdate(newImageMessage._id, {
+        await Message.findByIdAndUpdate(messageId, {
           status: "delivered",
         });
 
@@ -300,7 +319,7 @@ io.on("connection", (socket) => {
         let updatedMessages = messages.map((msg) => {
           if (
             msg._id &&
-            msg._id.toString() === newImageMessage._id.toString()
+            msg._id.toString() === messageId.toString()
           ) {
             return { ...msg, status: "delivered" };
           }
@@ -312,7 +331,7 @@ io.on("connection", (socket) => {
 
         // Emit 'message-delivered' to sender for real-time double tick
         io.to(senderId).emit("message-delivered", {
-          messageId: newImageMessage._id,
+          messageId
         });
       } catch (err) {
         console.error("Image upload error:", err);

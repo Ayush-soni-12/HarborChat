@@ -1,4 +1,6 @@
 // ES Modules (with "type": "module" in package.json)
+import dotenv from 'dotenv';
+dotenv.config();
 import { v2 as cloudinary } from 'cloudinary';
 
 import { CloudinaryStorage } from "multer-storage-cloudinary";
