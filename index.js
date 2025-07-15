@@ -153,6 +153,7 @@ io.on("connection", (socket) => {
         { $set: { unreadCount: 0 } }
       );
     }
+    const expiresAt = Date.now() + 60000;
     const saveMessage = {
     _id: messageId,
     senderId,
@@ -164,6 +165,7 @@ io.on("connection", (socket) => {
     status,
     senderPhone,
     isSecretChat,
+    expiresAt,
     timestamp: new Date(),
   };
 

@@ -13,6 +13,7 @@ import { setupInputHandlers, updateProfileSidebar } from "./uiFunction.js";
 import state from "./state.js";
 // import socket from "./socket.js";
 import { decryptMessage,decryptImage } from "../Security/decryptMessage.js";
+import { updateSecretChatUI } from "./footer.js";
 
 // import showToast from './footer.js'
 
@@ -64,6 +65,7 @@ function setupContactClickHandlers() {
       const contactabout = this.querySelector(".contact-about").textContent;
       const userId = this.dataset.userid;
       window.currentReceiverId = userId;
+       updateSecretChatUI();
       socket.emit("chat-open", {
         userId: localStorage.getItem("userId"),
         contactId: userId,
@@ -363,12 +365,38 @@ if (msg.type === "image" && msg.mediaUrls?.length && encryptedKeyObj && msg.iv) 
     messagesContainer.appendChild(messageDiv);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-    if (msg.isSecretChat && msg._id) {
-      setTimeout(() => {
+if (msg.isSecretChat && msg._id && msg.expiresAt) {
+  const timeLeft = msg.expiresAt - Date.now();
+
+  if (timeLeft > 0) {
+    const countdownSpan = document.createElement("span");
+    countdownSpan.className = "countdown-timer";
+    countdownSpan.style.display = "block";
+    countdownSpan.textContent = `🕒 Disappears in 1:00`;
+    messageDiv.appendChild(countdownSpan);
+
+    let remaining = Math.floor(timeLeft / 1000);
+    const intervalId = setInterval(() => {
+      remaining--;
+
+      if (remaining <= 0) {
+        clearInterval(intervalId);
         const secretEl = document.querySelector(`[data-message-id='${msg._id}']`);
         if (secretEl) secretEl.remove();
-      }, 60000);
-    }   
+        return;
+      }
+
+      const min = Math.floor(remaining / 60);
+      const sec = (remaining % 60).toString().padStart(2, "0");
+      countdownSpan.textContent = `🕒 Disappears in ${min}:${sec}`;
+    }, 1000);
+  } else {
+    // Already expired
+    const expiredEl = document.querySelector(`[data-message-id='${msg._id}']`);
+    if (expiredEl) expiredEl.remove();
+  }
+}
+
     // If this is a received message and the chat is open, emit read immediately
     if (!isSent && msg.status !== "read" && msg._id) {
       const receiverId = window.currentReceiverId;

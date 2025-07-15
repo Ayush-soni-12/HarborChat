@@ -997,6 +997,31 @@
         box-shadow: 0 4px 16px rgba(0,0,0,0.18);
         cursor: pointer;
       }
+
+
+      /* For the countdown timer inside secret message bubble */
+.countdown-timer {
+  font-size: 0.7em;
+  color: #ff5e5e;
+  font-weight: 500;
+  margin-top: 6px;
+  text-align: right;
+  animation: pulse-timer 1s ease-in-out infinite;
+  user-select: none;
+}
+
+/* Subtle pulsing effect to indicate urgency */
+@keyframes pulse-timer {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+
+      
       @media (max-width: 600px) {
         .messages-container .message img {
           max-width: 90vw;

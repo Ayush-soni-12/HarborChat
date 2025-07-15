@@ -341,45 +341,45 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 
-let isSecretChat = false;
+// let isSecretChat = false;
 // let burnAfterRead = false;
+const secretChatMap = {}; // { [receiverId]: true/false }
 let secretChatTimer = null;
-const secretChatTimeout = 5 * 60 * 1000;
-
+const secretChatTimeout = 5 * 60 * 1000; // 5 minutes
+let secretCountdownInterval;
 
 document.getElementById("startSecretChat").addEventListener("click", () => {
-  if (isSecretChat) {
-    // 🔴 If already active, end early
-    endSecretChat();
+  const receiverId = window.currentReceiverId;
+  if (!receiverId) return;
+
+  if (secretChatMap[receiverId]) {
+    // 🔴 Already active — end secret chat for this receiver
+    endSecretChat(receiverId);
   } else {
-    // 🟢 Start secret chat
-    isSecretChat = true;
-    // burnAfterRead = document.getElementById("burnAfterReadToggle").checked;
-
-    // socket.emit("chat message", { senderId, receiverId });
-    console.log("Secret chat")
-    // sendMessage(isSecretChat)
-
+    // 🟢 Start new secret chat
+    secretChatMap[receiverId] = true;
     document.getElementById("secretStatus").style.display = "block";
-    startSecretCountdown(secretChatTimeout);
+
+    startSecretCountdown(secretChatTimeout); // optional
 
     secretChatTimer = setTimeout(() => {
-      endSecretChat();
+      endSecretChat(receiverId);
     }, secretChatTimeout);
   }
 });
 
+function endSecretChat(receiverId) {
+  if (!receiverId) return;
 
-function endSecretChat() {
-  isSecretChat = false;
-  // socket.emit("end-secret-chat", { senderId, receiverId });
+  secretChatMap[receiverId] = false;
   document.getElementById("secretStatus").style.display = "none";
+
   clearInterval(secretCountdownInterval);
   clearTimeout(secretChatTimer);
 }
 
 
-let secretCountdownInterval;
+
 
 function startSecretCountdown(duration) {
   let remaining = duration / 1000;
@@ -416,6 +416,7 @@ export async function sendMessage() {
 
   // 1. Send text message
   if (message) {
+    const isSecretChat = secretChatMap[receiverId] || false;
     console.log('Secretmessage:', isSecretChat);
     await sendEncryptedMessage(senderId,receiverId,message,isSecretChat);
     moveContactToTop(receiverId);
@@ -450,6 +451,20 @@ if (files.length > 0) {
 
   // 3. Send audio if recorded
 }
+
+ export function updateSecretChatUI() {
+  const receiverId = window.currentReceiverId;
+  console.log("🔄 updateSecretChatUI: receiverId =", receiverId);
+  const isSecret = secretChatMap[receiverId];
+
+  const statusEl = document.getElementById("secretStatus");
+  if (statusEl) {
+    statusEl.style.display = isSecret ? "block" : "none";
+  }
+}
+
+
+
 // audio
 
 let mediaRecorder;
