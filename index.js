@@ -224,7 +224,7 @@ io.on("connection", (socket) => {
 
   socket.on(
     "image-message",
-    async ({ senderId, receiverId, mediaUrls,iv,encryptedKeys,fileType,messageId, status ,type,caption = "" }) => {
+    async ({ senderId, receiverId, mediaUrls,iv,encryptedKeys,fileType,messageId, status ,type,caption = "" ,isSecretChat}) => {
       try {
         // // Upload image to Cloudinary
         // const uploadRes = await cloudinary.uploader.upload(image, {
@@ -272,7 +272,7 @@ io.on("connection", (socket) => {
             { $set: { unreadCount: 0 } }
           );
         }
-
+        const expiresAt = Date.now() + 60000;
        const savedImageObj = {
       _id: messageId,
       senderId,
@@ -283,7 +283,9 @@ io.on("connection", (socket) => {
       iv,
       encryptedKeys,
       senderPhone,
+      isSecretChat,
       fileType,
+      expiresAt,
       timestamp: new Date(),
       status,
     };
@@ -293,7 +295,7 @@ io.on("connection", (socket) => {
 
         // --- Redis cache logic (same as text) ---
         const ids = [senderId, receiverId].sort();
-        const cacheKey = `chat:${ids[0]}:${ids[1]}`;
+        const cacheKey = `chat:${ids[0]}:${ids[1]}:${isSecretChat ? "secret" : "normal"}`;
 
         let cached = await client.get(cacheKey);
         let messages = cached ? JSON.parse(cached) : [];
@@ -305,7 +307,8 @@ io.on("connection", (socket) => {
           messages = messages.slice(-30);
         }
 
-        await client.set(cacheKey, JSON.stringify(messages), { EX: 300 });
+        const ttl = isSecretChat ? 60 : 300;
+        await client.set(cacheKey, JSON.stringify(messages), { EX: ttl });
 
         // Emit to sender (status: sent)
         io.to(senderId).emit("chat message", savedImageObj);
@@ -330,7 +333,7 @@ io.on("connection", (socket) => {
           return msg;
         });
         await client.set(cacheKey, JSON.stringify(updatedMessages), {
-          EX: 300,
+          EX: ttl,
         });
 
         // Emit 'message-delivered' to sender for real-time double tick

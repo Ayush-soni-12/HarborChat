@@ -171,7 +171,7 @@ export async function sendEncryptedMessage(senderId, receiverId, plainText,isSec
   }
 }
 
-export async function sendEncryptedImage(senderId, receiverId, imageBlob, caption = "") {
+export async function sendEncryptedImage(senderId, receiverId, imageBlob, caption = "", isSecretChat) {
   try {
     // 1. Convert image to ArrayBuffer (binary)
     const fileBuffer = await imageBlob.arrayBuffer();
@@ -214,6 +214,7 @@ export async function sendEncryptedImage(senderId, receiverId, imageBlob, captio
     const messagePayload = {
       senderId,
       receiverId,
+      isSecretChat,
       mediaUrls: [imageUrl], // ✅ your schema expects an array
       caption,
       iv: btoa(String.fromCharCode(...iv)),
@@ -252,7 +253,7 @@ export async function sendEncryptedImage(senderId, receiverId, imageBlob, captio
 }
 
 
-export async function sendMultipleEncryptedImages(senderId, receiverId, fileList, captions = []) {
+export async function sendMultipleEncryptedImages(senderId, receiverId, fileList, captions = [], isSecretChat) {
   const loader = document.getElementById("loader");
   const fileInput = document.getElementById("imageInput");
   const sendButton = document.querySelector(".send-button");
@@ -272,7 +273,7 @@ export async function sendMultipleEncryptedImages(senderId, receiverId, fileList
       const blob = new Blob([file], { type: file.type });
       const caption = captions[i] || "";
 
-      await sendEncryptedImage(senderId, receiverId, blob, caption);
+      await sendEncryptedImage(senderId, receiverId, blob, caption,isSecretChat);
     }
   } catch (error) {
     console.error("❌ Error sending images:", error);

@@ -296,7 +296,10 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       const imageBlob = dataURLToBlob(finalImage);
-      await sendEncryptedImage(senderId, receiverId, imageBlob, caption);
+      const isSecretChat = secretChatMap[receiverId] || false;
+      console.log('Secretmessage:', isSecretChat);
+
+      await sendEncryptedImage(senderId, receiverId, imageBlob, caption,isSecretChat);
 
       // Emit the image message
       // socket.emit("image-message", {
@@ -444,8 +447,11 @@ export async function sendMessage() {
 
 
 if (files.length > 0) {
-  await sendMultipleEncryptedImages(senderId, receiverId, files);
-   imageInput.value = "";
+    const isSecretChat = secretChatMap[receiverId] || false;
+    console.log('Secretmessage:', isSecretChat);
+    const captions = [];
+    await sendMultipleEncryptedImages(senderId, receiverId, files, captions, isSecretChat);
+    imageInput.value = "";
     fileNameSpan.innerText = "";
 }
 
