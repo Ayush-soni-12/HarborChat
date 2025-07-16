@@ -13,7 +13,7 @@ import { setupInputHandlers, updateProfileSidebar } from "./uiFunction.js";
 import state from "./state.js";
 // import socket from "./socket.js";
 import { decryptMessage,decryptImage,decryptLockedMessageWithCode } from "../Security/decryptMessage.js";
-import { updateSecretChatUI } from "./footer.js";
+import { updateSecretChatUI ,onChatSwitch} from "./footer.js";
 
 // import showToast from './footer.js'
 
@@ -67,6 +67,7 @@ function setupContactClickHandlers() {
       console.log("Contact clicked:", userId, contactName, contactPhone);
       window.currentReceiverId = userId;
        updateSecretChatUI();
+       onChatSwitch(userId)
       socket.emit("chat-open", {
         userId: localStorage.getItem("userId"),
         contactId: userId,

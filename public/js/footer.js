@@ -347,6 +347,7 @@ document.addEventListener("DOMContentLoaded", function () {
 // let isSecretChat = false;
 // let burnAfterRead = false;
 const secretChatMap = {}; // { [receiverId]: true/false }
+const burnAfterMap = {}; 
 let secretChatTimer = null;
 const secretChatTimeout = 5 * 60 * 1000; // 5 minutes
 let secretCountdownInterval;
@@ -354,6 +355,10 @@ let secretCountdownInterval;
 document.getElementById("startSecretChat").addEventListener("click", () => {
   const receiverId = window.currentReceiverId;
   if (!receiverId) return;
+  if (burnAfterMap[receiverId]) {
+    alert("❌ Burn After Read is active. Disable it first.");
+    return;
+  }
 
   if (secretChatMap[receiverId]) {
     // 🔴 Already active — end secret chat for this receiver
@@ -362,6 +367,8 @@ document.getElementById("startSecretChat").addEventListener("click", () => {
     // 🟢 Start new secret chat
     secretChatMap[receiverId] = true;
     document.getElementById("secretStatus").style.display = "block";
+    burnToggle.checked = false;
+    burnAfterMap[receiverId] = false;
 
     startSecretCountdown(secretChatTimeout); // optional
 
@@ -397,8 +404,32 @@ function startSecretCountdown(duration) {
 }
 
 
+const burnToggle = document.getElementById("lock-toggle");
+burnToggle.addEventListener("change", () => {
+  const receiverId = window.currentReceiverId;
+  if (!receiverId) return;
+  const isChecked = burnToggle.checked;
+
+  // ❌ Prevent if secret chat is active
+  if (isChecked && secretChatMap[receiverId]) {
+    alert("❌ Cannot enable Burn After Read while Secret Chat is active.");
+    burnToggle.checked = false; // revert
+    return;
+  }
+  burnAfterMap[receiverId] = isChecked;
+  console.log(`${isChecked ? "🔥 Burn After Enabled" : "🧯 Burn After Disabled"} for ${receiverId}`);
+});
 
 
+export async function onChatSwitch(newReceiverId) {
+  window.currentReceiverId = newReceiverId;
+
+  // Restore Burn checkbox based on map
+  const isBurnOn = burnAfterMap[newReceiverId] || false;
+  burnToggle.checked = isBurnOn;
+
+  // (optional) Restore secret chat state too
+}
 
 // Main sendMessage handler
 export async function sendMessage() {

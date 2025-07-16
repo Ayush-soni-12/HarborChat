@@ -108,7 +108,14 @@
   <!-- File input -->
   <input type="file" id="imageInput" accept="image/*" multiple style="display: none;" />
   <span id="fileName" style="margin-left:10px; font-size:0.9em; color:#888;"></span>
-  <input type="checkbox" id="lock-toggle" /> <i class="fa-solid fa-lock"></i>
+  <!-- <input type="checkbox" id="lock-toggle" /> <i class="fa-solid fa-lock"></i> -->
+     <div class="mode-toggle">
+    <label class="toggle-label">
+      <input type="checkbox" id="lock-toggle" />
+      <span class="custom-checkbox"></span>
+      Burn After Read
+    </label>
+  </div>
   <button type="button" id="paperclip-btn" class="icon-btn"><i class="fas fa-paperclip"></i></button>
   <button class="icon-btn send-btn send-button"><i class="fas fa-paper-plane"></i></button>
 </div>
