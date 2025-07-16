@@ -2,7 +2,7 @@ import { updateEmptyChatMessage, loadChatMessages } from "./contactFunction.js";
 import { moveContactToTop, showToast } from "./contactFunction.js";
 import state from "./state.js";
 // import socket from "./socket.js";
-import { sendEncryptedMessage,sendEncryptedImage ,sendMultipleEncryptedImages} from "../Security/encryptAeskey.js";
+import { sendEncryptedMessage,sendEncryptedImage ,sendMultipleEncryptedImages,encryptMessageWithCode} from "../Security/encryptAeskey.js";
 
 // --- ADD CONTACT FORM SUBMISSION ---
 document
@@ -405,11 +405,14 @@ export async function sendMessage() {
   const input = document.querySelector(".message-input");
   const imageInput = document.getElementById("imageInput");
   const fileNameSpan = document.getElementById("fileName");
+  const isLocked = document.querySelector("#lock-toggle").checked;
   // const files = Array.from(imageInput.files);
   const files = imageInput.files;
   const message = input.value.trim();
   const senderId = localStorage.getItem("userId");
   const receiverId = window.currentReceiverId;
+  const isSecretChat = secretChatMap[receiverId] || false;
+  console.log('Secretmessage:', isSecretChat);
 
   if (!message && files.length === 0 && !recordedAudioBlob) return;
   if (!receiverId) {
@@ -417,14 +420,20 @@ export async function sendMessage() {
     return;
   }
 
+
+    if (isLocked) {
+    const code = prompt("Enter a secret code to lock this message:");
+    await encryptMessageWithCode(senderId,receiverId,message,isSecretChat, code);
+    moveContactToTop(receiverId);
+    input.value = "";
+  }else{
   // 1. Send text message
   if (message) {
-    const isSecretChat = secretChatMap[receiverId] || false;
-    console.log('Secretmessage:', isSecretChat);
     await sendEncryptedMessage(senderId,receiverId,message,isSecretChat);
     moveContactToTop(receiverId);
     input.value = "";
   }
+}
 
   // 2. Send multiple images only if more than 1 selected
   // if (files.length > 1) {
@@ -447,8 +456,6 @@ export async function sendMessage() {
 
 
 if (files.length > 0) {
-    const isSecretChat = secretChatMap[receiverId] || false;
-    console.log('Secretmessage:', isSecretChat);
     const captions = [];
     await sendMultipleEncryptedImages(senderId, receiverId, files, captions, isSecretChat);
     imageInput.value = "";
@@ -468,6 +475,9 @@ if (files.length > 0) {
     statusEl.style.display = isSecret ? "block" : "none";
   }
 }
+
+
+
 
 
 

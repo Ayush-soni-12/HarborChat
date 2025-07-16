@@ -1,6 +1,7 @@
 // 📁 public/Security/decryptMessage.js
 
 import { loadPrivateKey } from "./loadPrivatekey.js";
+import { deriveAESKeyFromCode} from "./aesHelper.js"
 
 function base64ToUint8Array(base64) {
   const binary = atob(base64);
@@ -89,6 +90,24 @@ export async function decryptImage({ encryptedAESKey, iv, fileUrl }) {
     return new Blob([decryptedBuffer]);
   } catch (err) {
     console.error("❌ Image decryption failed:", err);
+    return null;
+  }
+}
+
+
+ export async function decryptLockedMessageWithCode({ encryptedMessage, iv, code }) {
+  const key = await deriveAESKeyFromCode(code);
+  const decodedIv = Uint8Array.from(atob(iv), c => c.charCodeAt(0));
+  const decodedMsg = Uint8Array.from(atob(encryptedMessage), c => c.charCodeAt(0));
+
+  try {
+    const decrypted = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: decodedIv },
+      key,
+      decodedMsg
+    );
+    return new TextDecoder().decode(decrypted);
+  } catch {
     return null;
   }
 }

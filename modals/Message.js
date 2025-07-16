@@ -12,7 +12,7 @@ const messageSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["text", "image", "audio", "multi-image"],
+    enum: ["text", "image", "audio", "multi-image","lockedText"],
     default: "text",
   },
 
@@ -57,6 +57,14 @@ encryptedKeys: {
     type: Date,
     default: null,
   },
+  burnAfterRead: { 
+    type: Boolean,
+     default: false
+   },
+  receiverOpened: {
+  type: Boolean,
+  default: false,
+},
   isSecretChat: {
     type: Boolean,
     default: false,

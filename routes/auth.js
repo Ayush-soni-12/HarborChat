@@ -1,6 +1,6 @@
 import express from "express";
 const router = express.Router();
-import {firebaseAuth,login,signup,registerUser,logoutUser,loginwithPassword,loginConfirm,changePassword,pinCreate,pinform,pinVerify,deleteAccount,savePublicKey,fetchPublicKeys,sendEncryptData,uploadImage} from"../controllers/userController.js";
+import {firebaseAuth,login,signup,registerUser,logoutUser,loginwithPassword,loginConfirm,changePassword,pinCreate,pinform,pinVerify,deleteAccount,savePublicKey,fetchPublicKeys,sendEncryptData,uploadImage,sendCodeLockedMessage} from"../controllers/userController.js";
 import {registerSchema ,loginSchema,passwordChange,pinSchema} from "../validations/authValidation.js"
 import validation from "../middlewares/validate.js";
 import validToken from "../middlewares/verifytoken.js";
@@ -25,6 +25,7 @@ router.post("/savePublicKey",validToken,savePublicKey)
 router.get("/userPublicKey/:id",validToken,fetchPublicKeys)
 router.post("/messages/sendEncrypted",validToken,sendEncryptData)
 router.post("/cloudinary/generateUploadSignature",validToken,uploadImage)
+router.post("/messages/sendLocked",validToken,sendCodeLockedMessage)
 router.delete("/deleteAccount",validToken,deleteAccount)
 
 

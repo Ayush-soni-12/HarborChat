@@ -12,7 +12,7 @@ import {
 import { setupInputHandlers, updateProfileSidebar } from "./uiFunction.js";
 import state from "./state.js";
 // import socket from "./socket.js";
-import { decryptMessage,decryptImage } from "../Security/decryptMessage.js";
+import { decryptMessage,decryptImage,decryptLockedMessageWithCode } from "../Security/decryptMessage.js";
 import { updateSecretChatUI } from "./footer.js";
 
 // import showToast from './footer.js'
@@ -64,6 +64,7 @@ function setupContactClickHandlers() {
       const contactPhone = this.querySelector(".contact-last-msg").textContent;
       const contactabout = this.querySelector(".contact-about").textContent;
       const userId = this.dataset.userid;
+      console.log("Contact clicked:", userId, contactName, contactPhone);
       window.currentReceiverId = userId;
        updateSecretChatUI();
       socket.emit("chat-open", {
@@ -232,7 +233,7 @@ if (encryptedKeyObj && msg.iv && msg.encryptedMessage && msg.type === "text") {
       msg.message = "[Decryption Failed]";
     }
   } else {
-    // msg.message = "[No valid key for this device]";
+    msg.message = "[No valid key for this device]";
   }
 
   moveContactToTop(otherUserId);
@@ -355,7 +356,71 @@ if (msg.type === "image" && msg.mediaUrls?.length && encryptedKeyObj && msg.iv) 
     </audio>
     <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
   `;
-    } else {
+    }
+else if (msg.type === "lockedText") {
+    // 🔐 Initial locked message UI
+    messageDiv.innerHTML = `
+      <button class="unlock-btn">🔒 Locked Message. Tap to Unlock</button>
+      <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
+    `;
+
+    // ✅ Define unlockBtn AFTER it exists in DOM
+    const unlockBtn = messageDiv.querySelector(".unlock-btn");
+
+    unlockBtn.addEventListener("click", async () => {
+      const code = prompt("Enter passcode to unlock this message:");
+      if (!code) return;
+
+      try {
+        const decrypted = await decryptLockedMessageWithCode({
+          encryptedMessage: msg.encryptedMessage,
+          iv: msg.iv,
+          code
+        });
+
+        if (decrypted) {
+          msg._decryptedText = decrypted;
+
+          messageDiv.innerHTML = `
+            ${decrypted}
+            <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
+            <div class="burn-timer">🧨 Disappears in 10s</div>
+          `;
+
+          // ✅ Trigger backend TTL countdown
+          if (msg._id) {
+            socket.emit("start-burn", {
+              messageId: msg._id,
+               userId: senderId,
+              seconds: 10
+            });
+          }
+
+          // 🔥 Frontend burn timer
+          let seconds = 10;
+          const timerEl = messageDiv.querySelector(".burn-timer");
+          const interval = setInterval(() => {
+            seconds--;
+            if (timerEl) timerEl.textContent = `🧨 Disappears in ${seconds}s`;
+            if (seconds <= 0) {
+              clearInterval(interval);
+              messageDiv.innerHTML = `<i style="color:red;">💥 This message has burned.</i>`;
+              delete msg._decryptedText;
+            }
+          }, 1000);
+        } else {
+          alert("❌ Incorrect code or message can't be unlocked.");
+        }
+      } catch (err) {
+        console.error("❌ Failed to decrypt locked message:", err);
+        alert("❌ Decryption error.");
+      }
+    });
+  
+}
+
+  
+    else {
       messageDiv.innerHTML = `
     ${msg.message}
     <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>

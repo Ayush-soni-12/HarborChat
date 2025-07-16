@@ -398,6 +398,60 @@ export const uploadImage = asyncHandler(async(req,res)=>{
 })
 
 
+export const sendCodeLockedMessage = asyncHandler(async (req, res) => {
+  try {
+    const {
+      senderId,
+      receiverId,
+      encryptedMessage,
+      iv,
+      status,
+      burnAfterRead,
+      type, // should be "lockedText"
+      isSecretChat
+    } = req.body;
+
+    if (!senderId || !receiverId || !iv || !encryptedMessage || type !== "lockedText") {
+      return res.status(400).json({ error: "Missing or invalid fields for locked message" });
+    }
+
+    // Fetch sender's phone number for metadata
+    const sender = await User.findById(req.user._id).select("phoneNo");
+    const senderPhone = sender?.phoneNo || "";
+
+    // Create new locked message
+    const newMessage = new Message({
+      senderId,
+      receiverId,
+      message: encryptedMessage,
+      iv,
+      type,
+      senderPhone,
+      burnAfterRead,
+      status,
+      isSecretChat,
+      timestamp: new Date(),
+    });
+
+    // Optional: TTL for secret chats (auto-delete)
+
+
+    // Save to DB
+    const savedMessage = await newMessage.save();
+
+    // Return message ID to frontend
+    res.status(201).json({
+      message: "Locked message saved successfully",
+      messageId: savedMessage._id.toString()
+    });
+
+  } catch (err) {
+    console.error("❌ Error saving code-locked message:", err);
+    res.status(500).json({ error: "Failed to save locked message" });
+  }
+});
+
+
 
 export const deleteAccount = asyncHandler(async(req,res)=>{
   console.log(req.user)

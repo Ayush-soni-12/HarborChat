@@ -1,5 +1,5 @@
 import state from "./state.js";
-import { decryptMessage,decryptImage } from "../Security/decryptMessage.js";
+import { decryptMessage,decryptImage,decryptLockedMessageWithCode } from "../Security/decryptMessage.js";
 // import socket from "./socket.js";
 
 export function updateUnreadBadge(userId, count) {
@@ -182,7 +182,71 @@ export async function loadChatMessages(append = false) {
               msg.timestamp
             )} ${tickHtml}</div>
         `;
-      } else {
+      } 
+      
+   else if (msg.type === "lockedText") {
+        console.log("LockedTExt message received:", msg);
+    // 🔐 Initial locked message UI
+    messageDiv.innerHTML = `
+      <button class="unlock-btn">🔒 Locked Message. Tap to Unlock</button>
+      <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
+    `;
+
+    // ✅ Define unlockBtn AFTER it exists in DOM
+    const unlockBtn = messageDiv.querySelector(".unlock-btn");
+
+    unlockBtn.addEventListener("click", async () => {
+      const code = prompt("Enter passcode to unlock this message:");
+      if (!code) return;
+
+      try {
+        const decrypted = await decryptLockedMessageWithCode({
+          encryptedMessage: msg.message,
+          iv: msg.iv,
+          code
+        });
+
+        if (decrypted) {
+          msg._decryptedText = decrypted;
+
+          messageDiv.innerHTML = `
+            ${decrypted}
+            <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
+            <div class="burn-timer">🧨 Disappears in 10s</div>
+          `;
+
+          // ✅ Trigger backend TTL countdown
+          if (msg._id) {
+            socket.emit("start-burn", {
+              messageId: msg._id,
+               userId: senderId,
+              seconds: 10
+            });
+          }
+
+          // 🔥 Frontend burn timer
+          let seconds = 10;
+          const timerEl = messageDiv.querySelector(".burn-timer");
+          const interval = setInterval(() => {
+            seconds--;
+            if (timerEl) timerEl.textContent = `🧨 Disappears in ${seconds}s`;
+            if (seconds <= 0) {
+              clearInterval(interval);
+              messageDiv.innerHTML = `<i style="color:red;">💥 This message has burned.</i>`;
+              delete msg._decryptedText;
+            }
+          }, 1000);
+        } else {
+          alert("❌ Incorrect code or message can't be unlocked.");
+        }
+      } catch (err) {
+        console.error("❌ Failed to decrypt locked message:", err);
+        alert("❌ Decryption error.");
+      }
+    });
+}
+
+ else {
         messageDiv.innerHTML = `
             ${msg.message}
             <div class="message-time">${formatTime(

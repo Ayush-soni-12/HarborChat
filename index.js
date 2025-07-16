@@ -1,4 +1,4 @@
-import dotenv from 'dotenv';
+import dotenv, { decrypt } from 'dotenv';
 dotenv.config();
 
 import express from "express";
@@ -115,7 +115,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("chat message", async ({ senderId, receiverId,encryptedMessage ,status, encryptedKeys,iv,messageId,isSecretChat}) => {
+  socket.on("chat message", async ({ senderId, receiverId,encryptedMessage ,status, encryptedKeys,iv,messageId,isSecretChat,type}) => {
 
     // Debug: show which rooms this socket is in
     console.log("🔍 Socket Rooms:", socket.rooms);
@@ -161,7 +161,7 @@ io.on("connection", (socket) => {
     message: encryptedMessage,
     encryptedKeys,
     iv,
-    type : "text",
+    type ,
     status,
     senderPhone,
     isSecretChat,
@@ -221,6 +221,43 @@ io.on("connection", (socket) => {
     // Emit 'message-delivered' to sender for real-time double tick
     io.to(senderId).emit("message-delivered", { messageId });
   });
+
+ socket.on("start-burn", async ({ messageId, userId, seconds = 10 }) => {
+  try {
+    // 1. Fetch the message
+    const message = await Message.findById(messageId);
+    if (!message) {
+      console.warn(`⚠️ Message not found: ${messageId}`);
+      return;
+    }
+
+    // 2. Ensure only the receiver can start the burn
+    if (message.receiverId !== userId) {
+      console.warn(`⛔ Unauthorized burn trigger attempt by ${userId}`);
+      return;
+    }
+
+    // 3. Skip if already marked as read & burned
+    if (message.receiverOpened) {
+      console.log(`🔁 Burn already triggered for message ${messageId}`);
+      return;
+    }
+
+    // 4. Set burn flags: receiverOpened + burnAfterRead + deleteAt
+    const deleteAt = new Date(Date.now() + seconds * 1000);
+    message.burnAfterRead = true;
+    message.receiverOpened = true;
+    message.deleteAt = deleteAt;
+
+    await message.save();
+
+    console.log(`🔥 Burn timer started for message ${messageId} (TTL ${seconds}s)`);
+
+  } catch (err) {
+    console.error("❌ Error starting burn timer:", err);
+  }
+});
+
 
   socket.on(
     "image-message",
@@ -479,7 +516,8 @@ io.on("connection", (socket) => {
     // Find the chat cache key for each message and update status in Redis
     for (const msg of messages) {
       const ids = [msg.senderId.toString(), msg.receiverId.toString()].sort();
-      const cacheKey = `chat:${ids[0]}:${ids[1]}`;
+      const isSecretChat = msg.isSecretChat;
+      const cacheKey = `chat:${ids[0]}:${ids[1]}:${isSecretChat ? "secret" : "normal"}`;
       let cached = await client.get(cacheKey);
       if (cached) {
         let cachedMessages = JSON.parse(cached);
@@ -492,9 +530,8 @@ io.on("connection", (socket) => {
           return m;
         });
         if (updated) {
-          await client.set(cacheKey, JSON.stringify(cachedMessages), {
-            EX: 300,
-          });
+          const ttl = isSecretChat ? 60 : 300;
+          await client.set(cacheKey, JSON.stringify(cachedMessages), { EX: ttl });
         }
       }
     }

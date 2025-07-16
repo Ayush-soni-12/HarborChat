@@ -44,3 +44,37 @@ export async function exportAESKeyRaw(aesKey) {
   const rawKey = await crypto.subtle.exportKey("raw", aesKey);
   return new Uint8Array(rawKey);
 }
+
+
+
+export async function deriveAESKeyFromCode(secretCode) {
+  const encoder = new TextEncoder();
+
+  // Step 1: Convert the secret code to key material
+  const keyMaterial = await window.crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secretCode),
+    "PBKDF2",
+    false,
+    ["deriveKey"]
+  );
+
+  // Step 2: Derive AES-GCM key using PBKDF2
+  const derivedKey = await window.crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: encoder.encode("harborchat-locked-message-salt"), // use a constant app-wide salt
+      iterations: 100000,
+      hash: "SHA-256"
+    },
+    keyMaterial,
+    {
+      name: "AES-GCM",
+      length: 256
+    },
+    false,
+    ["encrypt", "decrypt"]
+  );
+
+  return derivedKey;
+}

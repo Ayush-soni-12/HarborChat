@@ -94,7 +94,7 @@
 
 
 
-import { generateAESKey, encryptWithAESKey, exportAESKeyRaw } from "./aesHelper.js";
+import { generateAESKey, encryptWithAESKey, exportAESKeyRaw ,deriveAESKeyFromCode} from "./aesHelper.js";
 import { getPublicKeyFromServer } from "./publicKeyUtils.js"; // NEW: fetch all public keys by userId
 import { importPublicKey } from "./rsaHelper.js";
 import { uploadToCloudinary } from "./uploadFunction.js";
@@ -283,5 +283,65 @@ export async function sendMultipleEncryptedImages(senderId, receiverId, fileList
     fileInput.disabled = false;
     sendButton.disabled = false;
     paperclipBtn.disabled = false;
+  }
+}
+
+
+export async function encryptMessageWithCode(senderId,receiverId,message,isSecretChat,code){
+  try {
+    // 1. Derive AES key from the passcode
+    const aesKey = await deriveAESKeyFromCode(code);
+
+    // 2. Encrypt the message with AES
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encodedText = new TextEncoder().encode(message);
+    const ciphertextBuffer = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      aesKey,
+      encodedText
+    );
+
+    // 3. Prepare base64 encoded values
+    const encryptedMessage = btoa(String.fromCharCode(...new Uint8Array(ciphertextBuffer)));
+    const encodedIV = btoa(String.fromCharCode(...iv));
+
+    // 4. Prepare message payload
+    const messagePayload = {
+      senderId,
+      receiverId,
+      isSecretChat,
+      encryptedMessage,
+      iv: encodedIV,
+      type: "lockedText",
+      burnAfterRead:false,// always true for code-locked messages
+      status: "sent",
+    };
+
+    // 5. Send to backend
+    const res = await fetch("/auth/messages/sendLocked", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(messagePayload),
+    });
+
+    const data = await res.json();
+    const messageId = data.messageId;
+
+    if (!res.ok) {
+      console.error("❌ Failed to send locked message");
+    } else {
+      // 6. Emit over socket
+      socket.emit("chat message", {
+        senderId,
+        receiverId,
+        messageId,
+        ...messagePayload,
+      });
+
+      console.log("✅ Code-locked message sent & emitted");
+    }
+
+  } catch (err) {
+    console.error("❌ Error sending code-locked message:", err);
   }
 }
