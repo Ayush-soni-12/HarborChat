@@ -12,7 +12,7 @@ import {
 import { setupInputHandlers, updateProfileSidebar } from "./uiFunction.js";
 import state from "./state.js";
 // import socket from "./socket.js";
-import { decryptMessage,decryptImage,decryptLockedMessageWithCode } from "../Security/decryptMessage.js";
+import { decryptMessage,decryptImage,decryptLockedMessageWithCode,decryptImageWithCode } from "../Security/decryptMessage.js";
 import { updateSecretChatUI ,onChatSwitch} from "./footer.js";
 
 // import showToast from './footer.js'
@@ -234,7 +234,7 @@ if (encryptedKeyObj && msg.iv && msg.encryptedMessage && msg.type === "text") {
       msg.message = "[Decryption Failed]";
     }
   } else {
-    msg.message = "[No valid key for this device]";
+    // msg.message = "[No valid key for this device]";
   }
 
   moveContactToTop(otherUserId);
@@ -392,7 +392,7 @@ else if (msg.type === "lockedText") {
           if (msg._id) {
             socket.emit("start-burn", {
               messageId: msg._id,
-               userId: senderId,
+              userId: senderId,
               seconds: 10
             });
           }
@@ -420,7 +420,67 @@ else if (msg.type === "lockedText") {
   
 }
 
-  
+else if (msg.type === "lockedImage" && msg.mediaUrls?.length === 1) {
+  messageDiv.innerHTML = `
+    <button class="unlock-btn">🔒 Locked Image. Tap to Unlock</button>
+    <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
+  `;
+
+  const unlockBtn = messageDiv.querySelector(".unlock-btn");
+
+  unlockBtn.addEventListener("click", async () => {
+    const code = prompt("Enter passcode to unlock this image:");
+    if (!code) return;
+
+    try {
+      const blob = await decryptImageWithCode({
+        url: msg.mediaUrls[0],
+        iv: msg.iv,
+        code,
+      });
+
+      if (!blob) {
+        alert("❌ Decryption failed.");
+        return;
+      }
+
+      const imageURL = URL.createObjectURL(blob);
+
+      messageDiv.innerHTML = `
+        <img src="${imageURL}" class="chat-image" style="max-width:200px; display:block; margin-top:5px;" />
+        ${msg.message ? `<div style="font-size:0.9em; color:#555; margin-top:5px;">${msg.message}</div>` : ""}
+        <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
+        <div class="burn-timer">🧨 Disappears in 10s</div>
+      `;
+
+      // 🔥 Trigger backend TTL countdown
+      if (msg._id) {
+        socket.emit("start-burn", {
+          messageId: msg._id,
+          userId: senderId,
+          seconds: 10,
+        });
+      }
+
+      // 🔥 Frontend burn timer
+      let seconds = 10;
+      const timerEl = messageDiv.querySelector(".burn-timer");
+      const interval = setInterval(() => {
+        seconds--;
+        if (timerEl) timerEl.textContent = `🧨 Disappears in ${seconds}s`;
+        if (seconds <= 0) {
+          clearInterval(interval);
+          messageDiv.innerHTML = `<i style="color:red;">💥 This image has burned.</i>`;
+        }
+      }, 1000);
+    } catch (err) {
+      console.error("❌ Failed to decrypt locked image:", err);
+      alert("❌ Decryption failed. Invalid code or corrupted file.");
+    }
+  });
+}
+
+
     else {
       messageDiv.innerHTML = `
     ${msg.message}

@@ -406,12 +406,14 @@ export const sendCodeLockedMessage = asyncHandler(async (req, res) => {
       encryptedMessage,
       iv,
       status,
+      caption,
+      mediaUrls,
       burnAfterRead,
       type, // should be "lockedText"
       isSecretChat
     } = req.body;
 
-    if (!senderId || !receiverId || !iv || !encryptedMessage || type !== "lockedText") {
+    if (!senderId || !receiverId || !iv  || !type) {
       return res.status(400).json({ error: "Missing or invalid fields for locked message" });
     }
 
@@ -423,7 +425,6 @@ export const sendCodeLockedMessage = asyncHandler(async (req, res) => {
     const newMessage = new Message({
       senderId,
       receiverId,
-      message: encryptedMessage,
       iv,
       type,
       senderPhone,
@@ -432,6 +433,17 @@ export const sendCodeLockedMessage = asyncHandler(async (req, res) => {
       isSecretChat,
       timestamp: new Date(),
     });
+
+    if (type === "lockedText" && encryptedMessage) {
+      newMessage.message = encryptedMessage;
+    }
+
+    if (["lockedImage"].includes(type)) {
+      if (mediaUrls?.length > 0) {
+        newMessage.mediaUrls = mediaUrls;
+        newMessage.message = caption;
+      }
+    }
 
     // Optional: TTL for secret chats (auto-delete)
 

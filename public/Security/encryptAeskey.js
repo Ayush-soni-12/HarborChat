@@ -345,3 +345,72 @@ export async function encryptMessageWithCode(senderId,receiverId,message,isSecre
     console.error("❌ Error sending code-locked message:", err);
   }
 }
+
+export async function encryptImageWithCode(senderId,receiverId,imageBlob,caption="",isSecretChat,code){
+  try {
+    // 1. Derive AES key from the passcode
+    const aesKey = await deriveAESKeyFromCode(code);
+
+    // 2. Convert image to ArrayBuffer (binary)
+    const fileBuffer = await imageBlob.arrayBuffer();
+
+    // 3. Encrypt image binary using AES-GCM
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ciphertextBuffer = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      aesKey,
+      fileBuffer
+    );
+
+    // 4. Convert encrypted ArrayBuffer to Blob
+    const encryptedBlob = new Blob([ciphertextBuffer], { type: imageBlob.type });
+
+    // 5. Upload encrypted Blob to Cloudinary
+    const cloudinaryRes = await uploadToCloudinary(encryptedBlob);
+    const imageUrl = cloudinaryRes.secure_url;
+
+    // 6. Prepare base64 encoded IV
+    const encodedIV = btoa(String.fromCharCode(...iv));
+
+    // 7. Prepare message payload
+    const messagePayload = {
+      senderId,
+      receiverId,
+      isSecretChat,
+      mediaUrls: [imageUrl], // ✅ your schema expects an array
+      caption,
+      iv: encodedIV,
+      type: "lockedImage",
+      burnAfterRead:false,// always true for code-locked messages
+      status :"sent",
+      fileType: imageBlob.type, 
+    };
+
+    // 8. Send to backend
+    const res = await fetch("/auth/messages/sendLocked", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(messagePayload),
+    });
+
+    const data = await res.json();
+    const messageId = data.messageId;
+
+    if (!res.ok) {
+      console.error("❌ Failed to send locked image");
+    } else {
+      // 9. Emit over socket
+      socket.emit("image-message", {
+        senderId,
+        receiverId,
+        messageId,
+        ...messagePayload,
+      });
+
+      console.log("✅ Code-locked image sent & emitted");
+    }
+
+  } catch (err) {
+    console.error("❌ Error in encryptImageWithCode:", err);
+  }
+}

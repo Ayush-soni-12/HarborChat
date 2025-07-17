@@ -111,3 +111,24 @@ export async function decryptImage({ encryptedAESKey, iv, fileUrl }) {
     return null;
   }
 }
+
+export async function decryptImageWithCode({ url, iv, code }) {
+  try {
+    const aesKey = await deriveAESKeyFromCode(code);
+    const ivBytes = Uint8Array.from(atob(iv), (c) => c.charCodeAt(0));
+
+    const res = await fetch(url);
+    const encryptedBuffer = await res.arrayBuffer();
+
+    const decryptedBuffer = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: ivBytes },
+      aesKey,
+      encryptedBuffer
+    );
+
+    return new Blob([decryptedBuffer]);
+  } catch (err) {
+    console.error("❌ Failed to decrypt locked image:", err);
+    return null;
+  }
+}

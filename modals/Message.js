@@ -12,7 +12,7 @@ const messageSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["text", "image", "audio", "multi-image","lockedText"],
+    enum: ["text", "image", "audio", "multi-image","lockedText","lockedImage"],
     default: "text",
   },
 
