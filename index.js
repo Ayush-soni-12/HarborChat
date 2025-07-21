@@ -156,6 +156,7 @@ io.on("connection", (socket) => {
     const expiresAt = Date.now() + 60000;
     const saveMessage = {
     _id: messageId,
+    senderName: sender ? sender.name : "Unknown",
     senderId,
     receiverId,
     message: encryptedMessage,
@@ -312,6 +313,7 @@ io.on("connection", (socket) => {
         const expiresAt = Date.now() + 60000;
        const savedImageObj = {
       _id: messageId,
+      senderName: sender ? sender.name : "Unknown",
       senderId,
       receiverId,
       type,

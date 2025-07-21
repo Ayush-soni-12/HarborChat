@@ -121,7 +121,7 @@ export async function loadChatMessages(append = false) {
       msg.message = "[Decryption failed]";
     }
   }
-      messageDiv.className = `message ${isSent ? "sent" : "received"}`;
+      messageDiv.className = `message ${isSent ? "sent" : "received"} chat-message`;
       let tickHtml = "";
       if (isSent) {
         if (msg.status === "sent")
@@ -316,7 +316,10 @@ else if (msg.type === "lockedImage" && msg.mediaUrls?.length === 1) {
             )} ${tickHtml}</div>
         `;
       }
-      if (msg._id) messageDiv.dataset.messageId = msg._id;
+      if (msg._id){
+         messageDiv.dataset.messageId = msg._id;
+         messageDiv.dataset.sender = msg.senderName || "Unknown";
+      }
       if (append)
         messagesContainer.insertBefore(
           messageDiv,

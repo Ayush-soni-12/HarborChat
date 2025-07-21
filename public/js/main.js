@@ -305,7 +305,8 @@ if (encryptedKeyObj && msg.iv && msg.encryptedMessage && msg.type === "text") {
     const messagesContainer = document.getElementById("messagesContainer");
     const messageDiv = document.createElement("div");
     const isSent = msg.senderId === senderId;
-    messageDiv.className = `message ${isSent ? "sent" : "received"}`;
+    messageDiv.className = `message ${isSent ? "sent" : "received"} chat-message`;
+
     let tickHtml = "";
     if (isSent) {
       if (msg.status === "sent") {
@@ -487,7 +488,10 @@ else if (msg.type === "lockedImage" && msg.mediaUrls?.length === 1) {
     <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
   `;
     }
-    if (msg._id) messageDiv.dataset.messageId = msg._id;
+    if (msg._id) {
+      messageDiv.dataset.messageId = msg._id
+      messageDiv.dataset.sender = msg.senderName || "Unknown";
+    }
     messagesContainer.appendChild(messageDiv);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 

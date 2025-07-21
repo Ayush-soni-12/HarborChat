@@ -3,6 +3,7 @@ import Contact from "../modals/contactModal.js";
 import User from "../modals/UserModal.js";
 import { cloudinary } from "../ cloudConfig.js"; // fixed import path
 import { sendMail } from "../Helpers/mailer.js";
+import { getGeminiResponse } from "../Helpers/getLocalLLMResponse.js"; // fixed import path
 import Message from "../modals/Message.js";
 import client from "../redisClient.js";
 import streamifier from "streamifier";
@@ -323,3 +324,24 @@ export const audioMessage = asyncHandler(async (req, res) => {
     res.status(500).json({ error: "Upload failed" });
   }
 });
+
+export const whisperBotMessage = asyncHandler(async( req,res)=>{
+
+    try {
+    const { prompt } = req.body;
+
+    const aiReply = await getGeminiResponse(prompt); // Or your own function
+
+        if (!aiReply) {
+      return res.status(500).json({ error: "Gemini failed to respond." });
+    }
+
+    res.json({ reply: aiReply });
+  } catch (err) {
+    console.error("❌ WhisperBot error:", err);
+    res.status(500).json({ error: "WhisperBot failed" });
+  }
+
+})
+
+
