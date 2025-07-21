@@ -293,6 +293,11 @@
       <div class="messages-container" id="messagesContainer">
         <!-- Messages will be inserted here -->
       </div>
+      <div class="suggestion-controls">
+      <div id="ai-typing-indicator" class="ai-typing hidden">🤖 Suggesting reply...</div>
+      <div id="suggestion" class="suggestion-box"></div>
+      </div>
+
 
       <!-- WhatsApp-like type bar -->
       <div class="type-bar">
@@ -382,6 +387,11 @@
           style="margin-left: 10px; font-size: 0.9em; color: #888"
         ></span>
         <!-- <input type="checkbox" id="lock-toggle" /> <i class="fa-solid fa-lock"></i> -->
+         <label class="smart-reply-toggle">
+         <input type="checkbox" id="smartReplyToggle" checked />
+         Enable Smart Reply Suggestions
+       </label>
+
         <div class="mode-toggle">
           <label class="toggle-label">
             <input type="checkbox" id="lock-toggle" />

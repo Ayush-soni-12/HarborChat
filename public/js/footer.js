@@ -3,7 +3,7 @@ import { moveContactToTop, showToast } from "./contactFunction.js";
 import state from "./state.js";
 // import socket from "./socket.js";
 import { sendEncryptedMessage,sendEncryptedImage ,sendMultipleEncryptedImages,encryptMessageWithCode,encryptImageWithCode} from "../Security/encryptAeskey.js";
-
+import { clearAllSuggestions }from "./main.js";
 // --- ADD CONTACT FORM SUBMISSION ---
 document
   .getElementById("addContactForm")
@@ -477,6 +477,7 @@ export async function sendMessage() {
     await sendEncryptedMessage(senderId,receiverId,message,isSecretChat);
     moveContactToTop(receiverId);
     input.value = "";
+    clearAllSuggestions();
   }
 }
 

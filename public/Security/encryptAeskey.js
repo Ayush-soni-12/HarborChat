@@ -101,6 +101,11 @@ import { uploadToCloudinary } from "./uploadFunction.js";
 
 export async function sendEncryptedMessage(senderId, receiverId, plainText,isSecretChat) {
   try {
+    const decryptedText = plainText.trim();
+    if (!decryptedText) {
+      console.error("❌ Cannot send empty message");
+      return;
+    }
     // 1. Generate AES Key
     const aesKey = await generateAESKey();
 
@@ -139,7 +144,8 @@ export async function sendEncryptedMessage(senderId, receiverId, plainText,isSec
       iv: btoa(String.fromCharCode(...iv)),
       encryptedKeys, // array of encrypted keys with deviceId
       type: "text",
-      status :"sent"
+      status :"sent",
+      decryptedText,
     };
 
     // 7. Send to backend

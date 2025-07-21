@@ -20,6 +20,7 @@ import { cloudinary } from "./ cloudConfig.js"
 import { createAdapter } from "@socket.io/redis-adapter";
 import { createClient } from "redis";
 import { fileURLToPath } from "url";
+import getReplySuggestions from "./Helpers/smartReply.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -115,7 +116,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("chat message", async ({ senderId, receiverId,encryptedMessage ,status, encryptedKeys,iv,messageId,isSecretChat,type}) => {
+  socket.on("chat message", async ({ senderId, receiverId,encryptedMessage ,status, encryptedKeys,iv,messageId,isSecretChat,type,decryptedText}) => {
 
     // Debug: show which rooms this socket is in
     console.log("🔍 Socket Rooms:", socket.rooms);
@@ -221,7 +222,42 @@ io.on("connection", (socket) => {
 
     // Emit 'message-delivered' to sender for real-time double tick
     io.to(senderId).emit("message-delivered", { messageId });
+
+  //   if (!isSecretChat && type === "text" && decryptedText?.trim().length > 1) {
+  //   try {
+  //     const suggestions = await getReplySuggestions(decryptedText);
+  //     const socketId = await client.get(`online:${receiverId}`);
+
+  //     if (socketId && Array.isArray(suggestions)) {
+  //       io.to(socketId).emit("replySuggestions", {
+  //         from: senderId,
+  //         messageId,
+  //         suggestions,
+  //       });
+  //     }
+  //   } catch (e) {
+  //     console.error("💥 AI suggestion error:", e.message);
+  //   }
+  // }
   });
+
+  socket.on("requestReplySuggestion", async ({ messageId,messageText,from,to}) => {
+  try {
+    console.log("messageText", messageText);
+    const suggestions = await getReplySuggestions(messageText);
+    const socketId = await client.get(`online:${to}`);
+    if (socketId) {
+      io.to(socketId).emit("replySuggestions", {
+        from,
+        messageId,
+        suggestions,
+      });
+    }
+  } catch (e) {
+    console.error("💥 AI suggestion error:", e.message);
+  }
+});
+
 
  socket.on("start-burn", async ({ messageId, userId, seconds = 10 }) => {
   try {
@@ -258,6 +294,8 @@ io.on("connection", (socket) => {
     console.error("❌ Error starting burn timer:", err);
   }
 });
+
+
 
 
   socket.on(

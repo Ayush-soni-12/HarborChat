@@ -213,8 +213,16 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
+let smartReplyEnabled = true;
+
+document.getElementById("smartReplyToggle").addEventListener("change", (e) => {
+  smartReplyEnabled = e.target.checked;
+});
+
+
 //// --- SOCKET EVENTS ---
 socket.on("chat message",async (msg) => {
+  clearAllSuggestions();
   const senderId = localStorage.getItem("userId");
   const deviceId = localStorage.getItem("deviceId");
   const otherUserId = msg.senderId === senderId ? msg.receiverId : msg.senderId;
@@ -487,12 +495,32 @@ else if (msg.type === "lockedImage" && msg.mediaUrls?.length === 1) {
     ${msg.message}
     <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
   `;
-    }
+    
+
+if (smartReplyEnabled && msg.senderId !== senderId) {
+  const typingIndicator = document.getElementById("ai-typing-indicator");
+  if (typingIndicator) typingIndicator.classList.remove("hidden");
+
+  console.log("Smart Reply - Incoming message text:", msg.message);
+
+  if (msg.message && msg.message.trim().length > 1) {
+    socket.emit('requestReplySuggestion', {
+      messageId: msg._id,
+      messageText: msg.message,
+      from: msg.senderId,
+      to: msg.receiverId
+    });
+  }
+}
+
+ }
+
     if (msg._id) {
       messageDiv.dataset.messageId = msg._id
       messageDiv.dataset.sender = msg.senderName || "Unknown";
     }
     messagesContainer.appendChild(messageDiv);
+   
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
 if (msg.isSecretChat && msg._id && msg.expiresAt) {
@@ -550,6 +578,53 @@ if (msg.isSecretChat && msg._id && msg.expiresAt) {
     playNotificationSound();
   }
 });
+
+
+
+
+export  function clearAllSuggestions() {
+  document.querySelectorAll(".suggestion-box").forEach(el => {
+    el.innerHTML = "";
+    // el.style.display = "none"; // Optional: hide the box
+  });
+}
+
+
+socket.on("replySuggestions", ({ from, messageId, suggestions }) => {
+  const typingIndicator = document.getElementById("ai-typing-indicator");
+  if (typingIndicator) typingIndicator.classList.add("hidden");
+
+  const suggestionContainer = document.getElementById(`suggestion`);
+
+
+    const messageElem = document.createElement("div");
+    messageElem.id = `suggestion-${messageId}`;
+    messageElem.className = "suggestion-container";
+    suggestionContainer.appendChild(messageElem);
+
+      messageElem.innerHTML = "";
+
+
+  suggestions.forEach(text => {
+    const btn = document.createElement("button");
+    btn.className = "suggestion-btn";
+    btn.innerText = text;
+
+    // 👇 Fill the chat input instead of sending the message
+    btn.onclick = () => {
+      const inputBox = document.getElementById("textMessage"); // Replace with your actual input ID
+      if (inputBox) {
+        inputBox.value = text;
+        inputBox.focus();
+      }
+      clearAllSuggestions();
+    };
+
+    messageElem.appendChild(btn);
+  });
+});
+
+
 
 // Listen for message-delivered event to update tick to double tick in real time
 socket.on("message-delivered", ({ messageId }) => {
