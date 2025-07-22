@@ -30,15 +30,42 @@
 
         <div class="dotIcon">
           <!-- Somewhere in your chat page navbar -->
+            
+          <select id="languageSelector" class="language-selector">
+            <option value="">Send as is</option>
+            <option value="en">English</option>
+            <option value="es">Spanish (Español)</option>
+            <option value="fr">French (Français)</option>
+            <option value="de">German (Deutsch)</option>
+            <option value="it">Italian (Italiano)</option>
+            <option value="pt">Portuguese (Português)</option>
+            <option value="ru">Russian (Русский)</option>
+            <option value="zh">Chinese (中文)</option>
+            <option value="ja">Japanese (日本語)</option>
+            <option value="ko">Korean (한국어)</option>
+            <option value="ar">Arabic (العربية)</option>
+            <option value="hi">Hindi (हिन्दी)</option>
+            <option value="bn">Bengali (বাংলা)</option>
+            <option value="pa">Punjabi (ਪੰਜਾਬੀ)</option>
+            <option value="tr">Turkish (Türkçe)</option>
+            <option value="nl">Dutch (Nederlands)</option>
+            <option value="sv">Swedish (Svenska)</option>
+            <option value="fi">Finnish (Suomi)</option>
+            <option value="pl">Polish (Polski)</option>
+            <option value="uk">Ukrainian (Українська)</option>
+            <option value="vi">Vietnamese (Tiếng Việt)</option>
+            <option value="th">Thai (ไทย)</option>
+            <option value="id">Indonesian (Bahasa Indonesia)</option>
+          </select>
 
           <button
             id="whisperBotBtn"
             title="WhisperBot"
-            class="icon-button"
+            class="icon-button whisper-bot-btn"
             data-bs-toggle="modal"
             data-bs-target="#staticBackdrop"
           >
-            <i class="fa-solid fa-robot"></i>
+            <i class="fa-solid fa-robot robot"></i>
           </button>
           <!-- Modal -->
           <div
@@ -387,10 +414,10 @@
           style="margin-left: 10px; font-size: 0.9em; color: #888"
         ></span>
         <!-- <input type="checkbox" id="lock-toggle" /> <i class="fa-solid fa-lock"></i> -->
-         <label class="smart-reply-toggle">
+         <div class="smart-reply-toggle">
          <input type="checkbox" id="smartReplyToggle" checked />
-         Enable Smart Reply Suggestions
-       </label>
+         <i class="fa-solid fa-robot"></i>
+       </div>
 
         <div class="mode-toggle">
           <label class="toggle-label">

@@ -1,6 +1,6 @@
 import  express from "express";
 const router = express.Router();
-import  {index,chat,contact,setting,Status,profile,updateProfile,updateEmail,me,personalChat,searchContact,audioMessage,whisperBotMessage} from "../controllers/homeController.js";
+import  {index,chat,contact,setting,Status,profile,updateProfile,updateEmail,me,personalChat,searchContact,audioMessage,whisperBotMessage,translateChat} from "../controllers/homeController.js";
 import  validToken from '../middlewares/verifytoken.js';
 import  {verifyemail, newContactSchema }from "../validations/authValidation.js"
 import  validation from "../middlewares/validate.js";
@@ -36,7 +36,7 @@ router.get("/api/messages/:receiverId",validToken,personalChat)
 router.get("/api/contacts/search",validToken,searchContact)
 router.post('/upload-audio',validToken,setaudioFolder,multerUpload.single('audio'),audioMessage);
 router.post('/api/whisperbot',validToken,whisperBotMessage)
-
+router.post('/api/translate',validToken,translateChat);
 
 
 export default router

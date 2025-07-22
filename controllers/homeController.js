@@ -7,6 +7,7 @@ import { getGeminiResponse } from "../Helpers/getLocalLLMResponse.js"; // fixed 
 import Message from "../modals/Message.js";
 import client from "../redisClient.js";
 import streamifier from "streamifier";
+import { translateText } from "../Helpers/translate.js"; // fixed import path
 
 // const generateToken = require"../middlewares/generateToken";
 import jwt from  "jsonwebtoken";
@@ -345,3 +346,13 @@ export const whisperBotMessage = asyncHandler(async( req,res)=>{
 })
 
 
+export const translateChat = asyncHandler(async (req, res) => {
+  const { text, targetLang } = req.body;
+  const translated = await translateText(text, targetLang);
+  
+  if (translated) {
+    res.json({ translated });
+  } else {
+    res.status(500).json({ error: "Translation failed." });
+  }
+});

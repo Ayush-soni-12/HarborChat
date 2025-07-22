@@ -445,9 +445,10 @@ export async function sendMessage() {
   const imageInput = document.getElementById("imageInput");
   const fileNameSpan = document.getElementById("fileName");
   const isLocked = document.querySelector("#lock-toggle").checked;
+  const selectedLang = document.getElementById("languageSelector").value;
   // const files = Array.from(imageInput.files);
   const files = imageInput.files;
-  const message = input.value.trim();
+  let message = input.value.trim();
   const senderId = localStorage.getItem("userId");
   const receiverId = window.currentReceiverId;
   const isSecretChat = secretChatMap[receiverId] || false;
@@ -463,6 +464,19 @@ export async function sendMessage() {
     alert("❌ Cannot lock multiple images at once. Please select only one image.");
     return;
     }
+
+    if (selectedLang) {
+    const res = await fetch("/api/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: message, targetLang: selectedLang }),
+    });
+
+    const data = await res.json();
+    console.log('data',data);
+   message = typeof data.translated === 'string' ? data.translated.trim() : String(data.translated).trim();
+
+   }
 
 
 
