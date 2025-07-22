@@ -952,8 +952,92 @@ function resetRecordingUI() {
 }
 
 
-
-// secret chat /////////////////////////////////////////
-
+// search chat
 
 
+document.querySelector(".searchChat").addEventListener("click", function () {
+  document.getElementById("userInfoOverlay").classList.add("active");
+  gsap.to("#searchinfochatBar", { right: 0, duration: 0.4, ease: "power2.out" });
+});
+
+
+// Close sidebar with GSAP
+document
+  .getElementById("userInfoOverlay")
+  .addEventListener("click", function () {
+    gsap.to("#searchinfochatBar", {
+      right: -400,
+      duration: 0.4,
+      ease: "power2.in",
+    });
+    document.getElementById("userInfoOverlay").classList.remove("active");
+  });
+// Close sidebar with GSAP
+document.querySelector(".crossbtn").addEventListener("click", function () {
+  gsap.to("#searchinfochatBar", {
+    right: -400,
+    duration: 0.4,
+    ease: "power2.in",
+  });
+  document.getElementById("userInfoOverlay").classList.remove("active");
+});
+
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  const input = document.getElementById("chatSearchInput");
+  const resultBox = document.getElementById("searchResults");
+
+  let debounceTimer = null;
+
+  input.addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      const query = input.value.trim().toLowerCase();
+      searchMessagesClientSide(query);
+    }, 200);
+  });
+
+  function searchMessagesClientSide(query) {
+    if (!query) {
+      resultBox.innerHTML = "";
+      return;
+    }
+
+const results = allMessagesInChat.filter(msg =>
+  msg.message.toLowerCase().includes(query)
+);
+
+    displaySearchResults(results);
+  }
+
+  function displaySearchResults(messages) {
+    resultBox.innerHTML = "";
+
+    if (messages.length === 0) {
+      resultBox.innerHTML = "<p>No results found.</p>";
+      return;
+    }
+
+    messages.forEach(msg => {
+      const div = document.createElement("div");
+      div.className = "search-result";
+       div.innerHTML = `
+         <div>${msg.message}</div>
+         <small>${new Date(msg.timestamp).toLocaleString()}</small>
+       `;
+   div.addEventListener("click", () => {
+    const target = document.getElementById(`msg-${msg._id}`);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      target.classList.add("highlight-temp");
+      setTimeout(() => target.classList.remove("highlight-temp"), 1500);
+    }
+  });
+
+
+       
+      resultBox.appendChild(div);
+    });
+  }
+});

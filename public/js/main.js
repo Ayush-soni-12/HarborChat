@@ -66,6 +66,10 @@ function setupContactClickHandlers() {
       const userId = this.dataset.userid;
       console.log("Contact clicked:", userId, contactName, contactPhone);
       window.currentReceiverId = userId;
+      allMessagesInChat = [];
+      document.getElementById("chatSearchInput").value = ""; // Clear search input
+      document.getElementById("searchResults").innerHTML = ""; // Clear search results
+
        updateSecretChatUI();
        onChatSwitch(userId)
       socket.emit("chat-open", {
@@ -237,6 +241,11 @@ if (encryptedKeyObj && msg.iv && msg.encryptedMessage && msg.type === "text") {
       });
 
       msg.message = decrypted; // Replace encrypted text with decrypted text
+        allMessagesInChat.push({
+         _id: msg._id,
+         message: decrypted,
+         timestamp: msg.timestamp
+       });// Store decrypted message in global array
     } catch (err) {
       console.error("🔐 Failed to decrypt message:", err);
       msg.message = "[Decryption Failed]";
@@ -516,6 +525,7 @@ if (smartReplyEnabled && msg.senderId !== senderId) {
  }
 
     if (msg._id) {
+      messageDiv.id = `msg-${msg._id}`;
       messageDiv.dataset.messageId = msg._id
       messageDiv.dataset.sender = msg.senderName || "Unknown";
     }

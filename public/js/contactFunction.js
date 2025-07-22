@@ -1,6 +1,9 @@
 import state from "./state.js";
 import { decryptMessage,decryptImage,decryptLockedMessageWithCode,decryptImageWithCode } from "../Security/decryptMessage.js";
+
 // import socket from "./socket.js";
+
+window.allMessagesInChat = [];
 
 export function updateUnreadBadge(userId, count) {
   const contactItem = document.querySelector(
@@ -113,6 +116,11 @@ export async function loadChatMessages(append = false) {
         });
 
         msg.message = decrypted;
+        allMessagesInChat.push({
+         _id: msg._id,
+         message: decrypted,
+         timestamp: msg.timestamp
+       });
       } else {
         msg.message = "[No key for this device]";
       }
@@ -309,6 +317,7 @@ else if (msg.type === "lockedImage" && msg.mediaUrls?.length === 1) {
 
 
  else {
+
         messageDiv.innerHTML = `
             ${msg.message}
             <div class="message-time">${formatTime(
@@ -317,6 +326,7 @@ else if (msg.type === "lockedImage" && msg.mediaUrls?.length === 1) {
         `;
       }
       if (msg._id){
+           messageDiv.id = `msg-${msg._id}`;
          messageDiv.dataset.messageId = msg._id;
          messageDiv.dataset.sender = msg.senderName || "Unknown";
       }
