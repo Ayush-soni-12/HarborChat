@@ -4,6 +4,9 @@ import { decryptMessage,decryptImage,decryptLockedMessageWithCode,decryptImageWi
 // import socket from "./socket.js";
 
 window.allMessagesInChat = [];
+renderPinnedMessages();
+window.pinnedMessagesInChat = [];
+window.handlePin = handlePin;
 
 export function updateUnreadBadge(userId, count) {
   const contactItem = document.querySelector(
@@ -119,8 +122,11 @@ export async function loadChatMessages(append = false) {
         allMessagesInChat.push({
          _id: msg._id,
          message: decrypted,
-         timestamp: msg.timestamp
+         timestamp: msg.timestamp,
+         pinned: msg.pinned,
        });
+        renderPinnedMessages();
+
       } else {
         msg.message = "[No key for this device]";
       }
@@ -129,7 +135,15 @@ export async function loadChatMessages(append = false) {
       msg.message = "[Decryption failed]";
     }
   }
+
+          
+
+
+
+
+
       messageDiv.className = `message ${isSent ? "sent" : "received"} chat-message`;
+
       let tickHtml = "";
       if (isSent) {
         if (msg.status === "sent")
@@ -323,8 +337,49 @@ else if (msg.type === "lockedImage" && msg.mediaUrls?.length === 1) {
             <div class="message-time">${formatTime(
               msg.timestamp
             )} ${tickHtml}</div>
-        `;
+                    `;
       }
+
+
+  const menuTrigger = document.createElement("div");
+  menuTrigger.className = "message-menu-trigger";
+  menuTrigger.innerHTML = `<i class="fa-solid fa-ellipsis-vertical"></i>`;
+  messageDiv.appendChild(menuTrigger);
+
+  // Dropdown menu
+  const actionMenu = document.createElement("div");
+  actionMenu.className = "message-action-menu";
+  actionMenu.innerHTML = `
+    <div onclick="handlePin('${msg._id}',true)"><i class="fa-solid fa-map-pin"></i> Pin</div>
+    <div onclick="handleReply('${msg._id}')"><i class="fa-solid fa-reply"></i> Reply</div>
+    <div onclick="handleForward('${msg._id}')"><i class="fa-solid fa-share"></i> Forward</div>
+    <div onclick="handleStar('${msg._id}')"><i class="fa-regular fa-star"></i> Star</div>
+    <div onclick="handleDelete('${msg._id}')"><i class="fa-solid fa-trash"></i> Delete</div>
+  `;
+  messageDiv.appendChild(actionMenu);
+
+  if (!isSent) {
+  actionMenu.classList.add("left");
+} else {
+  actionMenu.classList.remove("left");
+}
+
+  // Hover behavior
+  messageDiv.addEventListener("mouseenter", () => {
+    menuTrigger.classList.add("visible");
+  });
+
+  messageDiv.addEventListener("mouseleave", () => {
+    menuTrigger.classList.remove("visible");
+    actionMenu.classList.remove("show");
+  });
+
+  // Toggle menu
+  menuTrigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    actionMenu.classList.toggle("show");
+  });
+
       if (msg._id){
            messageDiv.id = `msg-${msg._id}`;
          messageDiv.dataset.messageId = msg._id;
@@ -430,4 +485,88 @@ export function formatTime(timestamp) {
   const ampm = hours >= 12 ? "PM" : "AM";
   hours = hours % 12 || 12;
   return `${hours}:${minutes} ${ampm}`;
+}
+
+
+export async function handlePin(messageId, shouldPin) {
+  try {
+    const res = await fetch('/api/messages/pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messageId, pin: shouldPin })
+    });
+
+    const data = await res.json();
+if (data.success) {
+  const updatedMsg = data.data;
+
+  // Update pinned field in allMessagesInChat
+  const index = allMessagesInChat.findIndex(msg => msg._id === updatedMsg._id);
+  if (index !== -1) {
+    allMessagesInChat[index].pinned = updatedMsg.pinned;
+  }
+
+  renderPinnedMessages();
+}
+  } catch (err) {
+    console.error("Error pinning message:", err);
+  }
+}
+
+
+export async function renderPinnedMessages() {
+  const pinnedContainer = document.getElementById("pinnedMessagesBar");
+  pinnedContainer.innerHTML = "";
+
+  const pinnedMessages = allMessagesInChat.filter(msg => msg.pinned);
+
+  if (pinnedMessages.length === 0) {
+    pinnedContainer.style.display = "none";
+    return;
+  }
+
+  pinnedContainer.style.display = "block";
+
+  pinnedMessages.forEach(msg => {
+    const chip = document.createElement("div");
+    chip.className = "pinned-message-chip";
+    chip.innerHTML = `
+      <span> ${msg.message.slice(0, 30)}...</span>
+      <button class="unpin-btn"><i class="fa-solid fa-xmark"></i></button>
+    `;
+
+    chip.querySelector("span").addEventListener("click", () => {
+      const target = document.getElementById(`msg-${msg._id}`);
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        target.classList.add("highlight-temp");
+        setTimeout(() => target.classList.remove("highlight-temp"), 2500);
+      }
+    });
+
+      // Unpin on button click
+    chip.querySelector(".unpin-btn").addEventListener("click", async () => {
+      try {
+        const res = await fetch(`/api/pin/${msg._id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pinned: false }),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          // Update local pinned state
+          const index = allMessagesInChat.findIndex(m => m._id === msg._id);
+          if (index !== -1) allMessagesInChat[index].pinned = false;
+
+          renderPinnedMessages();
+        }
+      } catch (err) {
+        console.error("Error unpinning message:", err);
+      }
+    });
+
+
+    pinnedContainer.appendChild(chip);
+  });
 }

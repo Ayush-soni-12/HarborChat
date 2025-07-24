@@ -1026,7 +1026,7 @@ const results = allMessagesInChat.filter(msg =>
          <div>${msg.message}</div>
          <small>${new Date(msg.timestamp).toLocaleString()}</small>
        `;
-   div.addEventListener("click", () => {
+    div.addEventListener("click", () => {
     const target = document.getElementById(`msg-${msg._id}`);
     if (target) {
       target.scrollIntoView({ behavior: "smooth", block: "center" });

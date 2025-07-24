@@ -23,6 +23,7 @@ import { fileURLToPath } from "url";
 import getReplySuggestions from "./Helpers/smartReply.js";
 
 
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -116,7 +117,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("chat message", async ({ senderId, receiverId,encryptedMessage ,status, encryptedKeys,iv,messageId,isSecretChat,type,decryptedText}) => {
+  socket.on("chat message", async ({ senderId, receiverId,encryptedMessage ,status, encryptedKeys,iv,messageId,isSecretChat,type}) => {
 
     // Debug: show which rooms this socket is in
     console.log("🔍 Socket Rooms:", socket.rooms);
@@ -165,6 +166,7 @@ io.on("connection", (socket) => {
     iv,
     type ,
     status,
+    pinned: false, // Default to false, can be updated later
     senderPhone,
     isSecretChat,
     expiresAt,

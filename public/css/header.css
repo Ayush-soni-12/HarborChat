@@ -1565,8 +1565,194 @@
   color: #888;
 }
 
-.highlight-temp {
+/* .highlight-temp {
   background-color: yellow;
   transition: background-color 1s ease;
+} */
+
+ /* .messages-container {
+  position: relative;
+  /* background: linear-gradient(to right, #d4fc79, #96e6a1);  */
+   
+
+  .messages-container{
+  position: relative;
+  }
+
+ .message.sent {
+  background: linear-gradient(to right, #a1c4fd, #c2e9fb);
+  margin-left: auto;
 }
 
+.message.received {
+  background: linear-gradient(to right, #fbc2eb, #a6c1ee);
+  margin-right: auto;
+}
+
+.message-text {
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.message-time {
+  font-size: 11px;
+  margin-top: 4px;
+  opacity: 0.7;
+}
+
+.message-menu-trigger {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #555;
+  display: none;
+  transition: opacity 0.3s ease;
+}
+
+.message-menu-trigger.visible {
+  display: block;
+  opacity: 1;
+}
+
+ .message-action-menu {
+  width: 160px;
+  position: absolute;
+  top: 28px;
+  right: 0;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.95);
+  transform-origin: top right;
+  transition: all 0.2s ease;
+  z-index: 999;
+  box-sizing: border-box;
+  /* min-width: 120px;  */
+} 
+.message-action-menu div i{
+  font-size: 1.2rem;
+ color: #128c7e;
+  margin-right: 8px;
+}
+
+.message-action-menu.left {
+  left: 0;
+  right: auto;
+  transform-origin: top left;
+}
+
+.message-action-menu.show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+.message-action-menu div {
+  padding: 10px 14px;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.message-action-menu div:hover {
+  background-color: #f2f2f2;
+}
+
+
+/* Pinned Messages Bar */
+#pinnedMessagesBar {
+  display: none; /* Default hidden */
+  position: sticky;
+  top: 0;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  padding: 8px 12px;
+  z-index: 100;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: thin;
+}
+
+/* Pinned Message Chips */
+.pinned-message-chip {
+  display: inline-flex;
+  align-items: center;
+  background: white;
+  border-radius: 16px;
+  padding: 6px 12px;
+  margin-right: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid #dee2e6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  max-width: 200px;
+}
+
+.pinned-message-chip:hover {
+  background: #f1f3f5;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.pinned-message-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #495057;
+}
+
+/* Unpin Button */
+.pinned-message-chip .unpin-btn {
+  background: none;
+  border: none;
+  color: #868e96;
+  margin-left: 8px;
+  padding: 0 0 0 8px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: color 0.2s;
+  border-left: 1px solid #e9ecef;
+ 
+}
+
+.pinned-message-chip .unpin-btn:hover {
+  color: #fa5252;
+   font-weight: bolder;
+}
+
+/* Highlight animation for scrolled-to message */
+.highlight-temp {
+  animation: highlight-fade-green 1.5s ease-out;
+  background-color: #b9f6ca !important;
+  box-shadow: 0 0 0 6px #b9f6ca, 0 2px 8px rgba(0,0,0,0.08);
+  z-index: 2;
+  position: relative;
+}
+
+@keyframes highlight-fade-green {
+  0% {
+    background-color: #b9f6ca;
+    box-shadow: 0 0 0 12px #b9f6ca, 0 2px 8px rgba(0,0,0,0.08);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+/* Scrollbar for pinned container (if needed) */
+/* #pinnedMessagesBar::-webkit-scrollbar {
+  height: 4px;
+}
+
+#pinnedMessagesBar::-webkit-scrollbar-thumb {
+  background: #adb5bd;
+  border-radius: 4px;
+} */

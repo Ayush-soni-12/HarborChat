@@ -356,3 +356,97 @@ export const translateChat = asyncHandler(async (req, res) => {
     res.status(500).json({ error: "Translation failed." });
   }
 });
+
+export const pinMessage = asyncHandler(async(req,res)=>{
+   try {
+    const { messageId, pin } = req.body;
+
+    const result = await Message.findByIdAndUpdate(
+      messageId,
+      { pinned: pin }, // pin = true or false
+      { new: true }
+    );
+
+    if (!result) return res.status(404).json({ error: "Message not found" });
+
+     // 2. Update in Redis (if cached)
+    const senderId = result.senderId.toString();
+    const receiverId = result.receiverId.toString();
+    const ids = [senderId, receiverId].sort();
+    const baseKey = `chat:${ids[0]}:${ids[1]}`;
+    const normalKey = `${baseKey}:normal`;
+    const secretKey = `${baseKey}:secret`;
+
+    // Try both normal and secret caches
+    for (const key of [normalKey, secretKey]) {
+      const cached = await client.get(key);
+      if (cached) {
+        let messages = JSON.parse(cached);
+        let updated = false;
+        messages = messages.map(msg => {
+          if (msg._id === messageId) {
+            updated = true;
+            return { ...msg, pinned: pin };
+          }
+          return msg;
+        });
+        if (updated) {
+          await client.set(key, JSON.stringify(messages), { EX: 300 });
+        }
+      }
+    }
+
+    res.json({ success: true, message: "Message updated", data: result });
+  } catch (err) {
+    console.error("Error pinning message:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+})
+
+export const unPinMessage = asyncHandler(async(req,res)=>{
+   const { id } = req.params;
+  const { pinned } = req.body;
+
+  try {
+    const updatedMessage = await Message.findByIdAndUpdate(
+      id,
+      { pinned: !!pinned },
+      { new: true }
+    );
+
+    if (!updatedMessage) {
+      return res.status(404).json({ success: false, message: "Message not found" });
+    }
+
+     // 2. Update in Redis (if cached)
+    const senderId = updatedMessage.senderId.toString();
+    const receiverId = updatedMessage.receiverId.toString();
+    const ids = [senderId, receiverId].sort();
+    const baseKey = `chat:${ids[0]}:${ids[1]}`;
+    const normalKey = `${baseKey}:normal`;
+    const secretKey = `${baseKey}:secret`;
+
+    for (const key of [normalKey, secretKey]) {
+      const cached = await client.get(key);
+      if (cached) {
+        let messages = JSON.parse(cached);
+        let updated = false;
+        messages = messages.map(msg => {
+          if (msg._id === id) {
+            updated = true;
+            return { ...msg, pinned: !!pinned };
+          }
+          return msg;
+        });
+        if (updated) {
+          await client.set(key, JSON.stringify(messages), { EX: 300 });
+        }
+      }
+    }
+
+    res.json({ success: true, data: updatedMessage });
+  } catch (err) {
+    console.error("Error updating pin status:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+})

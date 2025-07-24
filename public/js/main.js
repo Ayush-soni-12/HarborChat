@@ -8,6 +8,7 @@ import {
   showOfflineDot,
   showToast,
   formatTime,
+  renderPinnedMessages
 } from "./contactFunction.js";
 import { setupInputHandlers, updateProfileSidebar } from "./uiFunction.js";
 import state from "./state.js";
@@ -244,8 +245,10 @@ if (encryptedKeyObj && msg.iv && msg.encryptedMessage && msg.type === "text") {
         allMessagesInChat.push({
          _id: msg._id,
          message: decrypted,
-         timestamp: msg.timestamp
+         timestamp: msg.timestamp,
+         pinned: msg.pinned || false,
        });// Store decrypted message in global array
+       renderPinnedMessages();
     } catch (err) {
       console.error("🔐 Failed to decrypt message:", err);
       msg.message = "[Decryption Failed]";
@@ -523,6 +526,51 @@ if (smartReplyEnabled && msg.senderId !== senderId) {
 }
 
  }
+
+
+ const menuTrigger = document.createElement("div");
+  menuTrigger.className = "message-menu-trigger";
+  menuTrigger.innerHTML = `<i class="fa-solid fa-ellipsis-vertical"></i>`;
+  messageDiv.appendChild(menuTrigger);
+
+  // Dropdown menu
+  const actionMenu = document.createElement("div");
+  actionMenu.className = "message-action-menu";
+  actionMenu.innerHTML = `
+    <div onclick="handlePin('${msg._id}',true)"><i class="fa-solid fa-map-pin"></i> Pin</div>
+    <div onclick="handleReply('${msg._id}')"><i class="fa-solid fa-reply"></i> Reply</div>
+    <div onclick="handleForward('${msg._id}')"><i class="fa-solid fa-share"></i> Forward</div>
+    <div onclick="handleStar('${msg._id}')"><i class="fa-regular fa-star"></i> Star</div>
+    <div onclick="handleDelete('${msg._id}')"><i class="fa-solid fa-trash"></i> Delete</div>
+  `;
+  messageDiv.appendChild(actionMenu);
+
+  if (!isSent) {
+  actionMenu.classList.add("left");
+} else {
+  actionMenu.classList.remove("left");
+}
+
+  // Hover behavior
+  messageDiv.addEventListener("mouseenter", () => {
+    menuTrigger.classList.add("visible");
+  });
+
+  messageDiv.addEventListener("mouseleave", () => {
+    menuTrigger.classList.remove("visible");
+    actionMenu.classList.remove("show");
+  });
+
+  // Toggle menu
+  menuTrigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    actionMenu.classList.toggle("show");
+  });
+
+
+
+
+
 
     if (msg._id) {
       messageDiv.id = `msg-${msg._id}`;
