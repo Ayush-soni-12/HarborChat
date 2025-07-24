@@ -99,7 +99,7 @@ import { getPublicKeyFromServer } from "./publicKeyUtils.js"; // NEW: fetch all 
 import { importPublicKey } from "./rsaHelper.js";
 import { uploadToCloudinary } from "./uploadFunction.js";
 
-export async function sendEncryptedMessage(senderId, receiverId, plainText,isSecretChat) {
+export async function sendEncryptedMessage(senderId, receiverId, plainText,isSecretChat,currentReply) {
   try {
     const decryptedText = plainText.trim();
     if (!decryptedText) {
@@ -146,6 +146,7 @@ export async function sendEncryptedMessage(senderId, receiverId, plainText,isSec
       type: "text",
       status :"sent",
       decryptedText,
+      repliedTo: currentReply || null
     };
 
     // 7. Send to backend

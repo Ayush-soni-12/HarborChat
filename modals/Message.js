@@ -72,7 +72,15 @@ encryptedKeys: {
     pinned: {
     type: Boolean,
     default: false,
-  }
+  },
+
+  repliedTo: {
+    type: {
+      messageId: { type: mongoose.Schema.Types.ObjectId, ref: "Message" },
+      textSnippet: { type: String },
+    },
+    default: null,
+  },
 });
 
 

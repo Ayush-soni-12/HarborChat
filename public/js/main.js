@@ -503,7 +503,20 @@ else if (msg.type === "lockedImage" && msg.mediaUrls?.length === 1) {
 
 
     else {
+
+      let repliedHtml = "";
+
+      if (msg.repliedTo && msg.repliedTo.messageId) {
+        repliedHtml = `
+          <div class="replied-preview" data-target-id="msg-${msg.repliedTo.messageId}">
+            <div class="replied-text">"${msg.repliedTo.textSnippet}"</div>
+          </div>
+        `;
+       }
+
+
       messageDiv.innerHTML = `
+        ${repliedHtml}
     ${msg.message}
     <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
   `;
@@ -526,6 +539,19 @@ if (smartReplyEnabled && msg.senderId !== senderId) {
 }
 
  }
+
+ messageDiv.querySelectorAll(".replied-preview").forEach((el) => {
+  el.addEventListener("click", () => {
+    const targetId = el.dataset.targetId;
+    const targetEl = document.getElementById(targetId);
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      targetEl.classList.add("highlight-temp");
+      setTimeout(() => targetEl.classList.remove("highlight-temp"), 2000);
+    }
+  });
+});
+
 
 
  const menuTrigger = document.createElement("div");

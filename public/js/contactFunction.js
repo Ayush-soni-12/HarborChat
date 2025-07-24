@@ -7,6 +7,9 @@ window.allMessagesInChat = [];
 renderPinnedMessages();
 window.pinnedMessagesInChat = [];
 window.handlePin = handlePin;
+window.handleReply = handleReply;
+window.currentReply = null; // Global variable to store current reply context
+
 
 export function updateUnreadBadge(userId, count) {
   const contactItem = document.querySelector(
@@ -332,13 +335,38 @@ else if (msg.type === "lockedImage" && msg.mediaUrls?.length === 1) {
 
  else {
 
+
+       let repliedHtml = "";
+
+      if (msg.repliedTo && msg.repliedTo.messageId) {
+        repliedHtml = `
+          <div class="replied-preview" data-target-id="msg-${msg.repliedTo.messageId}">
+            <div class="replied-text">"${msg.repliedTo.textSnippet}"</div>
+          </div>
+        `;
+       }
+
         messageDiv.innerHTML = `
+            ${repliedHtml}
             ${msg.message}
             <div class="message-time">${formatTime(
               msg.timestamp
             )} ${tickHtml}</div>
                     `;
       }
+
+
+    messageDiv.querySelectorAll(".replied-preview").forEach((el) => {
+  el.addEventListener("click", () => {
+    const targetId = el.dataset.targetId;
+    const targetEl = document.getElementById(targetId);
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      targetEl.classList.add("highlight-temp");
+      setTimeout(() => targetEl.classList.remove("highlight-temp"), 2000);
+    }
+  });
+});
 
 
   const menuTrigger = document.createElement("div");
@@ -570,3 +598,26 @@ export async function renderPinnedMessages() {
     pinnedContainer.appendChild(chip);
   });
 }
+
+
+/// reply message .................................
+
+export async function handleReply(messageId) {
+  const msgEl = document.getElementById(`msg-${messageId}`);
+  const text = msgEl.innerText.split("\n")[0].trim(); // first line only
+
+  currentReply = {
+    messageId: messageId,
+    textSnippet: text.length > 100 ? text.substring(0, 100) + "..." : text,
+  };
+
+  // show preview in UI
+  document.getElementById("reply-preview").classList.remove("hidden-reply");
+  document.getElementById("replyText").innerText = currentReply.textSnippet;
+}
+
+document.getElementById("cancelReply").addEventListener("click", () => {
+  currentReply = null;
+  document.getElementById("reply-preview").classList.add("hidden-reply");
+});
+

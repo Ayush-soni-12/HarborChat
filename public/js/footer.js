@@ -4,6 +4,7 @@ import state from "./state.js";
 // import socket from "./socket.js";
 import { sendEncryptedMessage,sendEncryptedImage ,sendMultipleEncryptedImages,encryptMessageWithCode,encryptImageWithCode} from "../Security/encryptAeskey.js";
 import { clearAllSuggestions }from "./main.js";
+
 // --- ADD CONTACT FORM SUBMISSION ---
 document
   .getElementById("addContactForm")
@@ -488,7 +489,10 @@ export async function sendMessage() {
   }else{
   // 1. Send text message
   if (message) {
-    await sendEncryptedMessage(senderId,receiverId,message,isSecretChat);
+    await sendEncryptedMessage(senderId,receiverId,message,isSecretChat,currentReply);
+    currentReply = null;
+    document.getElementById("reply-preview").classList.add("hidden-reply");
+
     moveContactToTop(receiverId);
     input.value = "";
     clearAllSuggestions();

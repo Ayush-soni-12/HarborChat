@@ -117,7 +117,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("chat message", async ({ senderId, receiverId,encryptedMessage ,status, encryptedKeys,iv,messageId,isSecretChat,type}) => {
+  socket.on("chat message", async ({ senderId, receiverId,encryptedMessage ,status, encryptedKeys,iv,messageId,isSecretChat,type,repliedTo}) => {
 
     // Debug: show which rooms this socket is in
     console.log("🔍 Socket Rooms:", socket.rooms);
@@ -169,6 +169,10 @@ io.on("connection", (socket) => {
     pinned: false, // Default to false, can be updated later
     senderPhone,
     isSecretChat,
+    repliedTo: repliedTo ? {
+    messageId: repliedTo.messageId,
+    textSnippet: repliedTo.textSnippet,
+  } : null,
     expiresAt,
     timestamp: new Date(),
   };
