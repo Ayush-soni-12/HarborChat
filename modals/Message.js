@@ -1,3 +1,4 @@
+
 import mongoose from "mongoose";
 
 const messageSchema = new mongoose.Schema({
@@ -91,6 +92,7 @@ const messageSchema = new mongoose.Schema({
           encryptedAESKey: { type: String },
         },
       ],
+      imageUrl: { type: Boolean,default: false }, // Add imageUrl for image reply preview
     },
     default: null,
   },

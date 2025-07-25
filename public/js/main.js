@@ -9,6 +9,7 @@ import {
   showToast,
   formatTime,
   renderPinnedMessages,
+  getReplyPreviewHtml
 } from "./contactFunction.js";
 import { setupInputHandlers, updateProfileSidebar } from "./uiFunction.js";
 import state from "./state.js";
@@ -522,42 +523,7 @@ socket.on("chat message", async (msg) => {
         }
       });
     } else {
-      let repliedHtml = "";
-      if (msg.repliedTo && msg.repliedTo.messageId) {
-        let replyText =
-          msg.repliedTo.textSnippet || msg.repliedTo.textSnippet || "";
-        // Check for encrypted reply snippet (new schema)
-        if (
-          msg.repliedTo.textSnippet &&
-          Array.isArray(msg.repliedTo.encryptedAESKeys) &&
-          msg.repliedTo.iv
-        ) {
-          try {
-            const deviceId = localStorage.getItem("deviceId");
-            const keyObj = msg.repliedTo.encryptedAESKeys.find(
-              (k) => k.deviceId === deviceId
-            );
-            if (keyObj) {
-              const decryptedReply = await decryptMessage({
-                encryptedMessage: msg.repliedTo.textSnippet,
-                encryptedAESKey: keyObj.encryptedAESKey,
-                iv: msg.repliedTo.iv,
-              });
-              replyText = decryptedReply;
-            } else {
-              replyText = "[No key for this device]";
-            }
-          } catch (err) {
-            replyText = "[Decryption Failed]";
-            console.error("Failed to decrypt reply preview:", err);
-          }
-        }
-        repliedHtml = `
-      <div class="replied-preview" data-target-id="msg-${msg.repliedTo.messageId}">
-        <div class="replied-text">"${replyText}"</div>
-      </div>
-    `;
-      }
+      let repliedHtml = await getReplyPreviewHtml(msg.repliedTo);
       messageDiv.innerHTML = `
     ${repliedHtml}
     ${msg.message}

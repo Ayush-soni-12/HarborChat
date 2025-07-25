@@ -178,14 +178,13 @@ io.on("connection", (socket) => {
         pinned: false, // Default to false, can be updated later
         senderPhone,
         isSecretChat,
-        repliedTo: repliedTo
-          ? {
-              messageId: repliedTo.messageId,
-              textSnippet: repliedTo.textSnippet,
-              iv: repliedTo.iv,
-              encryptedAESKeys: repliedTo.encryptedAESKeys,
-            }
-          : null,
+        repliedTo: repliedTo ? {
+          messageId: repliedTo.messageId,
+          textSnippet: repliedTo.textSnippet,
+          iv: repliedTo.iv,
+          encryptedAESKeys: repliedTo.encryptedAESKeys,
+          imageUrl: repliedTo.imageUrl,
+        } : null,
         expiresAt,
         timestamp: new Date(),
       };

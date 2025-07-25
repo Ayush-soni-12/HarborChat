@@ -140,28 +140,35 @@ export async function sendEncryptedMessage(
     let encryptedReplySnippet = null;
     let replySnippetIV = null;
     let encryptedReplyAESKeys = null;
-    if (currentReply && currentReply.textSnippet) {
-      // Generate a new AES key for the reply snippet
-      const replyAESKey = await generateAESKey();
-      const { encryptedData: replyEncryptedData, iv: replyIV } =
-        await encryptWithAESKey(replyAESKey, currentReply.textSnippet);
-      replySnippetIV = btoa(String.fromCharCode(...replyIV));
-      encryptedReplySnippet = btoa(String.fromCharCode(...replyEncryptedData));
-      // Export raw key
-      const rawReplyAESKey = await exportAESKeyRaw(replyAESKey);
-      // Encrypt reply AES key for all devices
-      encryptedReplyAESKeys = [];
-      for (const { deviceId, publicKey: base64Key } of allKeys) {
-        const cryptoKey = await importPublicKey(base64Key);
-        const encryptedAESKeyBuffer = await window.crypto.subtle.encrypt(
-          { name: "RSA-OAEP" },
-          cryptoKey,
-          rawReplyAESKey
+    let replyImageUrl = null;
+    if (currentReply && (currentReply.textSnippet || currentReply.imageUrl)) {
+      // If replying to image, just pass imageUrl
+      replyImageUrl = currentReply.imageUrl || false;
+      if (currentReply.textSnippet) {
+        // Generate a new AES key for the reply snippet
+        const replyAESKey = await generateAESKey();
+        const { encryptedData: replyEncryptedData, iv: replyIV } =
+          await encryptWithAESKey(replyAESKey, currentReply.textSnippet);
+        replySnippetIV = btoa(String.fromCharCode(...replyIV));
+        encryptedReplySnippet = btoa(
+          String.fromCharCode(...replyEncryptedData)
         );
-        const encryptedAESKey = btoa(
-          String.fromCharCode(...new Uint8Array(encryptedAESKeyBuffer))
-        );
-        encryptedReplyAESKeys.push({ deviceId, encryptedAESKey });
+        // Export raw key
+        const rawReplyAESKey = await exportAESKeyRaw(replyAESKey);
+        // Encrypt reply AES key for all devices
+        encryptedReplyAESKeys = [];
+        for (const { deviceId, publicKey: base64Key } of allKeys) {
+          const cryptoKey = await importPublicKey(base64Key);
+          const encryptedAESKeyBuffer = await window.crypto.subtle.encrypt(
+            { name: "RSA-OAEP" },
+            cryptoKey,
+            rawReplyAESKey
+          );
+          const encryptedAESKey = btoa(
+            String.fromCharCode(...new Uint8Array(encryptedAESKeyBuffer))
+          );
+          encryptedReplyAESKeys.push({ deviceId, encryptedAESKey });
+        }
       }
     }
     // 6. Prepare message payload
@@ -181,6 +188,7 @@ export async function sendEncryptedMessage(
             textSnippet: encryptedReplySnippet,
             iv: replySnippetIV,
             encryptedAESKeys: encryptedReplyAESKeys,
+            imageUrl: replyImageUrl,
           }
         : null,
     };

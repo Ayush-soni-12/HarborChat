@@ -64,6 +64,45 @@ export function updateEmptyChatMessage() {
   }
 }
 
+// Helper to render reply preview
+export async function getReplyPreviewHtml(repliedTo) {
+  if (!repliedTo || !repliedTo.messageId) return "";
+  if (repliedTo.imageUrl) {
+    // Always show only a label for image reply, not the image tag
+    return `<div class="replied-preview" data-target-id="msg-${repliedTo.messageId}"><span class="replied-image-label">[Image]</span></div>`;
+  } else {
+    let replyText = repliedTo.textSnippet || "";
+    // Check for encrypted reply snippet (new schema)
+    if (
+      repliedTo.textSnippet &&
+      Array.isArray(repliedTo.encryptedAESKeys) &&
+      repliedTo.iv
+    ) {
+      try {
+        const deviceId = localStorage.getItem("deviceId");
+        const keyObj = repliedTo.encryptedAESKeys.find(
+          (k) => k.deviceId === deviceId
+        );
+        if (keyObj) {
+          const decryptedReply = await decryptMessage({
+            encryptedMessage: repliedTo.textSnippet,
+            encryptedAESKey: keyObj.encryptedAESKey,
+            iv: repliedTo.iv,
+          });
+          replyText = decryptedReply;
+          console.log('replyText', replyText);
+        } else {
+          replyText = "[No key for this device]";
+        }
+      } catch (err) {
+        replyText = "[Decryption Failed]";
+        console.error("Failed to decrypt reply preview:", err);
+      }
+    }
+    return `<div class="replied-preview" data-target-id="msg-${repliedTo.messageId}"><div class="replied-text">"${replyText}"</div></div>`;
+  }
+}
+
 // --- LOAD CHAT MESSAGES ---
 export async function loadChatMessages(append = false) {
   if (state.isLoadingMessages || state.allMessagesLoaded) return;
@@ -125,12 +164,15 @@ export async function loadChatMessages(append = false) {
             });
 
             msg.message = decrypted;
+            // Store all message types in allMessagesInChat
             allMessagesInChat.push({
               _id: msg._id,
               message: decrypted,
               timestamp: msg.timestamp,
               pinned: msg.pinned,
+              // Add any other fields you need for reply preview
             });
+            console.log("loadchatmessage", allMessagesInChat);
             renderPinnedMessages();
           } else {
             msg.message = "[No key for this device]";
@@ -174,6 +216,15 @@ export async function loadChatMessages(append = false) {
           console.warn("⚠️ Failed to decrypt image blob", err);
           msg.decryptedImageURL = null;
         }
+        // Store all image messages in allMessagesInChat
+        allMessagesInChat.push({
+          _id: msg._id,
+          message: msg.message,
+          timestamp: msg.timestamp,
+          pinned: msg.pinned,
+          // Add any other fields you need for reply preview
+        });
+        renderPinnedMessages();
         messageDiv.innerHTML = `
             <img src="${
               msg.decryptedImageURL
@@ -204,7 +255,6 @@ export async function loadChatMessages(append = false) {
             )} ${tickHtml}</div>
         `;
       } else if (msg.type === "lockedText") {
-        console.log("LockedTExt message received:", msg);
         // 🔐 Initial locked message UI
         messageDiv.innerHTML = `
       <button class="unlock-btn">🔒 Locked Message. Tap to Unlock</button>
@@ -329,45 +379,7 @@ export async function loadChatMessages(append = false) {
           }
         });
       } else {
-        let repliedHtml = "";
-        if (msg.repliedTo && msg.repliedTo.messageId) {
-          let replyText =
-            msg.repliedTo.textSnippet ||
-            msg.repliedTo.textSnippet ||
-            "";
-          // Check for encrypted reply snippet (new schema)
-          if (
-            msg.repliedTo.textSnippet &&
-            Array.isArray(msg.repliedTo.encryptedAESKeys) &&
-            msg.repliedTo.iv
-          ) {
-            try {
-              const deviceId = localStorage.getItem("deviceId");
-              const keyObj = msg.repliedTo.encryptedAESKeys.find(
-                (k) => k.deviceId === deviceId
-              );
-              if (keyObj) {
-                const decryptedReply = await decryptMessage({
-                  encryptedMessage: msg.repliedTo.textSnippet,
-                  encryptedAESKey: keyObj.encryptedAESKey,
-                  iv: msg.repliedTo.iv,
-                });
-                replyText = decryptedReply;
-              } else {
-                replyText = "[No key for this device]";
-              }
-            } catch (err) {
-              replyText = "[Decryption Failed]";
-              console.error("Failed to decrypt reply preview:", err);
-            }
-          }
-          repliedHtml = `
-      <div class="replied-preview" data-target-id="msg-${msg.repliedTo.messageId}">
-        <div class="replied-text">"${replyText}"</div>
-      </div>
-    `;
-        }
-
+        let repliedHtml = await getReplyPreviewHtml(msg.repliedTo);
         messageDiv.innerHTML = `
             ${repliedHtml}
             ${msg.message}
@@ -500,7 +512,7 @@ export function showOnlineDot(userId) {
 }
 
 export function showOfflineDot(userId) {
-  // Update chat header if open
+  // Update chat header if opentype: [String],
   if (window.currentReceiverId === userId) {
     const statusText = document.querySelector(".nav-info .user-status");
     if (statusText) {
@@ -624,18 +636,25 @@ export async function renderPinnedMessages() {
 
 export async function handleReply(messageId) {
   const msgEl = document.getElementById(`msg-${messageId}`);
-  const text = msgEl.innerText.split("\n")[0].trim(); // first line only
-
+  let text = msgEl.innerText.split("\n")[0].trim(); // first line only
+  let imageUrl = false;
+  // Detect if this is an image message
+  const imgEl = msgEl.querySelector("img");
+  if (imgEl && imgEl.src) {
+    text = "[Image]"; // Only show label, do not show or decrypt image
+    imageUrl = true;
+  }
   currentReply = {
     messageId: messageId,
     textSnippet: text.length > 100 ? text.substring(0, 100) + "..." : text,
+    imageUrl: imageUrl,
   };
-
   // show preview in UI
-  document.getElementById("reply-preview").classList.remove("hidden-reply");
-  document.getElementById("replyText").innerText = currentReply.textSnippet;
+  const previewBox = document.getElementById("reply-preview");
+  previewBox.classList.remove("hidden-reply");
+  const replyTextEl = document.getElementById("replyText");
+  replyTextEl.innerText = currentReply.textSnippet;
 }
-
 document.getElementById("cancelReply").addEventListener("click", () => {
   currentReply = null;
   document.getElementById("reply-preview").classList.add("hidden-reply");
