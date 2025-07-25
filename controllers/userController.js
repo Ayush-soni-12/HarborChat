@@ -321,6 +321,7 @@ export const sendEncryptData = asyncHandler(async (req, res) => {
       iv,
       status,
       type,
+      repliedTo
     } = req.body;
 
     if (!senderId || !receiverId || !iv || !Array.isArray(encryptedKeys)) {
@@ -339,6 +340,7 @@ export const sendEncryptData = asyncHandler(async (req, res) => {
       senderPhone,
       isSecretChat,
       status,
+       repliedTo: repliedTo || null,
       timestamp: new Date(),
     });
 

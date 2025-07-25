@@ -1,4 +1,3 @@
-
 import mongoose from "mongoose";
 
 const messageSchema = new mongoose.Schema({
@@ -12,7 +11,14 @@ const messageSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["text", "image", "audio", "multi-image","lockedText","lockedImage"],
+    enum: [
+      "text",
+      "image",
+      "audio",
+      "multi-image",
+      "lockedText",
+      "lockedImage",
+    ],
     default: "text",
   },
 
@@ -20,15 +26,15 @@ const messageSchema = new mongoose.Schema({
     type: String,
     // required: true,
   },
-encryptedKeys: {
-  type: [
-    {
-      deviceId: { type: String, required: true },
-      encryptedAESKey: { type: String, required: true }, // base64
-    },
-  ],
-  default: [],
-},
+  encryptedKeys: {
+    type: [
+      {
+        deviceId: { type: String, required: true },
+        encryptedAESKey: { type: String, required: true }, // base64
+      },
+    ],
+    default: [],
+  },
   iv: {
     type: String,
     // required: true,
@@ -38,8 +44,8 @@ encryptedKeys: {
     type: [String], // used for image/audio/multiple image URLs
     default: [],
   },
-  audioUrl:{
-    type :String,
+  audioUrl: {
+    type: String,
   },
   senderPhone: {
     type: String,
@@ -57,19 +63,19 @@ encryptedKeys: {
     type: Date,
     default: null,
   },
-  burnAfterRead: { 
+  burnAfterRead: {
     type: Boolean,
-     default: false
-   },
+    default: false,
+  },
   receiverOpened: {
-  type: Boolean,
-  default: false,
-},
+    type: Boolean,
+    default: false,
+  },
   isSecretChat: {
     type: Boolean,
     default: false,
   },
-    pinned: {
+  pinned: {
     type: Boolean,
     default: false,
   },
@@ -78,16 +84,20 @@ encryptedKeys: {
     type: {
       messageId: { type: mongoose.Schema.Types.ObjectId, ref: "Message" },
       textSnippet: { type: String },
+      iv: { type: String },
+      encryptedAESKeys: [
+        {
+          deviceId: { type: String },
+          encryptedAESKey: { type: String },
+        },
+      ],
     },
     default: null,
   },
 });
 
-
 messageSchema.index({ senderId: 1, receiverId: 1, timestamp: 1 });
 messageSchema.index({ receiverId: 1, senderId: 1, timestamp: 1 });
 messageSchema.index({ deleteAt: 1 }, { expireAfterSeconds: 0 });
-
-
 
 export default mongoose.model("Message", messageSchema);

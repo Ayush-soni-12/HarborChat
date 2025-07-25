@@ -1,5 +1,10 @@
 import state from "./state.js";
-import { decryptMessage,decryptImage,decryptLockedMessageWithCode,decryptImageWithCode } from "../Security/decryptMessage.js";
+import {
+  decryptMessage,
+  decryptImage,
+  decryptLockedMessageWithCode,
+  decryptImageWithCode,
+} from "../Security/decryptMessage.js";
 
 // import socket from "./socket.js";
 
@@ -9,7 +14,6 @@ window.pinnedMessagesInChat = [];
 window.handlePin = handlePin;
 window.handleReply = handleReply;
 window.currentReply = null; // Global variable to store current reply context
-
 
 export function updateUnreadBadge(userId, count) {
   const contactItem = document.querySelector(
@@ -104,48 +108,42 @@ export async function loadChatMessages(append = false) {
     }
     // Render messages
 
-
     for (const msg of data.messages) {
-    // data.messages.forEach((msg) => {
+      // data.messages.forEach((msg) => {
       const messageDiv = document.createElement("div");
       const isSent = msg.senderId === senderId;
- if (msg.encryptedKeys && msg.iv && msg.type==="text") {
-    try {
-      const deviceId = localStorage.getItem("deviceId");
-      const keyObj = msg.encryptedKeys.find(k => k.deviceId === deviceId);
+      if (msg.encryptedKeys && msg.iv && msg.type === "text") {
+        try {
+          const deviceId = localStorage.getItem("deviceId");
+          const keyObj = msg.encryptedKeys.find((k) => k.deviceId === deviceId);
 
-      if (keyObj) {
-        const decrypted = await decryptMessage({
-          encryptedMessage: msg.message, // base64
-          encryptedAESKey: keyObj.encryptedAESKey, // base64
-          iv: msg.iv, // base64
-        });
+          if (keyObj) {
+            const decrypted = await decryptMessage({
+              encryptedMessage: msg.message, // base64
+              encryptedAESKey: keyObj.encryptedAESKey, // base64
+              iv: msg.iv, // base64
+            });
 
-        msg.message = decrypted;
-        allMessagesInChat.push({
-         _id: msg._id,
-         message: decrypted,
-         timestamp: msg.timestamp,
-         pinned: msg.pinned,
-       });
-        renderPinnedMessages();
-
-      } else {
-        msg.message = "[No key for this device]";
+            msg.message = decrypted;
+            allMessagesInChat.push({
+              _id: msg._id,
+              message: decrypted,
+              timestamp: msg.timestamp,
+              pinned: msg.pinned,
+            });
+            renderPinnedMessages();
+          } else {
+            msg.message = "[No key for this device]";
+          }
+        } catch (err) {
+          console.warn("⚠️ Failed to decrypt message", err);
+          msg.message = "[Decryption failed]";
+        }
       }
-    } catch (err) {
-      console.warn("⚠️ Failed to decrypt message", err);
-      msg.message = "[Decryption failed]";
-    }
-  }
 
-          
-
-
-
-
-
-      messageDiv.className = `message ${isSent ? "sent" : "received"} chat-message`;
+      messageDiv.className = `message ${
+        isSent ? "sent" : "received"
+      } chat-message`;
 
       let tickHtml = "";
       if (isSent) {
@@ -158,22 +156,20 @@ export async function loadChatMessages(append = false) {
             '<span class="tick-icon" style="color: #34B7F1">✔✔️</span>';
       }
       // --- Fix: Render image/audio if message is an image or audio ---
-      if (msg.type === "image" && msg.mediaUrls && msg.mediaUrls.length > 0 ) {
+      if (msg.type === "image" && msg.mediaUrls && msg.mediaUrls.length > 0) {
         try {
           const deviceId = localStorage.getItem("deviceId");
-          const keyObj = msg.encryptedKeys.find(k => k.deviceId === deviceId);
-          if(keyObj){
-          const blob = await decryptImage({
-            encryptedAESKey: keyObj.encryptedAESKey,
-            iv: msg.iv,
-            fileUrl: msg.mediaUrls[0],
-           
-          });
-           msg.decryptedImageURL = blob ? URL.createObjectURL(blob) : null;
-        } else {
-        msg.message = "[No key for this device]";
-        }
-         
+          const keyObj = msg.encryptedKeys.find((k) => k.deviceId === deviceId);
+          if (keyObj) {
+            const blob = await decryptImage({
+              encryptedAESKey: keyObj.encryptedAESKey,
+              iv: msg.iv,
+              fileUrl: msg.mediaUrls[0],
+            });
+            msg.decryptedImageURL = blob ? URL.createObjectURL(blob) : null;
+          } else {
+            msg.message = "[No key for this device]";
+          }
         } catch (err) {
           console.warn("⚠️ Failed to decrypt image blob", err);
           msg.decryptedImageURL = null;
@@ -207,144 +203,170 @@ export async function loadChatMessages(append = false) {
               msg.timestamp
             )} ${tickHtml}</div>
         `;
-      } 
-      
-   else if (msg.type === "lockedText") {
+      } else if (msg.type === "lockedText") {
         console.log("LockedTExt message received:", msg);
-    // 🔐 Initial locked message UI
-    messageDiv.innerHTML = `
+        // 🔐 Initial locked message UI
+        messageDiv.innerHTML = `
       <button class="unlock-btn">🔒 Locked Message. Tap to Unlock</button>
       <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
     `;
 
-    // ✅ Define unlockBtn AFTER it exists in DOM
-    const unlockBtn = messageDiv.querySelector(".unlock-btn");
+        // ✅ Define unlockBtn AFTER it exists in DOM
+        const unlockBtn = messageDiv.querySelector(".unlock-btn");
 
-    unlockBtn.addEventListener("click", async () => {
-      const code = prompt("Enter passcode to unlock this message:");
-      if (!code) return;
+        unlockBtn.addEventListener("click", async () => {
+          const code = prompt("Enter passcode to unlock this message:");
+          if (!code) return;
 
-      try {
-        const decrypted = await decryptLockedMessageWithCode({
-          encryptedMessage: msg.message,
-          iv: msg.iv,
-          code
-        });
+          try {
+            const decrypted = await decryptLockedMessageWithCode({
+              encryptedMessage: msg.message,
+              iv: msg.iv,
+              code,
+            });
 
-        if (decrypted) {
-          msg._decryptedText = decrypted;
+            if (decrypted) {
+              msg._decryptedText = decrypted;
 
-          messageDiv.innerHTML = `
+              messageDiv.innerHTML = `
             ${decrypted}
-            <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
+            <div class="message-time">${formatTime(
+              msg.timestamp
+            )} ${tickHtml}</div>
             <div class="burn-timer">🧨 Disappears in 10s</div>
           `;
 
-          // ✅ Trigger backend TTL countdown
-          if (msg._id) {
-            socket.emit("start-burn", {
-              messageId: msg._id,
-               userId: senderId,
-              seconds: 10
-            });
-          }
+              // ✅ Trigger backend TTL countdown
+              if (msg._id) {
+                socket.emit("start-burn", {
+                  messageId: msg._id,
+                  userId: senderId,
+                  seconds: 10,
+                });
+              }
 
-          // 🔥 Frontend burn timer
-          let seconds = 10;
-          const timerEl = messageDiv.querySelector(".burn-timer");
-          const interval = setInterval(() => {
-            seconds--;
-            if (timerEl) timerEl.textContent = `🧨 Disappears in ${seconds}s`;
-            if (seconds <= 0) {
-              clearInterval(interval);
-              messageDiv.innerHTML = `<i style="color:red;">💥 This message has burned.</i>`;
-              delete msg._decryptedText;
+              // 🔥 Frontend burn timer
+              let seconds = 10;
+              const timerEl = messageDiv.querySelector(".burn-timer");
+              const interval = setInterval(() => {
+                seconds--;
+                if (timerEl)
+                  timerEl.textContent = `🧨 Disappears in ${seconds}s`;
+                if (seconds <= 0) {
+                  clearInterval(interval);
+                  messageDiv.innerHTML = `<i style="color:red;">💥 This message has burned.</i>`;
+                  delete msg._decryptedText;
+                }
+              }, 1000);
+            } else {
+              alert("❌ Incorrect code or message can't be unlocked.");
             }
-          }, 1000);
-        } else {
-          alert("❌ Incorrect code or message can't be unlocked.");
-        }
-      } catch (err) {
-        console.error("❌ Failed to decrypt locked message:", err);
-        alert("❌ Decryption error.");
-      }
-    });
-}
-
-
-else if (msg.type === "lockedImage" && msg.mediaUrls?.length === 1) {
-  messageDiv.innerHTML = `
+          } catch (err) {
+            console.error("❌ Failed to decrypt locked message:", err);
+            alert("❌ Decryption error.");
+          }
+        });
+      } else if (msg.type === "lockedImage" && msg.mediaUrls?.length === 1) {
+        messageDiv.innerHTML = `
     <button class="unlock-btn">🔒 Locked Image. Tap to Unlock</button>
     <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
   `;
 
-  const unlockBtn = messageDiv.querySelector(".unlock-btn");
+        const unlockBtn = messageDiv.querySelector(".unlock-btn");
 
-  unlockBtn.addEventListener("click", async () => {
-    const code = prompt("Enter passcode to unlock this image:");
-    if (!code) return;
+        unlockBtn.addEventListener("click", async () => {
+          const code = prompt("Enter passcode to unlock this image:");
+          if (!code) return;
 
-    try {
-      const blob = await decryptImageWithCode({
-        url: msg.mediaUrls[0],
-        iv: msg.iv,
-        code,
-      });
+          try {
+            const blob = await decryptImageWithCode({
+              url: msg.mediaUrls[0],
+              iv: msg.iv,
+              code,
+            });
 
-      if (!blob) {
-        alert("❌ Decryption failed.");
-        return;
-      }
+            if (!blob) {
+              alert("❌ Decryption failed.");
+              return;
+            }
 
-      const imageURL = URL.createObjectURL(blob);
+            const imageURL = URL.createObjectURL(blob);
 
-      messageDiv.innerHTML = `
+            messageDiv.innerHTML = `
         <img src="${imageURL}" class="chat-image" style="max-width:200px; display:block; margin-top:5px;" />
-        ${msg.message ? `<div style="font-size:0.9em; color:#555; margin-top:5px;">${msg.message}</div>` : ""}
+        ${
+          msg.message
+            ? `<div style="font-size:0.9em; color:#555; margin-top:5px;">${msg.message}</div>`
+            : ""
+        }
         <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
         <div class="burn-timer">🧨 Disappears in 10s</div>
       `;
 
-      // 🔥 Trigger backend TTL countdown
-      if (msg._id) {
-        socket.emit("start-burn", {
-          messageId: msg._id,
-          userId: senderId,
-          seconds: 10,
+            // 🔥 Trigger backend TTL countdown
+            if (msg._id) {
+              socket.emit("start-burn", {
+                messageId: msg._id,
+                userId: senderId,
+                seconds: 10,
+              });
+            }
+
+            // 🔥 Frontend burn timer
+            let seconds = 10;
+            const timerEl = messageDiv.querySelector(".burn-timer");
+            const interval = setInterval(() => {
+              seconds--;
+              if (timerEl) timerEl.textContent = `🧨 Disappears in ${seconds}s`;
+              if (seconds <= 0) {
+                clearInterval(interval);
+                messageDiv.innerHTML = `<i style="color:red;">💥 This image has burned.</i>`;
+              }
+            }, 1000);
+          } catch (err) {
+            console.error("❌ Failed to decrypt locked image:", err);
+            alert("❌ Decryption failed. Invalid code or corrupted file.");
+          }
         });
-      }
-
-      // 🔥 Frontend burn timer
-      let seconds = 10;
-      const timerEl = messageDiv.querySelector(".burn-timer");
-      const interval = setInterval(() => {
-        seconds--;
-        if (timerEl) timerEl.textContent = `🧨 Disappears in ${seconds}s`;
-        if (seconds <= 0) {
-          clearInterval(interval);
-          messageDiv.innerHTML = `<i style="color:red;">💥 This image has burned.</i>`;
+      } else {
+        let repliedHtml = "";
+        if (msg.repliedTo && msg.repliedTo.messageId) {
+          let replyText =
+            msg.repliedTo.textSnippet ||
+            msg.repliedTo.textSnippet ||
+            "";
+          // Check for encrypted reply snippet (new schema)
+          if (
+            msg.repliedTo.textSnippet &&
+            Array.isArray(msg.repliedTo.encryptedAESKeys) &&
+            msg.repliedTo.iv
+          ) {
+            try {
+              const deviceId = localStorage.getItem("deviceId");
+              const keyObj = msg.repliedTo.encryptedAESKeys.find(
+                (k) => k.deviceId === deviceId
+              );
+              if (keyObj) {
+                const decryptedReply = await decryptMessage({
+                  encryptedMessage: msg.repliedTo.textSnippet,
+                  encryptedAESKey: keyObj.encryptedAESKey,
+                  iv: msg.repliedTo.iv,
+                });
+                replyText = decryptedReply;
+              } else {
+                replyText = "[No key for this device]";
+              }
+            } catch (err) {
+              replyText = "[Decryption Failed]";
+              console.error("Failed to decrypt reply preview:", err);
+            }
+          }
+          repliedHtml = `
+      <div class="replied-preview" data-target-id="msg-${msg.repliedTo.messageId}">
+        <div class="replied-text">"${replyText}"</div>
+      </div>
+    `;
         }
-      }, 1000);
-    } catch (err) {
-      console.error("❌ Failed to decrypt locked image:", err);
-      alert("❌ Decryption failed. Invalid code or corrupted file.");
-    }
-  });
-}
-
-
- else {
-
-
-       let repliedHtml = "";
-
-      if (msg.repliedTo && msg.repliedTo.messageId) {
-        repliedHtml = `
-          <div class="replied-preview" data-target-id="msg-${msg.repliedTo.messageId}">
-            <div class="replied-text">"${msg.repliedTo.textSnippet}"</div>
-          </div>
-        `;
-       }
 
         messageDiv.innerHTML = `
             ${repliedHtml}
@@ -355,63 +377,61 @@ else if (msg.type === "lockedImage" && msg.mediaUrls?.length === 1) {
                     `;
       }
 
+      messageDiv.querySelectorAll(".replied-preview").forEach((el) => {
+        el.addEventListener("click", () => {
+          const targetId = el.dataset.targetId;
+          const targetEl = document.getElementById(targetId);
+          if (targetEl) {
+            targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+            targetEl.classList.add("highlight-temp");
+            setTimeout(() => targetEl.classList.remove("highlight-temp"), 2000);
+          }
+        });
+      });
 
-    messageDiv.querySelectorAll(".replied-preview").forEach((el) => {
-  el.addEventListener("click", () => {
-    const targetId = el.dataset.targetId;
-    const targetEl = document.getElementById(targetId);
-    if (targetEl) {
-      targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
-      targetEl.classList.add("highlight-temp");
-      setTimeout(() => targetEl.classList.remove("highlight-temp"), 2000);
-    }
-  });
-});
+      const menuTrigger = document.createElement("div");
+      menuTrigger.className = "message-menu-trigger";
+      menuTrigger.innerHTML = `<i class="fa-solid fa-ellipsis-vertical"></i>`;
+      messageDiv.appendChild(menuTrigger);
 
-
-  const menuTrigger = document.createElement("div");
-  menuTrigger.className = "message-menu-trigger";
-  menuTrigger.innerHTML = `<i class="fa-solid fa-ellipsis-vertical"></i>`;
-  messageDiv.appendChild(menuTrigger);
-
-  // Dropdown menu
-  const actionMenu = document.createElement("div");
-  actionMenu.className = "message-action-menu";
-  actionMenu.innerHTML = `
+      // Dropdown menu
+      const actionMenu = document.createElement("div");
+      actionMenu.className = "message-action-menu";
+      actionMenu.innerHTML = `
     <div onclick="handlePin('${msg._id}',true)"><i class="fa-solid fa-map-pin"></i> Pin</div>
     <div onclick="handleReply('${msg._id}')"><i class="fa-solid fa-reply"></i> Reply</div>
     <div onclick="handleForward('${msg._id}')"><i class="fa-solid fa-share"></i> Forward</div>
     <div onclick="handleStar('${msg._id}')"><i class="fa-regular fa-star"></i> Star</div>
     <div onclick="handleDelete('${msg._id}')"><i class="fa-solid fa-trash"></i> Delete</div>
   `;
-  messageDiv.appendChild(actionMenu);
+      messageDiv.appendChild(actionMenu);
 
-  if (!isSent) {
-  actionMenu.classList.add("left");
-} else {
-  actionMenu.classList.remove("left");
-}
+      if (!isSent) {
+        actionMenu.classList.add("left");
+      } else {
+        actionMenu.classList.remove("left");
+      }
 
-  // Hover behavior
-  messageDiv.addEventListener("mouseenter", () => {
-    menuTrigger.classList.add("visible");
-  });
+      // Hover behavior
+      messageDiv.addEventListener("mouseenter", () => {
+        menuTrigger.classList.add("visible");
+      });
 
-  messageDiv.addEventListener("mouseleave", () => {
-    menuTrigger.classList.remove("visible");
-    actionMenu.classList.remove("show");
-  });
+      messageDiv.addEventListener("mouseleave", () => {
+        menuTrigger.classList.remove("visible");
+        actionMenu.classList.remove("show");
+      });
 
-  // Toggle menu
-  menuTrigger.addEventListener("click", (e) => {
-    e.stopPropagation();
-    actionMenu.classList.toggle("show");
-  });
+      // Toggle menu
+      menuTrigger.addEventListener("click", (e) => {
+        e.stopPropagation();
+        actionMenu.classList.toggle("show");
+      });
 
-      if (msg._id){
-           messageDiv.id = `msg-${msg._id}`;
-         messageDiv.dataset.messageId = msg._id;
-         messageDiv.dataset.sender = msg.senderName || "Unknown";
+      if (msg._id) {
+        messageDiv.id = `msg-${msg._id}`;
+        messageDiv.dataset.messageId = msg._id;
+        messageDiv.dataset.sender = msg.senderName || "Unknown";
       }
       if (append)
         messagesContainer.insertBefore(
@@ -419,40 +439,42 @@ else if (msg.type === "lockedImage" && msg.mediaUrls?.length === 1) {
           messagesContainer.firstChild
         );
       else messagesContainer.appendChild(messageDiv);
-if (msg.isSecretChat && msg._id && msg.expiresAt) {
-  const timeLeft = msg.expiresAt - Date.now();
+      if (msg.isSecretChat && msg._id && msg.expiresAt) {
+        const timeLeft = msg.expiresAt - Date.now();
 
-  if (timeLeft > 0) {
-    const countdownSpan = document.createElement("span");
-    countdownSpan.className = "countdown-timer";
-    countdownSpan.style.display = "block";
-    countdownSpan.textContent = `🕒 Disappears in 1:00`;
-    messageDiv.appendChild(countdownSpan);
+        if (timeLeft > 0) {
+          const countdownSpan = document.createElement("span");
+          countdownSpan.className = "countdown-timer";
+          countdownSpan.style.display = "block";
+          countdownSpan.textContent = `🕒 Disappears in 1:00`;
+          messageDiv.appendChild(countdownSpan);
 
-    let remaining = Math.floor(timeLeft / 1000);
-    const intervalId = setInterval(() => {
-      remaining--;
+          let remaining = Math.floor(timeLeft / 1000);
+          const intervalId = setInterval(() => {
+            remaining--;
 
-      if (remaining <= 0) {
-        clearInterval(intervalId);
-        const secretEl = document.querySelector(`[data-message-id='${msg._id}']`);
-        if (secretEl) secretEl.remove();
-        return;
+            if (remaining <= 0) {
+              clearInterval(intervalId);
+              const secretEl = document.querySelector(
+                `[data-message-id='${msg._id}']`
+              );
+              if (secretEl) secretEl.remove();
+              return;
+            }
+
+            const min = Math.floor(remaining / 60);
+            const sec = (remaining % 60).toString().padStart(2, "0");
+            countdownSpan.textContent = `🕒 Disappears in ${min}:${sec}`;
+          }, 1000);
+        } else {
+          // Already expired
+          const expiredEl = document.querySelector(
+            `[data-message-id='${msg._id}']`
+          );
+          if (expiredEl) expiredEl.remove();
+        }
       }
-
-      const min = Math.floor(remaining / 60);
-      const sec = (remaining % 60).toString().padStart(2, "0");
-      countdownSpan.textContent = `🕒 Disappears in ${min}:${sec}`;
-    }, 1000);
-  } else {
-    // Already expired
-    const expiredEl = document.querySelector(`[data-message-id='${msg._id}']`);
-    if (expiredEl) expiredEl.remove();
-  }
-}
-
-      
-      }// });
+    } // });
     if (!append) messagesContainer.scrollTop = messagesContainer.scrollHeight;
     else
       messagesContainer.scrollTop =
@@ -515,38 +537,38 @@ export function formatTime(timestamp) {
   return `${hours}:${minutes} ${ampm}`;
 }
 
-
 export async function handlePin(messageId, shouldPin) {
   try {
-    const res = await fetch('/api/messages/pin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messageId, pin: shouldPin })
+    const res = await fetch("/api/messages/pin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messageId, pin: shouldPin }),
     });
 
     const data = await res.json();
-if (data.success) {
-  const updatedMsg = data.data;
+    if (data.success) {
+      const updatedMsg = data.data;
 
-  // Update pinned field in allMessagesInChat
-  const index = allMessagesInChat.findIndex(msg => msg._id === updatedMsg._id);
-  if (index !== -1) {
-    allMessagesInChat[index].pinned = updatedMsg.pinned;
-  }
+      // Update pinned field in allMessagesInChat
+      const index = allMessagesInChat.findIndex(
+        (msg) => msg._id === updatedMsg._id
+      );
+      if (index !== -1) {
+        allMessagesInChat[index].pinned = updatedMsg.pinned;
+      }
 
-  renderPinnedMessages();
-}
+      renderPinnedMessages();
+    }
   } catch (err) {
     console.error("Error pinning message:", err);
   }
 }
 
-
 export async function renderPinnedMessages() {
   const pinnedContainer = document.getElementById("pinnedMessagesBar");
   pinnedContainer.innerHTML = "";
 
-  const pinnedMessages = allMessagesInChat.filter(msg => msg.pinned);
+  const pinnedMessages = allMessagesInChat.filter((msg) => msg.pinned);
 
   if (pinnedMessages.length === 0) {
     pinnedContainer.style.display = "none";
@@ -555,7 +577,7 @@ export async function renderPinnedMessages() {
 
   pinnedContainer.style.display = "block";
 
-  pinnedMessages.forEach(msg => {
+  pinnedMessages.forEach((msg) => {
     const chip = document.createElement("div");
     chip.className = "pinned-message-chip";
     chip.innerHTML = `
@@ -572,7 +594,7 @@ export async function renderPinnedMessages() {
       }
     });
 
-      // Unpin on button click
+    // Unpin on button click
     chip.querySelector(".unpin-btn").addEventListener("click", async () => {
       try {
         const res = await fetch(`/api/pin/${msg._id}`, {
@@ -584,7 +606,7 @@ export async function renderPinnedMessages() {
 
         if (data.success) {
           // Update local pinned state
-          const index = allMessagesInChat.findIndex(m => m._id === msg._id);
+          const index = allMessagesInChat.findIndex((m) => m._id === msg._id);
           if (index !== -1) allMessagesInChat[index].pinned = false;
 
           renderPinnedMessages();
@@ -594,11 +616,9 @@ export async function renderPinnedMessages() {
       }
     });
 
-
     pinnedContainer.appendChild(chip);
   });
 }
-
 
 /// reply message .................................
 
@@ -620,4 +640,3 @@ document.getElementById("cancelReply").addEventListener("click", () => {
   currentReply = null;
   document.getElementById("reply-preview").classList.add("hidden-reply");
 });
-

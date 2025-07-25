@@ -1,8 +1,8 @@
-import dotenv, { decrypt } from 'dotenv';
+import dotenv, { decrypt } from "dotenv";
 dotenv.config();
 
 import express from "express";
-const app = express(); 
+const app = express();
 import mongoose from "mongoose";
 import path from "path";
 import cookieParser from "cookie-parser";
@@ -16,13 +16,11 @@ import http from "http";
 import authRoutes from "./routes/auth.js";
 import homeRoute from "./routes/home.js";
 import client from "./redisClient.js";
-import { cloudinary } from "./ cloudConfig.js"
+import { cloudinary } from "./ cloudConfig.js";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { createClient } from "redis";
 import { fileURLToPath } from "url";
 import getReplySuggestions from "./Helpers/smartReply.js";
-
-
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -59,7 +57,6 @@ Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
   console.log("✅ Socket.IO Redis adapter enabled");
 });
 console.log("Cloudinary config:", cloudinary.config());
-
 
 const users = {}; // (optional, can remove)
 // const onlineUsers = new Map(); // REMOVE
@@ -117,196 +114,225 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("chat message", async ({ senderId, receiverId,encryptedMessage ,status, encryptedKeys,iv,messageId,isSecretChat,type,repliedTo}) => {
+  socket.on(
+    "chat message",
+    async ({
+      senderId,
+      receiverId,
+      encryptedMessage,
+      status,
+      encryptedKeys,
+      iv,
+      messageId,
+      isSecretChat,
+      type,
+      repliedTo,
+    }) => {
+      // Debug: show which rooms this socket is in
+      console.log("🔍 Socket Rooms:", socket.rooms);
+      // console.log(senderId)
+      const sender = await User.findById(senderId).select("name phoneNo");
+      console.log(sender);
+      //    console.log(sender)
+      const senderPhone = sender ? sender.phoneNo : "";
 
-    // Debug: show which rooms this socket is in
-    console.log("🔍 Socket Rooms:", socket.rooms);
-    // console.log(senderId)
-    const sender = await User.findById(senderId).select("name phoneNo");
-    console.log(sender);
-    //    console.log(sender)
-    const senderPhone = sender ? sender.phoneNo : "";
+      // unread messages...............................
 
-    // unread messages...............................
+      // Only increment unreadCount if receiver is NOT currently viewing this chat
+      const openChat = await client.get(`openchat:${receiverId}`);
+      const isChatOpen = openChat === senderId;
+      if (!isChatOpen) {
+        await Contact.updateOne(
+          { userId: receiverId, contactId: senderId },
+          { $inc: { unreadCount: 1 } }
+        );
 
-    // Only increment unreadCount if receiver is NOT currently viewing this chat
-    const openChat = await client.get(`openchat:${receiverId}`);
-    const isChatOpen = openChat === senderId;
-    if (!isChatOpen) {
+        // Only send notification if chat is NOT open
+        const socketId = await client.get(`online:${receiverId}`);
+        if (socketId) {
+          const sender = await User.findById(senderId).select("name");
+          io.to(socketId).emit("notify-new-message", {
+            from: sender.name,
+            message: "🔐 Encrypted message",
+            type: "text",
+          });
+        }
+      } else {
+        // If chat is open, ensure unreadCount is 0 (defensive)
+        await Contact.updateOne(
+          { userId: receiverId, contactId: senderId },
+          { $set: { unreadCount: 0 } }
+        );
+      }
+      const expiresAt = Date.now() + 60000;
+      const saveMessage = {
+        _id: messageId,
+        senderName: sender ? sender.name : "Unknown",
+        senderId,
+        receiverId,
+        message: encryptedMessage,
+        encryptedKeys,
+        iv,
+        type,
+        status,
+        pinned: false, // Default to false, can be updated later
+        senderPhone,
+        isSecretChat,
+        repliedTo: repliedTo
+          ? {
+              messageId: repliedTo.messageId,
+              textSnippet: repliedTo.textSnippet,
+              iv: repliedTo.iv,
+              encryptedAESKeys: repliedTo.encryptedAESKeys,
+            }
+          : null,
+        expiresAt,
+        timestamp: new Date(),
+      };
+
       await Contact.updateOne(
-        { userId: receiverId, contactId: senderId },
-        { $inc: { unreadCount: 1 } }
+        { userId: senderId, contactId: receiverId },
+        { $set: { messageTime: new Date() } }
       );
 
-      // Only send notification if chat is NOT open
-      const socketId = await client.get(`online:${receiverId}`);
-      if (socketId) {
-        const sender = await User.findById(senderId).select("name");
-        io.to(socketId).emit("notify-new-message", {
-          from: sender.name,
-          message: "🔐 Encrypted message",
-          type: "text",
-        });
-      }
-    } else {
-      // If chat is open, ensure unreadCount is 0 (defensive)
       await Contact.updateOne(
         { userId: receiverId, contactId: senderId },
-        { $set: { unreadCount: 0 } }
+        { $set: { messageTime: new Date() } }
       );
-    }
-    const expiresAt = Date.now() + 60000;
-    const saveMessage = {
-    _id: messageId,
-    senderName: sender ? sender.name : "Unknown",
-    senderId,
-    receiverId,
-    message: encryptedMessage,
-    encryptedKeys,
-    iv,
-    type ,
-    status,
-    pinned: false, // Default to false, can be updated later
-    senderPhone,
-    isSecretChat,
-    repliedTo: repliedTo ? {
-    messageId: repliedTo.messageId,
-    textSnippet: repliedTo.textSnippet,
-  } : null,
-    expiresAt,
-    timestamp: new Date(),
-  };
 
+      const ids = [senderId, receiverId].sort();
+      const cacheKey = `chat:${ids[0]}:${ids[1]}:${
+        isSecretChat ? "secret" : "normal"
+      }`;
 
-    await Contact.updateOne(
-      { userId: senderId, contactId: receiverId },
-      { $set: { messageTime: new Date() } }
-    );
+      let cached = await client.get(cacheKey);
+      let messages = cached ? JSON.parse(cached) : [];
 
-    await Contact.updateOne(
-      { userId: receiverId, contactId: senderId },
-      { $set: { messageTime: new Date() } }
-    );
+      messages.push(saveMessage);
 
-    const ids = [senderId, receiverId].sort();
-    const cacheKey = `chat:${ids[0]}:${ids[1]}:${isSecretChat ? "secret" : "normal"}`;
-
-    let cached = await client.get(cacheKey);
-    let messages = cached ? JSON.parse(cached) : [];
-
-    messages.push(saveMessage);
-
-    // 5. Keep only latest 30 messages
-    if (messages.length > 30) {
-      messages = messages.slice(-30);
-    }
-    const ttl = isSecretChat ? 60 : 300;
-    await client.set(cacheKey, JSON.stringify(messages), { EX: ttl });
-
-    // Emit the message to the sender (with 'sent' status)
-    io.to(senderId).emit("chat message", saveMessage);
-
-    // Emit the message to the receiver (with 'delivered' status)
-    const deliveredMessage = {
-      ...saveMessage,
-      status: "delivered",
-    };
-    io.to(receiverId).emit("chat message", deliveredMessage);
-    // Removed duplicate notification emit here
-    // Update status in DB to 'delivered' when delivered to receiver
-    await Message.findByIdAndUpdate(messageId, { status: "delivered" });
-
-
-    // Update status in Redis cache to 'delivered' for this message
-    let updatedMessages = messages.map((msg) => {
-      if (msg._id && msg._id.toString() === messageId.toString()) {
-        return { ...msg, status: "delivered" };
+      // 5. Keep only latest 30 messages
+      if (messages.length > 30) {
+        messages = messages.slice(-30);
       }
-      return msg;
-    });
-    await client.set(cacheKey, JSON.stringify(updatedMessages), { EX: ttl });
+      const ttl = isSecretChat ? 60 : 300;
+      await client.set(cacheKey, JSON.stringify(messages), { EX: ttl });
 
-    // Emit 'message-delivered' to sender for real-time double tick
-    io.to(senderId).emit("message-delivered", { messageId });
+      // Emit the message to the sender (with 'sent' status)
+      io.to(senderId).emit("chat message", saveMessage);
 
-  //   if (!isSecretChat && type === "text" && decryptedText?.trim().length > 1) {
-  //   try {
-  //     const suggestions = await getReplySuggestions(decryptedText);
-  //     const socketId = await client.get(`online:${receiverId}`);
+      // Emit the message to the receiver (with 'delivered' status)
+      const deliveredMessage = {
+        ...saveMessage,
+        status: "delivered",
+      };
+      io.to(receiverId).emit("chat message", deliveredMessage);
+      // Removed duplicate notification emit here
+      // Update status in DB to 'delivered' when delivered to receiver
+      await Message.findByIdAndUpdate(messageId, { status: "delivered" });
 
-  //     if (socketId && Array.isArray(suggestions)) {
-  //       io.to(socketId).emit("replySuggestions", {
-  //         from: senderId,
-  //         messageId,
-  //         suggestions,
-  //       });
-  //     }
-  //   } catch (e) {
-  //     console.error("💥 AI suggestion error:", e.message);
-  //   }
-  // }
-  });
-
-  socket.on("requestReplySuggestion", async ({ messageId,messageText,from,to}) => {
-  try {
-    console.log("messageText", messageText);
-    const suggestions = await getReplySuggestions(messageText);
-    const socketId = await client.get(`online:${to}`);
-    if (socketId) {
-      io.to(socketId).emit("replySuggestions", {
-        from,
-        messageId,
-        suggestions,
+      // Update status in Redis cache to 'delivered' for this message
+      let updatedMessages = messages.map((msg) => {
+        if (msg._id && msg._id.toString() === messageId.toString()) {
+          return { ...msg, status: "delivered" };
+        }
+        return msg;
       });
+      await client.set(cacheKey, JSON.stringify(updatedMessages), { EX: ttl });
+
+      // Emit 'message-delivered' to sender for real-time double tick
+      io.to(senderId).emit("message-delivered", { messageId });
+
+      //   if (!isSecretChat && type === "text" && decryptedText?.trim().length > 1) {
+      //   try {
+      //     const suggestions = await getReplySuggestions(decryptedText);
+      //     const socketId = await client.get(`online:${receiverId}`);
+
+      //     if (socketId && Array.isArray(suggestions)) {
+      //       io.to(socketId).emit("replySuggestions", {
+      //         from: senderId,
+      //         messageId,
+      //         suggestions,
+      //       });
+      //     }
+      //   } catch (e) {
+      //     console.error("💥 AI suggestion error:", e.message);
+      //   }
+      // }
     }
-  } catch (e) {
-    console.error("💥 AI suggestion error:", e.message);
-  }
-});
+  );
 
-
- socket.on("start-burn", async ({ messageId, userId, seconds = 10 }) => {
-  try {
-    // 1. Fetch the message
-    const message = await Message.findById(messageId);
-    if (!message) {
-      console.warn(`⚠️ Message not found: ${messageId}`);
-      return;
+  socket.on(
+    "requestReplySuggestion",
+    async ({ messageId, messageText, from, to }) => {
+      try {
+        console.log("messageText", messageText);
+        const suggestions = await getReplySuggestions(messageText);
+        const socketId = await client.get(`online:${to}`);
+        if (socketId) {
+          io.to(socketId).emit("replySuggestions", {
+            from,
+            messageId,
+            suggestions,
+          });
+        }
+      } catch (e) {
+        console.error("💥 AI suggestion error:", e.message);
+      }
     }
+  );
 
-    // 2. Ensure only the receiver can start the burn
-    if (message.receiverId !== userId) {
-      console.warn(`⛔ Unauthorized burn trigger attempt by ${userId}`);
-      return;
+  socket.on("start-burn", async ({ messageId, userId, seconds = 10 }) => {
+    try {
+      // 1. Fetch the message
+      const message = await Message.findById(messageId);
+      if (!message) {
+        console.warn(`⚠️ Message not found: ${messageId}`);
+        return;
+      }
+
+      // 2. Ensure only the receiver can start the burn
+      if (message.receiverId !== userId) {
+        console.warn(`⛔ Unauthorized burn trigger attempt by ${userId}`);
+        return;
+      }
+
+      // 3. Skip if already marked as read & burned
+      if (message.receiverOpened) {
+        console.log(`🔁 Burn already triggered for message ${messageId}`);
+        return;
+      }
+
+      // 4. Set burn flags: receiverOpened + burnAfterRead + deleteAt
+      const deleteAt = new Date(Date.now() + seconds * 1000);
+      message.burnAfterRead = true;
+      message.receiverOpened = true;
+      message.deleteAt = deleteAt;
+
+      await message.save();
+
+      console.log(
+        `🔥 Burn timer started for message ${messageId} (TTL ${seconds}s)`
+      );
+    } catch (err) {
+      console.error("❌ Error starting burn timer:", err);
     }
-
-    // 3. Skip if already marked as read & burned
-    if (message.receiverOpened) {
-      console.log(`🔁 Burn already triggered for message ${messageId}`);
-      return;
-    }
-
-    // 4. Set burn flags: receiverOpened + burnAfterRead + deleteAt
-    const deleteAt = new Date(Date.now() + seconds * 1000);
-    message.burnAfterRead = true;
-    message.receiverOpened = true;
-    message.deleteAt = deleteAt;
-
-    await message.save();
-
-    console.log(`🔥 Burn timer started for message ${messageId} (TTL ${seconds}s)`);
-
-  } catch (err) {
-    console.error("❌ Error starting burn timer:", err);
-  }
-});
-
-
-
+  });
 
   socket.on(
     "image-message",
-    async ({ senderId, receiverId, mediaUrls,iv,encryptedKeys,fileType,messageId, status ,type,caption = "" ,isSecretChat}) => {
+    async ({
+      senderId,
+      receiverId,
+      mediaUrls,
+      iv,
+      encryptedKeys,
+      fileType,
+      messageId,
+      status,
+      type,
+      caption = "",
+      isSecretChat,
+    }) => {
       try {
         // // Upload image to Cloudinary
         // const uploadRes = await cloudinary.uploader.upload(image, {
@@ -329,7 +355,7 @@ io.on("connection", (socket) => {
         const sender = await User.findById(senderId).select("name phoneNo");
         console.log(sender);
         //    console.log(sender)
-        const senderPhone = sender ? sender.phoneNo : "";        
+        const senderPhone = sender ? sender.phoneNo : "";
 
         const openChat = await client.get(`openchat:${receiverId}`);
         const isChatOpen = openChat === senderId;
@@ -355,30 +381,32 @@ io.on("connection", (socket) => {
           );
         }
         const expiresAt = Date.now() + 60000;
-       const savedImageObj = {
-      _id: messageId,
-      senderName: sender ? sender.name : "Unknown",
-      senderId,
-      receiverId,
-      type,
-      mediaUrls,
-      message:caption,
-      iv,
-      encryptedKeys,
-      senderPhone,
-      isSecretChat,
-      fileType,
-      expiresAt,
-      timestamp: new Date(),
-      status,
-    };
+        const savedImageObj = {
+          _id: messageId,
+          senderName: sender ? sender.name : "Unknown",
+          senderId,
+          receiverId,
+          type,
+          mediaUrls,
+          message: caption,
+          iv,
+          encryptedKeys,
+          senderPhone,
+          isSecretChat,
+          fileType,
+          expiresAt,
+          timestamp: new Date(),
+          status,
+        };
 
         // Convert to plain object for cache and emit
         // const savedImageObj = newImageMessage.toObject();
 
         // --- Redis cache logic (same as text) ---
         const ids = [senderId, receiverId].sort();
-        const cacheKey = `chat:${ids[0]}:${ids[1]}:${isSecretChat ? "secret" : "normal"}`;
+        const cacheKey = `chat:${ids[0]}:${ids[1]}:${
+          isSecretChat ? "secret" : "normal"
+        }`;
 
         let cached = await client.get(cacheKey);
         let messages = cached ? JSON.parse(cached) : [];
@@ -407,10 +435,7 @@ io.on("connection", (socket) => {
 
         // Update status in Redis cache to 'delivered'
         let updatedMessages = messages.map((msg) => {
-          if (
-            msg._id &&
-            msg._id.toString() === messageId.toString()
-          ) {
+          if (msg._id && msg._id.toString() === messageId.toString()) {
             return { ...msg, status: "delivered" };
           }
           return msg;
@@ -421,7 +446,7 @@ io.on("connection", (socket) => {
 
         // Emit 'message-delivered' to sender for real-time double tick
         io.to(senderId).emit("message-delivered", {
-          messageId
+          messageId,
         });
       } catch (err) {
         console.error("Image upload error:", err);
@@ -430,85 +455,90 @@ io.on("connection", (socket) => {
   );
 
   socket.on("audioMessage", async ({ audioUrl, senderId, receiverId }) => {
-  try {
-    // Save to MongoDB
-    const newAudioMessage = await Message.create({
-      senderId,
-      receiverId,
-      type: "audio",
-      audioUrl,
-      status: "sent",
-      timestamp: new Date(),
-    });
+    try {
+      // Save to MongoDB
+      const newAudioMessage = await Message.create({
+        senderId,
+        receiverId,
+        type: "audio",
+        audioUrl,
+        status: "sent",
+        timestamp: new Date(),
+      });
 
-    // --- Redis cache logic (same as text/image) ---
-    const ids = [senderId, receiverId].sort();
-    const cacheKey = `chat:${ids[0]}:${ids[1]}`;
+      // --- Redis cache logic (same as text/image) ---
+      const ids = [senderId, receiverId].sort();
+      const cacheKey = `chat:${ids[0]}:${ids[1]}`;
 
-    let cached = await client.get(cacheKey);
-    let messages = cached ? JSON.parse(cached) : [];
+      let cached = await client.get(cacheKey);
+      let messages = cached ? JSON.parse(cached) : [];
 
-    messages.push(newAudioMessage.toObject());
+      messages.push(newAudioMessage.toObject());
 
-    // Keep only latest 30 messages
-    if (messages.length > 30) {
-      messages = messages.slice(-30);
-    }
-
-    await client.set(cacheKey, JSON.stringify(messages), { EX: 300 });
-
-    // Emit to sender (status: sent)
-    io.to(senderId).emit("chat message", newAudioMessage.toObject());
-
-    // Emit to receiver (status: delivered)
-    const deliveredAudio = { ...newAudioMessage.toObject(), status: "delivered" };
-    io.to(receiverId).emit("chat message", deliveredAudio);
-
-    // Update status in DB to 'delivered'
-    await Message.findByIdAndUpdate(newAudioMessage._id, { status: "delivered" });
-
-    // Update status in Redis cache to 'delivered'
-    let updatedMessages = messages.map((msg) => {
-      if (msg._id && msg._id.toString() === newAudioMessage._id.toString()) {
-        return { ...msg, status: "delivered" };
+      // Keep only latest 30 messages
+      if (messages.length > 30) {
+        messages = messages.slice(-30);
       }
-      return msg;
-    });
-    await client.set(cacheKey, JSON.stringify(updatedMessages), { EX: 300 });
 
-    // Emit 'message-delivered' to sender for real-time double tick
-    io.to(senderId).emit("message-delivered", { messageId: newAudioMessage._id });
+      await client.set(cacheKey, JSON.stringify(messages), { EX: 300 });
 
-    // Optionally: notification logic (if chat not open)
-    const openChat = await client.get(`openchat:${receiverId}`);
-    const isChatOpen = openChat === senderId;
-    if (!isChatOpen) {
-      await Contact.updateOne(
-        { userId: receiverId, contactId: senderId },
-        { $inc: { unreadCount: 1 } }
-      );
-      const senderUser = await User.findById(senderId).select("name");
-      const socketId = await client.get(`online:${receiverId}`);
-      if (socketId) {
-        io.to(socketId).emit("notify-new-message", {
-          from: senderUser.name,
-          message: "[Audio]",
-          type: "audio",
-        });
+      // Emit to sender (status: sent)
+      io.to(senderId).emit("chat message", newAudioMessage.toObject());
+
+      // Emit to receiver (status: delivered)
+      const deliveredAudio = {
+        ...newAudioMessage.toObject(),
+        status: "delivered",
+      };
+      io.to(receiverId).emit("chat message", deliveredAudio);
+
+      // Update status in DB to 'delivered'
+      await Message.findByIdAndUpdate(newAudioMessage._id, {
+        status: "delivered",
+      });
+
+      // Update status in Redis cache to 'delivered'
+      let updatedMessages = messages.map((msg) => {
+        if (msg._id && msg._id.toString() === newAudioMessage._id.toString()) {
+          return { ...msg, status: "delivered" };
+        }
+        return msg;
+      });
+      await client.set(cacheKey, JSON.stringify(updatedMessages), { EX: 300 });
+
+      // Emit 'message-delivered' to sender for real-time double tick
+      io.to(senderId).emit("message-delivered", {
+        messageId: newAudioMessage._id,
+      });
+
+      // Optionally: notification logic (if chat not open)
+      const openChat = await client.get(`openchat:${receiverId}`);
+      const isChatOpen = openChat === senderId;
+      if (!isChatOpen) {
+        await Contact.updateOne(
+          { userId: receiverId, contactId: senderId },
+          { $inc: { unreadCount: 1 } }
+        );
+        const senderUser = await User.findById(senderId).select("name");
+        const socketId = await client.get(`online:${receiverId}`);
+        if (socketId) {
+          io.to(socketId).emit("notify-new-message", {
+            from: senderUser.name,
+            message: "[Audio]",
+            type: "audio",
+          });
+        }
+      } else {
+        // If chat is open, ensure unreadCount is 0 (defensive)
+        await Contact.updateOne(
+          { userId: receiverId, contactId: senderId },
+          { $set: { unreadCount: 0 } }
+        );
       }
-    } else {
-      // If chat is open, ensure unreadCount is 0 (defensive)
-      await Contact.updateOne(
-        { userId: receiverId, contactId: senderId },
-        { $set: { unreadCount: 0 } }
-      );
+    } catch (err) {
+      console.error("Audio message error:", err);
     }
-  } catch (err) {
-    console.error("Audio message error:", err);
-  }
-});
-
-
+  });
 
   // Listen for 'message-read' event from client when user opens chat
   socket.on("message-read", async ({ messageIds, readerId, receiverId }) => {
@@ -563,7 +593,9 @@ io.on("connection", (socket) => {
     for (const msg of messages) {
       const ids = [msg.senderId.toString(), msg.receiverId.toString()].sort();
       const isSecretChat = msg.isSecretChat;
-      const cacheKey = `chat:${ids[0]}:${ids[1]}:${isSecretChat ? "secret" : "normal"}`;
+      const cacheKey = `chat:${ids[0]}:${ids[1]}:${
+        isSecretChat ? "secret" : "normal"
+      }`;
       let cached = await client.get(cacheKey);
       if (cached) {
         let cachedMessages = JSON.parse(cached);
@@ -577,7 +609,9 @@ io.on("connection", (socket) => {
         });
         if (updated) {
           const ttl = isSecretChat ? 60 : 300;
-          await client.set(cacheKey, JSON.stringify(cachedMessages), { EX: ttl });
+          await client.set(cacheKey, JSON.stringify(cachedMessages), {
+            EX: ttl,
+          });
         }
       }
     }
@@ -609,7 +643,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", async () => {
-    console.log("user",userId)
+    console.log("user", userId);
     if (userId) {
       await client.del(`online:${userId}`);
       await client.del(`openchat:${userId}`); // Clean up open chat info in Redis
@@ -634,10 +668,7 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`))
-
-
-
+server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err.stack || err);

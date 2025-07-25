@@ -8,13 +8,18 @@ import {
   showOfflineDot,
   showToast,
   formatTime,
-  renderPinnedMessages
+  renderPinnedMessages,
 } from "./contactFunction.js";
 import { setupInputHandlers, updateProfileSidebar } from "./uiFunction.js";
 import state from "./state.js";
 // import socket from "./socket.js";
-import { decryptMessage,decryptImage,decryptLockedMessageWithCode,decryptImageWithCode } from "../Security/decryptMessage.js";
-import { updateSecretChatUI ,onChatSwitch} from "./footer.js";
+import {
+  decryptMessage,
+  decryptImage,
+  decryptLockedMessageWithCode,
+  decryptImageWithCode,
+} from "../Security/decryptMessage.js";
+import { updateSecretChatUI, onChatSwitch } from "./footer.js";
 
 // import showToast from './footer.js'
 
@@ -71,8 +76,8 @@ function setupContactClickHandlers() {
       document.getElementById("chatSearchInput").value = ""; // Clear search input
       document.getElementById("searchResults").innerHTML = ""; // Clear search results
 
-       updateSecretChatUI();
-       onChatSwitch(userId)
+      updateSecretChatUI();
+      onChatSwitch(userId);
       socket.emit("chat-open", {
         userId: localStorage.getItem("userId"),
         contactId: userId,
@@ -224,16 +229,22 @@ document.getElementById("smartReplyToggle").addEventListener("change", (e) => {
   smartReplyEnabled = e.target.checked;
 });
 
-
 //// --- SOCKET EVENTS ---
-socket.on("chat message",async (msg) => {
+socket.on("chat message", async (msg) => {
   clearAllSuggestions();
   const senderId = localStorage.getItem("userId");
   const deviceId = localStorage.getItem("deviceId");
   const otherUserId = msg.senderId === senderId ? msg.receiverId : msg.senderId;
   msg.encryptedMessage = msg.message;
-  const encryptedKeyObj = msg.encryptedKeys?.find(k => k.deviceId === deviceId);
-if (encryptedKeyObj && msg.iv && msg.encryptedMessage && msg.type === "text") {
+  const encryptedKeyObj = msg.encryptedKeys?.find(
+    (k) => k.deviceId === deviceId
+  );
+  if (
+    encryptedKeyObj &&
+    msg.iv &&
+    msg.encryptedMessage &&
+    msg.type === "text"
+  ) {
     try {
       const decrypted = await decryptMessage({
         encryptedMessage: msg.encryptedMessage,
@@ -242,13 +253,13 @@ if (encryptedKeyObj && msg.iv && msg.encryptedMessage && msg.type === "text") {
       });
 
       msg.message = decrypted; // Replace encrypted text with decrypted text
-        allMessagesInChat.push({
-         _id: msg._id,
-         message: decrypted,
-         timestamp: msg.timestamp,
-         pinned: msg.pinned || false,
-       });// Store decrypted message in global array
-       renderPinnedMessages();
+      allMessagesInChat.push({
+        _id: msg._id,
+        message: decrypted,
+        timestamp: msg.timestamp,
+        pinned: msg.pinned || false,
+      }); // Store decrypted message in global array
+      renderPinnedMessages();
     } catch (err) {
       console.error("🔐 Failed to decrypt message:", err);
       msg.message = "[Decryption Failed]";
@@ -325,7 +336,9 @@ if (encryptedKeyObj && msg.iv && msg.encryptedMessage && msg.type === "text") {
     const messagesContainer = document.getElementById("messagesContainer");
     const messageDiv = document.createElement("div");
     const isSent = msg.senderId === senderId;
-    messageDiv.className = `message ${isSent ? "sent" : "received"} chat-message`;
+    messageDiv.className = `message ${
+      isSent ? "sent" : "received"
+    } chat-message`;
 
     let tickHtml = "";
     if (isSent) {
@@ -339,24 +352,31 @@ if (encryptedKeyObj && msg.iv && msg.encryptedMessage && msg.type === "text") {
     }
 
     // For image message
-if (msg.type === "image" && msg.mediaUrls?.length && encryptedKeyObj && msg.iv) {
-  try {
-    const blob = await decryptImage({
-      encryptedAESKey: encryptedKeyObj.encryptedAESKey,
-      iv: msg.iv,
-      fileUrl: msg.mediaUrls[0],
-    });
-      if (blob) {
-      msg.decryptedImageURL = URL.createObjectURL(blob); // Temporary URL
-    } else {
-      msg.decryptedImageURL = null;
-    }
+    if (
+      msg.type === "image" &&
+      msg.mediaUrls?.length &&
+      encryptedKeyObj &&
+      msg.iv
+    ) {
+      try {
+        const blob = await decryptImage({
+          encryptedAESKey: encryptedKeyObj.encryptedAESKey,
+          iv: msg.iv,
+          fileUrl: msg.mediaUrls[0],
+        });
+        if (blob) {
+          msg.decryptedImageURL = URL.createObjectURL(blob); // Temporary URL
+        } else {
+          msg.decryptedImageURL = null;
+        }
       } catch (err) {
-    console.error("🔐 Failed to decrypt image:", err);
-    msg.decryptedImageURL = null;
-  }
+        console.error("🔐 Failed to decrypt image:", err);
+        msg.decryptedImageURL = null;
+      }
       messageDiv.innerHTML = `
-  <img src="${msg.decryptedImageURL || msg.mediaUrls[0]}" style="max-width:200px;display:block;">
+  <img src="${
+    msg.decryptedImageURL || msg.mediaUrls[0]
+  }" style="max-width:200px;display:block;">
     <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
   `;
       if (msg.message && msg.message.trim() !== "") {
@@ -378,43 +398,110 @@ if (msg.type === "image" && msg.mediaUrls?.length && encryptedKeyObj && msg.iv) 
     </audio>
     <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
   `;
-    }
-else if (msg.type === "lockedText") {
-    // 🔐 Initial locked message UI
-    messageDiv.innerHTML = `
+    } else if (msg.type === "lockedText") {
+      // 🔐 Initial locked message UI
+      messageDiv.innerHTML = `
       <button class="unlock-btn">🔒 Locked Message. Tap to Unlock</button>
       <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
     `;
 
-    // ✅ Define unlockBtn AFTER it exists in DOM
-    const unlockBtn = messageDiv.querySelector(".unlock-btn");
+      // ✅ Define unlockBtn AFTER it exists in DOM
+      const unlockBtn = messageDiv.querySelector(".unlock-btn");
 
-    unlockBtn.addEventListener("click", async () => {
-      const code = prompt("Enter passcode to unlock this message:");
-      if (!code) return;
+      unlockBtn.addEventListener("click", async () => {
+        const code = prompt("Enter passcode to unlock this message:");
+        if (!code) return;
 
-      try {
-        const decrypted = await decryptLockedMessageWithCode({
-          encryptedMessage: msg.encryptedMessage,
-          iv: msg.iv,
-          code
-        });
+        try {
+          const decrypted = await decryptLockedMessageWithCode({
+            encryptedMessage: msg.encryptedMessage,
+            iv: msg.iv,
+            code,
+          });
 
-        if (decrypted) {
-          msg._decryptedText = decrypted;
+          if (decrypted) {
+            msg._decryptedText = decrypted;
 
-          messageDiv.innerHTML = `
+            messageDiv.innerHTML = `
             ${decrypted}
-            <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
+            <div class="message-time">${formatTime(
+              msg.timestamp
+            )} ${tickHtml}</div>
             <div class="burn-timer">🧨 Disappears in 10s</div>
           `;
 
-          // ✅ Trigger backend TTL countdown
+            // ✅ Trigger backend TTL countdown
+            if (msg._id) {
+              socket.emit("start-burn", {
+                messageId: msg._id,
+                userId: senderId,
+                seconds: 10,
+              });
+            }
+
+            // 🔥 Frontend burn timer
+            let seconds = 10;
+            const timerEl = messageDiv.querySelector(".burn-timer");
+            const interval = setInterval(() => {
+              seconds--;
+              if (timerEl) timerEl.textContent = `🧨 Disappears in ${seconds}s`;
+              if (seconds <= 0) {
+                clearInterval(interval);
+                messageDiv.innerHTML = `<i style="color:red;">💥 This message has burned.</i>`;
+                delete msg._decryptedText;
+              }
+            }, 1000);
+          } else {
+            alert("❌ Incorrect code or message can't be unlocked.");
+          }
+        } catch (err) {
+          console.error("❌ Failed to decrypt locked message:", err);
+          alert("❌ Decryption error.");
+        }
+      });
+    } else if (msg.type === "lockedImage" && msg.mediaUrls?.length === 1) {
+      messageDiv.innerHTML = `
+    <button class="unlock-btn">🔒 Locked Image. Tap to Unlock</button>
+    <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
+  `;
+
+      const unlockBtn = messageDiv.querySelector(".unlock-btn");
+
+      unlockBtn.addEventListener("click", async () => {
+        const code = prompt("Enter passcode to unlock this image:");
+        if (!code) return;
+
+        try {
+          const blob = await decryptImageWithCode({
+            url: msg.mediaUrls[0],
+            iv: msg.iv,
+            code,
+          });
+
+          if (!blob) {
+            alert("❌ Decryption failed.");
+            return;
+          }
+
+          const imageURL = URL.createObjectURL(blob);
+
+          messageDiv.innerHTML = `
+        <img src="${imageURL}" class="chat-image" style="max-width:200px; display:block; margin-top:5px;" />
+        ${
+          msg.message
+            ? `<div style="font-size:0.9em; color:#555; margin-top:5px;">${msg.message}</div>`
+            : ""
+        }
+        <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
+        <div class="burn-timer">🧨 Disappears in 10s</div>
+      `;
+
+          // 🔥 Trigger backend TTL countdown
           if (msg._id) {
             socket.emit("start-burn", {
               messageId: msg._id,
               userId: senderId,
-              seconds: 10
+              seconds: 10,
             });
           }
 
@@ -426,218 +513,169 @@ else if (msg.type === "lockedText") {
             if (timerEl) timerEl.textContent = `🧨 Disappears in ${seconds}s`;
             if (seconds <= 0) {
               clearInterval(interval);
-              messageDiv.innerHTML = `<i style="color:red;">💥 This message has burned.</i>`;
-              delete msg._decryptedText;
+              messageDiv.innerHTML = `<i style="color:red;">💥 This image has burned.</i>`;
             }
           }, 1000);
-        } else {
-          alert("❌ Incorrect code or message can't be unlocked.");
+        } catch (err) {
+          console.error("❌ Failed to decrypt locked image:", err);
+          alert("❌ Decryption failed. Invalid code or corrupted file.");
         }
-      } catch (err) {
-        console.error("❌ Failed to decrypt locked message:", err);
-        alert("❌ Decryption error.");
-      }
-    });
-  
-}
-
-else if (msg.type === "lockedImage" && msg.mediaUrls?.length === 1) {
-  messageDiv.innerHTML = `
-    <button class="unlock-btn">🔒 Locked Image. Tap to Unlock</button>
-    <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
-  `;
-
-  const unlockBtn = messageDiv.querySelector(".unlock-btn");
-
-  unlockBtn.addEventListener("click", async () => {
-    const code = prompt("Enter passcode to unlock this image:");
-    if (!code) return;
-
-    try {
-      const blob = await decryptImageWithCode({
-        url: msg.mediaUrls[0],
-        iv: msg.iv,
-        code,
       });
-
-      if (!blob) {
-        alert("❌ Decryption failed.");
-        return;
-      }
-
-      const imageURL = URL.createObjectURL(blob);
-
-      messageDiv.innerHTML = `
-        <img src="${imageURL}" class="chat-image" style="max-width:200px; display:block; margin-top:5px;" />
-        ${msg.message ? `<div style="font-size:0.9em; color:#555; margin-top:5px;">${msg.message}</div>` : ""}
-        <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
-        <div class="burn-timer">🧨 Disappears in 10s</div>
-      `;
-
-      // 🔥 Trigger backend TTL countdown
-      if (msg._id) {
-        socket.emit("start-burn", {
-          messageId: msg._id,
-          userId: senderId,
-          seconds: 10,
-        });
-      }
-
-      // 🔥 Frontend burn timer
-      let seconds = 10;
-      const timerEl = messageDiv.querySelector(".burn-timer");
-      const interval = setInterval(() => {
-        seconds--;
-        if (timerEl) timerEl.textContent = `🧨 Disappears in ${seconds}s`;
-        if (seconds <= 0) {
-          clearInterval(interval);
-          messageDiv.innerHTML = `<i style="color:red;">💥 This image has burned.</i>`;
-        }
-      }, 1000);
-    } catch (err) {
-      console.error("❌ Failed to decrypt locked image:", err);
-      alert("❌ Decryption failed. Invalid code or corrupted file.");
-    }
-  });
-}
-
-
-    else {
-
+    } else {
       let repliedHtml = "";
-
       if (msg.repliedTo && msg.repliedTo.messageId) {
+        let replyText =
+          msg.repliedTo.textSnippet || msg.repliedTo.textSnippet || "";
+        // Check for encrypted reply snippet (new schema)
+        if (
+          msg.repliedTo.textSnippet &&
+          Array.isArray(msg.repliedTo.encryptedAESKeys) &&
+          msg.repliedTo.iv
+        ) {
+          try {
+            const deviceId = localStorage.getItem("deviceId");
+            const keyObj = msg.repliedTo.encryptedAESKeys.find(
+              (k) => k.deviceId === deviceId
+            );
+            if (keyObj) {
+              const decryptedReply = await decryptMessage({
+                encryptedMessage: msg.repliedTo.textSnippet,
+                encryptedAESKey: keyObj.encryptedAESKey,
+                iv: msg.repliedTo.iv,
+              });
+              replyText = decryptedReply;
+            } else {
+              replyText = "[No key for this device]";
+            }
+          } catch (err) {
+            replyText = "[Decryption Failed]";
+            console.error("Failed to decrypt reply preview:", err);
+          }
+        }
         repliedHtml = `
-          <div class="replied-preview" data-target-id="msg-${msg.repliedTo.messageId}">
-            <div class="replied-text">"${msg.repliedTo.textSnippet}"</div>
-          </div>
-        `;
-       }
-
-
+      <div class="replied-preview" data-target-id="msg-${msg.repliedTo.messageId}">
+        <div class="replied-text">"${replyText}"</div>
+      </div>
+    `;
+      }
       messageDiv.innerHTML = `
-        ${repliedHtml}
+    ${repliedHtml}
     ${msg.message}
     <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
-  `;
-    
+`;
 
-if (smartReplyEnabled && msg.senderId !== senderId) {
-  const typingIndicator = document.getElementById("ai-typing-indicator");
-  if (typingIndicator) typingIndicator.classList.remove("hidden");
+      if (smartReplyEnabled && msg.senderId !== senderId) {
+        const typingIndicator = document.getElementById("ai-typing-indicator");
+        if (typingIndicator) typingIndicator.classList.remove("hidden");
 
-  console.log("Smart Reply - Incoming message text:", msg.message);
+        console.log("Smart Reply - Incoming message text:", msg.message);
 
-  if (msg.message && msg.message.trim().length > 1) {
-    socket.emit('requestReplySuggestion', {
-      messageId: msg._id,
-      messageText: msg.message,
-      from: msg.senderId,
-      to: msg.receiverId
-    });
-  }
-}
-
- }
-
- messageDiv.querySelectorAll(".replied-preview").forEach((el) => {
-  el.addEventListener("click", () => {
-    const targetId = el.dataset.targetId;
-    const targetEl = document.getElementById(targetId);
-    if (targetEl) {
-      targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
-      targetEl.classList.add("highlight-temp");
-      setTimeout(() => targetEl.classList.remove("highlight-temp"), 2000);
+        if (msg.message && msg.message.trim().length > 1) {
+          socket.emit("requestReplySuggestion", {
+            messageId: msg._id,
+            messageText: msg.message,
+            from: msg.senderId,
+            to: msg.receiverId,
+          });
+        }
+      }
     }
-  });
-});
 
+    messageDiv.querySelectorAll(".replied-preview").forEach((el) => {
+      el.addEventListener("click", () => {
+        const targetId = el.dataset.targetId;
+        const targetEl = document.getElementById(targetId);
+        if (targetEl) {
+          targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+          targetEl.classList.add("highlight-temp");
+          setTimeout(() => targetEl.classList.remove("highlight-temp"), 2000);
+        }
+      });
+    });
 
+    const menuTrigger = document.createElement("div");
+    menuTrigger.className = "message-menu-trigger";
+    menuTrigger.innerHTML = `<i class="fa-solid fa-ellipsis-vertical"></i>`;
+    messageDiv.appendChild(menuTrigger);
 
- const menuTrigger = document.createElement("div");
-  menuTrigger.className = "message-menu-trigger";
-  menuTrigger.innerHTML = `<i class="fa-solid fa-ellipsis-vertical"></i>`;
-  messageDiv.appendChild(menuTrigger);
-
-  // Dropdown menu
-  const actionMenu = document.createElement("div");
-  actionMenu.className = "message-action-menu";
-  actionMenu.innerHTML = `
+    // Dropdown menu
+    const actionMenu = document.createElement("div");
+    actionMenu.className = "message-action-menu";
+    actionMenu.innerHTML = `
     <div onclick="handlePin('${msg._id}',true)"><i class="fa-solid fa-map-pin"></i> Pin</div>
     <div onclick="handleReply('${msg._id}')"><i class="fa-solid fa-reply"></i> Reply</div>
     <div onclick="handleForward('${msg._id}')"><i class="fa-solid fa-share"></i> Forward</div>
     <div onclick="handleStar('${msg._id}')"><i class="fa-regular fa-star"></i> Star</div>
     <div onclick="handleDelete('${msg._id}')"><i class="fa-solid fa-trash"></i> Delete</div>
   `;
-  messageDiv.appendChild(actionMenu);
+    messageDiv.appendChild(actionMenu);
 
-  if (!isSent) {
-  actionMenu.classList.add("left");
-} else {
-  actionMenu.classList.remove("left");
-}
+    if (!isSent) {
+      actionMenu.classList.add("left");
+    } else {
+      actionMenu.classList.remove("left");
+    }
 
-  // Hover behavior
-  messageDiv.addEventListener("mouseenter", () => {
-    menuTrigger.classList.add("visible");
-  });
+    // Hover behavior
+    messageDiv.addEventListener("mouseenter", () => {
+      menuTrigger.classList.add("visible");
+    });
 
-  messageDiv.addEventListener("mouseleave", () => {
-    menuTrigger.classList.remove("visible");
-    actionMenu.classList.remove("show");
-  });
+    messageDiv.addEventListener("mouseleave", () => {
+      menuTrigger.classList.remove("visible");
+      actionMenu.classList.remove("show");
+    });
 
-  // Toggle menu
-  menuTrigger.addEventListener("click", (e) => {
-    e.stopPropagation();
-    actionMenu.classList.toggle("show");
-  });
-
-
-
-
-
+    // Toggle menu
+    menuTrigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      actionMenu.classList.toggle("show");
+    });
 
     if (msg._id) {
       messageDiv.id = `msg-${msg._id}`;
-      messageDiv.dataset.messageId = msg._id
+      messageDiv.dataset.messageId = msg._id;
       messageDiv.dataset.sender = msg.senderName || "Unknown";
     }
     messagesContainer.appendChild(messageDiv);
-   
+
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-if (msg.isSecretChat && msg._id && msg.expiresAt) {
-  const timeLeft = msg.expiresAt - Date.now();
+    if (msg.isSecretChat && msg._id && msg.expiresAt) {
+      const timeLeft = msg.expiresAt - Date.now();
 
-  if (timeLeft > 0) {
-    const countdownSpan = document.createElement("span");
-    countdownSpan.className = "countdown-timer";
-    countdownSpan.style.display = "block";
-    countdownSpan.textContent = `🕒 Disappears in 1:00`;
-    messageDiv.appendChild(countdownSpan);
+      if (timeLeft > 0) {
+        const countdownSpan = document.createElement("span");
+        countdownSpan.className = "countdown-timer";
+        countdownSpan.style.display = "block";
+        countdownSpan.textContent = `🕒 Disappears in 1:00`;
+        messageDiv.appendChild(countdownSpan);
 
-    let remaining = Math.floor(timeLeft / 1000);
-    const intervalId = setInterval(() => {
-      remaining--;
+        let remaining = Math.floor(timeLeft / 1000);
+        const intervalId = setInterval(() => {
+          remaining--;
 
-      if (remaining <= 0) {
-        clearInterval(intervalId);
-        const secretEl = document.querySelector(`[data-message-id='${msg._id}']`);
-        if (secretEl) secretEl.remove();
-        return;
+          if (remaining <= 0) {
+            clearInterval(intervalId);
+            const secretEl = document.querySelector(
+              `[data-message-id='${msg._id}']`
+            );
+            if (secretEl) secretEl.remove();
+            return;
+          }
+
+          const min = Math.floor(remaining / 60);
+          const sec = (remaining % 60).toString().padStart(2, "0");
+          countdownSpan.textContent = `🕒 Disappears in ${min}:${sec}`;
+        }, 1000);
+      } else {
+        // Already expired
+        const expiredEl = document.querySelector(
+          `[data-message-id='${msg._id}']`
+        );
+        if (expiredEl) expiredEl.remove();
       }
-
-      const min = Math.floor(remaining / 60);
-      const sec = (remaining % 60).toString().padStart(2, "0");
-      countdownSpan.textContent = `🕒 Disappears in ${min}:${sec}`;
-    }, 1000);
-  } else {
-    // Already expired
-    const expiredEl = document.querySelector(`[data-message-id='${msg._id}']`);
-    if (expiredEl) expiredEl.remove();
-  }
-}
+    }
 
     // If this is a received message and the chat is open, emit read immediately
     if (!isSent && msg.status !== "read" && msg._id) {
@@ -663,16 +701,12 @@ if (msg.isSecretChat && msg._id && msg.expiresAt) {
   }
 });
 
-
-
-
-export  function clearAllSuggestions() {
-  document.querySelectorAll(".suggestion-box").forEach(el => {
+export function clearAllSuggestions() {
+  document.querySelectorAll(".suggestion-box").forEach((el) => {
     el.innerHTML = "";
     // el.style.display = "none"; // Optional: hide the box
   });
 }
-
 
 socket.on("replySuggestions", ({ from, messageId, suggestions }) => {
   const typingIndicator = document.getElementById("ai-typing-indicator");
@@ -680,16 +714,14 @@ socket.on("replySuggestions", ({ from, messageId, suggestions }) => {
 
   const suggestionContainer = document.getElementById(`suggestion`);
 
+  const messageElem = document.createElement("div");
+  messageElem.id = `suggestion-${messageId}`;
+  messageElem.className = "suggestion-container";
+  suggestionContainer.appendChild(messageElem);
 
-    const messageElem = document.createElement("div");
-    messageElem.id = `suggestion-${messageId}`;
-    messageElem.className = "suggestion-container";
-    suggestionContainer.appendChild(messageElem);
+  messageElem.innerHTML = "";
 
-      messageElem.innerHTML = "";
-
-
-  suggestions.forEach(text => {
+  suggestions.forEach((text) => {
     const btn = document.createElement("button");
     btn.className = "suggestion-btn";
     btn.innerText = text;
@@ -708,11 +740,9 @@ socket.on("replySuggestions", ({ from, messageId, suggestions }) => {
   });
 });
 
-
-
 // Listen for message-delivered event to update tick to double tick in real time
 socket.on("message-delivered", ({ messageId }) => {
-    console.log("✅ Message delivered for ID:", messageId);
+  console.log("✅ Message delivered for ID:", messageId);
   const messagesContainer = document.getElementById("messagesContainer");
   if (!messagesContainer) return;
   const msgDiv = messagesContainer.querySelector(

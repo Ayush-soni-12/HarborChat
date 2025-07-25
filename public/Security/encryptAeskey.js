@@ -3,7 +3,6 @@
 // import { importPublicKey } from "./rsaHelper.js"; // convert base64 to CryptoKey
 // // import socket from "../js/socket.js"
 
-
 // export async function sendEncryptedMessage(senderId, receiverId, plainText) {
 //   try {
 //     // 1. Generate AES Key
@@ -19,10 +18,6 @@
 //     const base64ReceiverPublicKey = await getPublicKeyFromServer(receiverId);
 //     const base64SenderPublicKey = await getPublicKeyFromServer(senderId);
 
-
-
-
-
 //     // 5. Import it to CryptoKey
 //     const receiverPublicKey = await importPublicKey(base64ReceiverPublicKey);
 //     const senderPublicKey = await importPublicKey(base64SenderPublicKey);
@@ -37,13 +32,10 @@
 //     );
 
 //       const encryptedAESKeyForSender = await window.crypto.subtle.encrypt(
-//         { name: "RSA-OAEP" }, 
-//         senderPublicKey, 
+//         { name: "RSA-OAEP" },
+//         senderPublicKey,
 //         rawAESKey
 //       );
-
-
-    
 
 //     const encryptedAESKey = Array.from(new Uint8Array(encryptedAESKeyBuffer));
 //     const encryptedsenderAESKey = Array.from(new Uint8Array(encryptedAESKeyForSender));
@@ -91,15 +83,23 @@
 //   }
 // }
 
-
-
-
-import { generateAESKey, encryptWithAESKey, exportAESKeyRaw ,deriveAESKeyFromCode} from "./aesHelper.js";
+import {
+  generateAESKey,
+  encryptWithAESKey,
+  exportAESKeyRaw,
+  deriveAESKeyFromCode,
+} from "./aesHelper.js";
 import { getPublicKeyFromServer } from "./publicKeyUtils.js"; // NEW: fetch all public keys by userId
 import { importPublicKey } from "./rsaHelper.js";
 import { uploadToCloudinary } from "./uploadFunction.js";
 
-export async function sendEncryptedMessage(senderId, receiverId, plainText,isSecretChat,currentReply) {
+export async function sendEncryptedMessage(
+  senderId,
+  receiverId,
+  plainText,
+  isSecretChat,
+  currentReply
+) {
   try {
     const decryptedText = plainText.trim();
     if (!decryptedText) {
@@ -131,10 +131,39 @@ export async function sendEncryptedMessage(senderId, receiverId, plainText,isSec
         cryptoKey,
         rawAESKey
       );
-      const encryptedAESKey = btoa(String.fromCharCode(...new Uint8Array(encryptedAESKeyBuffer)));
+      const encryptedAESKey = btoa(
+        String.fromCharCode(...new Uint8Array(encryptedAESKeyBuffer))
+      );
       encryptedKeys.push({ deviceId, encryptedAESKey });
     }
 
+    let encryptedReplySnippet = null;
+    let replySnippetIV = null;
+    let encryptedReplyAESKeys = null;
+    if (currentReply && currentReply.textSnippet) {
+      // Generate a new AES key for the reply snippet
+      const replyAESKey = await generateAESKey();
+      const { encryptedData: replyEncryptedData, iv: replyIV } =
+        await encryptWithAESKey(replyAESKey, currentReply.textSnippet);
+      replySnippetIV = btoa(String.fromCharCode(...replyIV));
+      encryptedReplySnippet = btoa(String.fromCharCode(...replyEncryptedData));
+      // Export raw key
+      const rawReplyAESKey = await exportAESKeyRaw(replyAESKey);
+      // Encrypt reply AES key for all devices
+      encryptedReplyAESKeys = [];
+      for (const { deviceId, publicKey: base64Key } of allKeys) {
+        const cryptoKey = await importPublicKey(base64Key);
+        const encryptedAESKeyBuffer = await window.crypto.subtle.encrypt(
+          { name: "RSA-OAEP" },
+          cryptoKey,
+          rawReplyAESKey
+        );
+        const encryptedAESKey = btoa(
+          String.fromCharCode(...new Uint8Array(encryptedAESKeyBuffer))
+        );
+        encryptedReplyAESKeys.push({ deviceId, encryptedAESKey });
+      }
+    }
     // 6. Prepare message payload
     const messagePayload = {
       senderId,
@@ -144,9 +173,16 @@ export async function sendEncryptedMessage(senderId, receiverId, plainText,isSec
       iv: btoa(String.fromCharCode(...iv)),
       encryptedKeys, // array of encrypted keys with deviceId
       type: "text",
-      status :"sent",
+      status: "sent",
       decryptedText,
-      repliedTo: currentReply || null
+      repliedTo: currentReply
+        ? {
+            messageId: currentReply.messageId,
+            textSnippet: encryptedReplySnippet,
+            iv: replySnippetIV,
+            encryptedAESKeys: encryptedReplyAESKeys,
+          }
+        : null,
     };
 
     // 7. Send to backend
@@ -158,7 +194,7 @@ export async function sendEncryptedMessage(senderId, receiverId, plainText,isSec
 
     const data = await res.json();
     const messageId = data.messageId;
-     
+
     if (!res.ok) {
       console.error("❌ Failed to send encrypted message");
     } else {
@@ -172,13 +208,18 @@ export async function sendEncryptedMessage(senderId, receiverId, plainText,isSec
 
       console.log("✅ Encrypted message sent & emitted");
     }
-    
   } catch (err) {
     console.error("❌ Error sending encrypted message:", err);
   }
 }
 
-export async function sendEncryptedImage(senderId, receiverId, imageBlob, caption = "", isSecretChat) {
+export async function sendEncryptedImage(
+  senderId,
+  receiverId,
+  imageBlob,
+  caption = "",
+  isSecretChat
+) {
   try {
     // 1. Convert image to ArrayBuffer (binary)
     const fileBuffer = await imageBlob.arrayBuffer();
@@ -213,7 +254,9 @@ export async function sendEncryptedImage(senderId, receiverId, imageBlob, captio
         cryptoKey,
         rawAESKey
       );
-      const encryptedAESKey = btoa(String.fromCharCode(...new Uint8Array(encryptedAESKeyBuffer)));
+      const encryptedAESKey = btoa(
+        String.fromCharCode(...new Uint8Array(encryptedAESKeyBuffer))
+      );
       encryptedKeys.push({ deviceId, encryptedAESKey });
     }
 
@@ -227,8 +270,8 @@ export async function sendEncryptedImage(senderId, receiverId, imageBlob, captio
       iv: btoa(String.fromCharCode(...iv)),
       encryptedKeys,
       type: "image",
-      status :"sent",
-      fileType: imageBlob.type, 
+      status: "sent",
+      fileType: imageBlob.type,
     };
 
     // 10. Send encrypted message to backend
@@ -259,12 +302,17 @@ export async function sendEncryptedImage(senderId, receiverId, imageBlob, captio
   }
 }
 
-
-export async function sendMultipleEncryptedImages(senderId, receiverId, fileList, captions = [], isSecretChat) {
+export async function sendMultipleEncryptedImages(
+  senderId,
+  receiverId,
+  fileList,
+  captions = [],
+  isSecretChat
+) {
   const loader = document.getElementById("loader");
   const fileInput = document.getElementById("imageInput");
   const sendButton = document.querySelector(".send-button");
-  const paperclipBtn = document.getElementById('paperclip-btn');
+  const paperclipBtn = document.getElementById("paperclip-btn");
 
   // 🔒 Disable input and button + show loader
   loader.style.display = "block";
@@ -280,7 +328,13 @@ export async function sendMultipleEncryptedImages(senderId, receiverId, fileList
       const blob = new Blob([file], { type: file.type });
       const caption = captions[i] || "";
 
-      await sendEncryptedImage(senderId, receiverId, blob, caption,isSecretChat);
+      await sendEncryptedImage(
+        senderId,
+        receiverId,
+        blob,
+        caption,
+        isSecretChat
+      );
     }
   } catch (error) {
     console.error("❌ Error sending images:", error);
@@ -293,8 +347,13 @@ export async function sendMultipleEncryptedImages(senderId, receiverId, fileList
   }
 }
 
-
-export async function encryptMessageWithCode(senderId,receiverId,message,isSecretChat,code){
+export async function encryptMessageWithCode(
+  senderId,
+  receiverId,
+  message,
+  isSecretChat,
+  code
+) {
   try {
     // 1. Derive AES key from the passcode
     const aesKey = await deriveAESKeyFromCode(code);
@@ -309,7 +368,9 @@ export async function encryptMessageWithCode(senderId,receiverId,message,isSecre
     );
 
     // 3. Prepare base64 encoded values
-    const encryptedMessage = btoa(String.fromCharCode(...new Uint8Array(ciphertextBuffer)));
+    const encryptedMessage = btoa(
+      String.fromCharCode(...new Uint8Array(ciphertextBuffer))
+    );
     const encodedIV = btoa(String.fromCharCode(...iv));
 
     // 4. Prepare message payload
@@ -320,7 +381,7 @@ export async function encryptMessageWithCode(senderId,receiverId,message,isSecre
       encryptedMessage,
       iv: encodedIV,
       type: "lockedText",
-      burnAfterRead:false,// always true for code-locked messages
+      burnAfterRead: false, // always true for code-locked messages
       status: "sent",
     };
 
@@ -347,13 +408,19 @@ export async function encryptMessageWithCode(senderId,receiverId,message,isSecre
 
       console.log("✅ Code-locked message sent & emitted");
     }
-
   } catch (err) {
     console.error("❌ Error sending code-locked message:", err);
   }
 }
 
-export async function encryptImageWithCode(senderId,receiverId,imageBlob,caption="",isSecretChat,code){
+export async function encryptImageWithCode(
+  senderId,
+  receiverId,
+  imageBlob,
+  caption = "",
+  isSecretChat,
+  code
+) {
   try {
     // 1. Derive AES key from the passcode
     const aesKey = await deriveAESKeyFromCode(code);
@@ -370,7 +437,9 @@ export async function encryptImageWithCode(senderId,receiverId,imageBlob,caption
     );
 
     // 4. Convert encrypted ArrayBuffer to Blob
-    const encryptedBlob = new Blob([ciphertextBuffer], { type: imageBlob.type });
+    const encryptedBlob = new Blob([ciphertextBuffer], {
+      type: imageBlob.type,
+    });
 
     // 5. Upload encrypted Blob to Cloudinary
     const cloudinaryRes = await uploadToCloudinary(encryptedBlob);
@@ -388,9 +457,9 @@ export async function encryptImageWithCode(senderId,receiverId,imageBlob,caption
       caption,
       iv: encodedIV,
       type: "lockedImage",
-      burnAfterRead:false,// always true for code-locked messages
-      status :"sent",
-      fileType: imageBlob.type, 
+      burnAfterRead: false, // always true for code-locked messages
+      status: "sent",
+      fileType: imageBlob.type,
     };
 
     // 8. Send to backend
@@ -416,7 +485,6 @@ export async function encryptImageWithCode(senderId,receiverId,imageBlob,caption
 
       console.log("✅ Code-locked image sent & emitted");
     }
-
   } catch (err) {
     console.error("❌ Error in encryptImageWithCode:", err);
   }
