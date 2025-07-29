@@ -1,17 +1,15 @@
 import state from "./state.js";
-import { getReplyPreviewHtml,
-        getLockedMessageHtml,
-        getLockedImageHtml,
-        getNormalMessageHtml,
-        getAudioMessageHtml,
-        getMenuUi,
-        getSecretchatCountDown,
-        getMessageHtml,
-        getNormalImageHtml,
-
-
-} from "./mainFunction.js"
-
+import {
+  getReplyPreviewHtml,
+  getLockedMessageHtml,
+  getLockedImageHtml,
+  getNormalMessageHtml,
+  getAudioMessageHtml,
+  getMenuUi,
+  getSecretchatCountDown,
+  getMessageHtml,
+  getNormalImageHtml,
+} from "./mainFunction.js";
 
 // import socket from "./socket.js";
 
@@ -20,10 +18,8 @@ renderPinnedMessages();
 window.pinnedMessagesInChat = [];
 window.handlePin = handlePin;
 window.handleReply = handleReply;
+window.handleDelete = handleDelete;
 window.currentReply = null; // Global variable to store current reply context
-
-
-
 
 // --- LOAD CHAT MESSAGES ---
 export async function loadChatMessages(append = false) {
@@ -70,22 +66,26 @@ export async function loadChatMessages(append = false) {
     // Render messages
 
     for (const msg of data.messages) {
-      // data.messages.forEach((msg) => {
+      if (msg.deletedFor?.includes(senderId)) {
+        continue; // Skip rendering for this user, but continue with other messages
+      }
       const messageDiv = document.createElement("div");
       const isSent = msg.senderId === senderId;
-         const deviceId = localStorage.getItem("deviceId");
-         msg.encryptedMessage = msg.message;
-         const encryptedKeyObj = msg.encryptedKeys?.find(
-           (k) => k.deviceId === deviceId
-         );
-         if (encryptedKeyObj &&msg.iv && msg.encryptedMessage && msg.type === "text") {
-           
-          await getMessageHtml(msg,encryptedKeyObj);
-
-         } else {
-           // msg.message = "[No valid key for this device]";
-         }
-       
+      const deviceId = localStorage.getItem("deviceId");
+      msg.encryptedMessage = msg.message;
+      const encryptedKeyObj = msg.encryptedKeys?.find(
+        (k) => k.deviceId === deviceId
+      );
+      if (
+        encryptedKeyObj &&
+        msg.iv &&
+        msg.encryptedMessage &&
+        msg.type === "text"
+      ) {
+        await getMessageHtml(msg, encryptedKeyObj);
+      } else {
+        // msg.message = "[No valid key for this device]";
+      }
 
       messageDiv.className = `message ${
         isSent ? "sent" : "received"
@@ -103,33 +103,37 @@ export async function loadChatMessages(append = false) {
       }
       // --- Fix: Render image/audio if message is an image or audio ---
       if (msg.type === "image" && msg.mediaUrls && msg.mediaUrls.length > 0) {
-
-        await getNormalImageHtml(msg, messageDiv, isSent, tickHtml, senderId, encryptedKeyObj)
-
-
+        await getNormalImageHtml(
+          msg,
+          messageDiv,
+          isSent,
+          tickHtml,
+          senderId,
+          encryptedKeyObj
+        );
       } else if (msg.type === "audio" && msg.audioUrl) {
-
-           await getAudioMessageHtml(msg, messageDiv, tickHtml) 
-
+        await getAudioMessageHtml(msg, messageDiv, tickHtml);
       } else if (msg.type === "lockedText") {
         // 🔐 Initial locked message UI
         await getLockedMessageHtml(msg, messageDiv, isSent, tickHtml, senderId);
-
-
       } else if (msg.type === "lockedImage" && msg.mediaUrls?.length === 1) {
-
-         await  getLockedImageHtml(msg, messageDiv, isSent, tickHtml, senderId) 
-
+        await getLockedImageHtml(msg, messageDiv, isSent, tickHtml, senderId);
+      } else if (msg.isDeleted) {
+        messageDiv.innerHTML = `<i>This message was deleted</i>`;
       } else {
         let repliedHtml = await getReplyPreviewHtml(msg.repliedTo);
 
-        await getNormalMessageHtml(msg,messageDiv,isSent,tickHtml,repliedHtml)
-
+        await getNormalMessageHtml(
+          msg,
+          messageDiv,
+          isSent,
+          tickHtml,
+          repliedHtml
+        );
       }
+      // get menu Ui
+      await getMenuUi(messageDiv, msg, isSent, senderId);
 
-  // get menu Ui
-      await getMenuUi(messageDiv,msg,isSent,senderId);
-    
       if (msg._id) {
         messageDiv.id = `msg-${msg._id}`;
         messageDiv.dataset.messageId = msg._id;
@@ -142,9 +146,7 @@ export async function loadChatMessages(append = false) {
         );
       else messagesContainer.appendChild(messageDiv);
       if (msg.isSecretChat && msg._id && msg.expiresAt) {
-
         await getSecretchatCountDown(messageDiv, msg, isSent, senderId);
-
       }
     } // });
     if (!append) messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -319,3 +321,13 @@ document.getElementById("cancelReply").addEventListener("click", () => {
   currentReply = null;
   document.getElementById("reply-preview").classList.add("hidden-reply");
 });
+
+export async function handleDelete(messageId, scope) {
+  const confirmDelete = confirm(
+    scope === "everyone" ? "Delete for everyone?" : "Delete for you only?"
+  );
+  console.log("Confirm delete:", confirmDelete);
+  if (confirmDelete) {
+    socket.emit("deleteMessage", { messageId, scope });
+  }
+}

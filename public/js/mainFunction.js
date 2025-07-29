@@ -237,7 +237,8 @@ export async function getMenuUi(messageDiv,msg,isSent,senderId){
     <div onclick="handleReply('${msg._id}')"><i class="fa-solid fa-reply"></i> Reply</div>
     <div onclick="handleForward('${msg._id}')"><i class="fa-solid fa-share"></i> Forward</div>
     <div onclick="handleStar('${msg._id}')"><i class="fa-regular fa-star"></i> Star</div>
-    <div onclick="handleDelete('${msg._id}')"><i class="fa-solid fa-trash"></i> Delete</div>
+    <div onclick="handleDelete('${msg._id}','me')"><i class="fa-solid fa-trash"></i> Delete</div>
+    <div onclick="handleDelete('${msg._id}','everyone')"><i class="fa-solid fa-trash"></i> Delete</div>
   `;
     messageDiv.appendChild(actionMenu);
 

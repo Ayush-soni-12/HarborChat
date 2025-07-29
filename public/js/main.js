@@ -341,7 +341,10 @@ socket.on("chat message", async (msg) => {
 
       await getLockedImageHtml(msg,messageDiv,isSent,tickHtml,senderId);
 
-    } else {
+    }else if(msg.isDeleted) {
+        messageDiv.innerHTML = `<i>This message was deleted</i>`;
+    }
+    else {
       let repliedHtml = await getReplyPreviewHtml(msg.repliedTo);
 
       await getNormalMessageHtml(msg,messageDiv,isSent,tickHtml,repliedHtml);
@@ -362,7 +365,6 @@ socket.on("chat message", async (msg) => {
         }
       }
     }
-
     await getMenuUi(messageDiv,msg,isSent,senderId);
 
 
@@ -578,3 +580,20 @@ function playNotificationSound() {
     // Ignore autoplay errors
   }
 }
+
+
+socket.on("messageDeletedForMe", ({ messageId }) => {
+  const msgElement = document.getElementById(`msg-${messageId}`);
+  if (msgElement) {
+    msgElement.remove(); // or msgElement.style.display = 'none';
+  }
+});
+
+
+socket.on("messageDeletedForEveryone", ({ messageId }) => {
+  const msgElement = document.getElementById(`msg-${messageId}`);
+  if (msgElement) {
+    msgElement.innerHTML = `<i class="deleted-message">This message was deleted</i>`;
+    msgElement.classList.add("deleted-message");
+  }
+});

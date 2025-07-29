@@ -175,6 +175,7 @@ io.on("connection", (socket) => {
         iv,
         type,
         status,
+        isDeleted: false, // Default to false, can be updated later
         pinned: false, // Default to false, can be updated later
         senderPhone,
         isSecretChat,
@@ -240,23 +241,6 @@ io.on("connection", (socket) => {
 
       // Emit 'message-delivered' to sender for real-time double tick
       io.to(senderId).emit("message-delivered", { messageId });
-
-      //   if (!isSecretChat && type === "text" && decryptedText?.trim().length > 1) {
-      //   try {
-      //     const suggestions = await getReplySuggestions(decryptedText);
-      //     const socketId = await client.get(`online:${receiverId}`);
-
-      //     if (socketId && Array.isArray(suggestions)) {
-      //       io.to(socketId).emit("replySuggestions", {
-      //         from: senderId,
-      //         messageId,
-      //         suggestions,
-      //       });
-      //     }
-      //   } catch (e) {
-      //     console.error("💥 AI suggestion error:", e.message);
-      //   }
-      // }
     }
   );
 
@@ -317,6 +301,8 @@ io.on("connection", (socket) => {
     }
   });
 
+
+
   socket.on(
     "image-message",
     async ({
@@ -333,24 +319,7 @@ io.on("connection", (socket) => {
       isSecretChat,
     }) => {
       try {
-        // // Upload image to Cloudinary
-        // const uploadRes = await cloudinary.uploader.upload(image, {
-        //   folder: "harborchat/images",
-        //   resource_type: "image",
-        // });
-
-        // const imageUrl = uploadRes.secure_url;
-
-        // Save to MongoDB
-        // const newImageMessage = await Message.create({
-        //   senderId,
-        //   receiverId,
-        //   type: "image",
-        //   message: caption,
-        //   mediaUrls: [imageUrl],
-        //   status: "sent",
-        //   timestamp: new Date(),
-        // });
+ 
         const sender = await User.findById(senderId).select("name phoneNo");
         console.log(sender);
         //    console.log(sender)
@@ -452,6 +421,89 @@ io.on("connection", (socket) => {
       }
     }
   );
+
+  socket.on("deleteMessage", async ({ messageId, scope }) => {
+  try {
+    const message = await Message.findById(messageId);
+
+    console.log("message",message)
+    if (!message) return;
+
+    
+    const { senderId, receiverId, isSecretChat } = message;
+    const ids = [senderId, receiverId].sort();
+    const cacheKey = `chat:${ids[0]}:${ids[1]}:${isSecretChat ? "secret" : "normal"}`;
+
+    // Load messages from Redis
+    let cached = await client.get(cacheKey);
+    let messages = cached ? JSON.parse(cached) : [];
+
+    if (scope === 'me') {
+      // Update MongoDB
+      if (!message.deletedFor.includes(userId)) {
+        message.deletedFor.push(userId);
+        await message.save();
+      }
+
+      // Update Redis: no need to delete message, just update message.deletedFor
+        messages = messages.filter((msg) => {
+        if (msg._id?.toString() === messageId.toString()) {
+          if (!msg.deletedFor) msg.deletedFor = [];
+          msg.deletedFor.push(userId);
+
+          // Remove message if both users deleted it
+          if (
+            msg.deletedFor.includes(senderId) &&
+            msg.deletedFor.includes(receiverId)
+          ) {
+            return false; // ❌ Remove this message from Redis
+          }
+        }
+        return true; // ✅ Keep message
+      });
+        // console.log("messages again", messages);
+      // Update Redis cache
+      const ttl = isSecretChat ? 60 : 300;
+      await client.set(cacheKey, JSON.stringify(messages), { EX: ttl });
+
+
+      if (
+        message.deletedFor.includes(senderId) &&
+        message.deletedFor.includes(receiverId)
+      ) {
+        await Message.findByIdAndDelete(messageId); // 💥 Full delete
+      }
+
+      // Notify the user only
+      io.to(userId).emit("messageDeletedForMe", { messageId });
+
+    } else if (scope === 'everyone' && userId === senderId) {
+
+    await Message.findByIdAndDelete(messageId).catch((err) => {
+      if (err.name !== "DocumentNotFoundError") {
+        console.error("Error deleting from DB:", err);
+      }
+    });
+
+      
+
+      // Update Redis message
+       messages = messages.filter((msg) => msg._id !== messageId);
+      const ttl = isSecretChat ? 60 : 300;
+      await client.set(cacheKey, JSON.stringify(messages), { EX: ttl });
+
+      // Update Redis cache
+
+
+      // Notify both users
+      io.to(senderId).emit("messageDeletedForEveryone", { messageId });
+      io.to(receiverId).emit("messageDeletedForEveryone", { messageId });
+    }
+  } catch (err) {
+    console.error("Error in deleteMessage:", err);
+  }
+});
+
 
   socket.on("audioMessage", async ({ audioUrl, senderId, receiverId }) => {
     try {

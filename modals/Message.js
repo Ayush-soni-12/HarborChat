@@ -96,6 +96,10 @@ const messageSchema = new mongoose.Schema({
     },
     default: null,
   },
+  deletedFor: [
+    String
+  ], 
+  isDeleted: { type: Boolean, default: false }, // for "delete for everyone"
 });
 
 messageSchema.index({ senderId: 1, receiverId: 1, timestamp: 1 });
