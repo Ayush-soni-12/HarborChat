@@ -1,5 +1,6 @@
-import { updateEmptyChatMessage, loadChatMessages } from "./contactFunction.js";
-import { moveContactToTop, showToast } from "./contactFunction.js";
+import {  loadChatMessages } from "./contactFunction.js";
+import { updateEmptyChatMessage ,moveContactToTop} from "./uiFunction.js";
+import {  showToast } from "./contactFunction.js";
 import state from "./state.js";
 // import socket from "./socket.js";
 import { sendEncryptedMessage,sendEncryptedImage ,sendMultipleEncryptedImages,encryptMessageWithCode,encryptImageWithCode} from "../Security/encryptAeskey.js";
