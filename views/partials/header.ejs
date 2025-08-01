@@ -4,6 +4,151 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>HarborChat</title>
+    <link rel="stylesheet" href="/css/header.css">
+    <% if (currentUser) { %>
+  <% if (currentUser.theme === "dark") { %>
+    <style>
+      :root {
+        --background1-bg: #000000;
+        --background2-bg: #000000;
+        --sentText1-color: #ffffff;
+        --sentText2-color: #ffffff;
+        --recievedText1-color : #ffffff;
+        --recievedText2-color : #ffffff;
+        --timeText-color: #000000;
+
+        
+      }
+    </style>
+  <% } else if (currentUser.theme === "amoled") { %>
+    <style>
+      :root {
+        --background1-bg: #d4fc79;
+        --background2-bg: #96e6a1;
+        --sentText1-color: #a1c4fd;
+        --sentText2-color: #c2e9fb;
+        --recievedText1-color:  #fbc2eb;
+        --recievedText2-color: #a6c1ee;
+
+       
+      }
+    </style>
+
+  <% }  else if (currentUser.theme === "light") { %>
+    <style>
+      :root {
+        --background1-bg: #ffffff;
+        --background2-bg: #ffffff;
+        --sentText1-color: #ffffff;
+        --sentText2-color: #ffffff;
+        --recievedText1-color:  #ffffff;
+        --recievedText2-color: #ffffff;
+
+       
+      }
+    </style>
+
+  <% }  else if(currentUser.theme ==="Neon"){  %>
+        <style>
+      :root {
+        --background2-bg: #0d0221;
+        --background1-bg: #ff2a6d;
+        --sentText1-color: #05d9fe;
+        --recievedText1-color:  #ff00bf;
+        --timeText-color: #000000;
+
+       
+      }
+       </style>
+
+    
+   <% } else if(currentUser.theme ==="Forest"){  %>
+        <style>
+      :root {
+        --background1-bg: #0a1a0a;
+        --background2-bg: #1e3f1e;
+        --sentText1-color: #2d6a4f;
+        --recievedText1-color:  #52b788;
+
+       
+      }
+       </style>
+
+    <%  }  else if(currentUser.theme ==="BloodMoon"){  %>
+        <style>
+      :root {
+        --background1-bg: #1e0000;
+        --background2-bg: #000000;
+        --sentText1-color: #424242;
+        --recievedText1-color:  #424242;
+        --recievedText2-color: #b0bec5;
+        --timeText-color:#ffffff;
+
+       
+      }
+       </style>
+
+
+
+     <% }  else if(currentUser.theme ==="DeepSpace"){  %>
+        <style>
+      :root {
+        --background1-bg: #000000;
+        --background2-bg: #ffffff;
+        --sentText1-color: #5a189a;
+        --sentText2-color: #9d4edd;
+        --recievedText1-color: #7209b7;
+        --recievedText2-color: #48cae4;
+        --timeText-color:#ffffff;
+
+       
+      }
+       </style>
+
+     <% }   else if(currentUser.theme ==="Crystal"){  %>
+        <style>
+      :root {
+        --background1-bg: #10002b;
+        --background2-bg: #3c096c;
+        --sentText1-color: #7b2cbf;
+        --sentText2-color: #e0aaff;
+        --recievedText1-color: #9d4edd;
+        /* --recievedText2-color: #f0e5ff; */
+        --timeText-color:#000000;
+
+       
+      }
+       </style>
+
+     <% }   else if(currentUser.theme ==="Noir"){  %>
+        <style>
+      :root {
+        --background1-bg: #000000;
+        --background2-bg: #ff0000;
+        /* --sentText1-color: #14213d; */
+        --sentText1-color: #00bbf9;
+        /* --recievedText1-color: #212121; */
+        --recievedText1-color: #ff0000;
+        --timeText-color:#ffffff;
+
+       
+      }
+       </style>
+
+     <% }  else if (currentUser.theme === "custom") { %>
+    <style>
+      :root {
+        --background1-bg: <%= currentUser.customTheme.background1 %>;
+        --background2-bg: <%= currentUser.customTheme.background2 %>;
+        --sentText1-color: <%= currentUser.customTheme.sentText1 %>;
+        --sentText2-color: <%= currentUser.customTheme.sentText2 %>;
+        --recievedText1-color: <%= currentUser.customTheme.recievedText1 %>;
+        --recievedText2-color: <%= currentUser.customTheme.recievedText2 %>;
+      }
+    </style>
+  <% } %>
+<% } %>
+
     <!-- <link
       href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;500;600&display=swap"
       rel="stylesheet"
@@ -19,7 +164,7 @@
     <link  href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
-    <link rel="stylesheet" href="/css/header.css">
+    
   </head>
   <body>
 

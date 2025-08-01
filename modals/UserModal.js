@@ -40,6 +40,17 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  theme: {
+  type: String,
+  enum: ['light', 'dark', 'amoled', 'custom'],
+  default: 'light'
+ },
+ customTheme: {
+   background: String,
+   text: String,
+   bubble: String
+ }
+
 });
 
 const User = mongoose.model('User',userSchema);

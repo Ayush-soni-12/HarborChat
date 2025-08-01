@@ -300,6 +300,29 @@
                     <div class="setting-description">Change the background of your chats</div>
                     <button class="btn btn-primary">Change Wallpaper</button>
                 </div>
+              
+            
+                <div class="setting-item">
+             <div class="setting-title">choose Theme</div>
+          <form action="/settings/update-theme" method="POST">
+            <select name="theme" id="themeSelect">
+              <option value="default">Default</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+              <option value="amoled">AMOLED</option>
+              <option value="Neon">Neon</option>
+              <option value="Forest">Forest</option>
+              <option value="BloodMoon">Blood Moon</option>
+              <option value="DeepSpace">Deep Space</option>
+              <option value="Crystal">Crystal</option>
+              <option value="Noir">Noir</option>
+              
+
+            </select>
+
+            <button type="submit" class="btn btn-primary">Save Theme</button>
+          </form>
+          </div>
 
                 <div class="setting-item">
                     <div class="setting-title">Font Size</div>
@@ -462,6 +485,7 @@
       const modal = document.getElementById('deleteConfirmationModal');
       const closeBtn = document.querySelector('.close-btn');
       const canceldeletebtn = document.querySelector('.cancel-btn');
+
 
              
     document.querySelector('.toggle-password').addEventListener('click', function() {
@@ -679,7 +703,7 @@
                         opacity: 0,
                         duration: 0.2,
                         onComplete: () => {
-                            defaultMessage.style.display = 'none';
+                            // defaultMessage.style.display = 'none';
                         }
                     });
                 }
@@ -692,7 +716,7 @@
                     ease: "power2.out",
                     onStart: () => {
                         contentSection.style.display = 'block';
-                        document.querySelector('.settings-content-container').scrollTo(0, 0);
+                        // document.querySelector('.settings-content-container').scrollTo(0, 0);
                     }
                 });
                 
@@ -737,6 +761,15 @@
             // Scroll to top when returning to options
             document.querySelector('.settings-sidebar').scrollTo(0, 0);
         });
+        //      const select = document.getElementById('themeSelect');
+        //      const fields = document.getElementById('customThemeFields');
+
+        //  function toggleCustomTheme() {
+        //     console.log("hellowrold")
+        //    fields.style.display = select.value === 'custom' ? 'block' : 'none';
+        //  }
+        //  toggleCustomTheme();
+        //  select.addEventListener('change', toggleCustomTheme);         
     });
 </script>
 </body>

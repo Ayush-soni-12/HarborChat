@@ -1,6 +1,6 @@
 import  express from "express";
 const router = express.Router();
-import  {index,chat,contact,setting,Status,profile,updateProfile,updateEmail,me,personalChat,searchContact,audioMessage,whisperBotMessage,translateChat,pinMessage,unPinMessage} from "../controllers/homeController.js";
+import  {index,chat,contact,setting,Status,profile,updateProfile,updateEmail,me,personalChat,searchContact,audioMessage,whisperBotMessage,translateChat,pinMessage,unPinMessage,updateTheme} from "../controllers/homeController.js";
 import  validToken from '../middlewares/verifytoken.js';
 import  {verifyemail, newContactSchema }from "../validations/authValidation.js"
 import  validation from "../middlewares/validate.js";
@@ -39,6 +39,7 @@ router.post('/api/whisperbot',validToken,whisperBotMessage)
 router.post('/api/translate',validToken,translateChat);
 router.post('/api/messages/pin',validToken,pinMessage);
 router.patch('/api/pin/:id',validToken, unPinMessage);
+router.post('/settings/update-theme',validToken,updateTheme)
 
 
 export default router

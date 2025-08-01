@@ -4,7 +4,15 @@
         --sidebar-bg: #f0f2f5;
         --text-primary: #111b21;
         --text-secondary: #667781;
+        --timeText-color: #000000;
         --border-color: #e9edef;
+        --background1-bg: #e5ddd5;
+        --background2-bg: #e5ddd5;
+        --sentText1-color: #DCF8C6;
+        --sentText2-color: #DCF8C6;
+        --recievedText1-color: #ffffff;
+        --recievedText2-color: #ffffff;
+        
       }
 
       * {
@@ -278,7 +286,8 @@
         flex: 1;
         display: flex;
         flex-direction: column;
-        background-color: #e5ddd5;
+        /* background-color: #e5ddd5; */
+          background: linear-gradient(to right,var(--background1-bg), var(--background2-bg));
       }
 
       /* Empty State */
@@ -510,14 +519,14 @@
       }
 
       .sent {
-        align-self: flex-end;
+align-self: flex-end;
         background-color: #d9fdd3;
         border-top-right-radius: 0;
       }
 
       .message-time {
         font-size: 11px;
-        color: var(--text-secondary);
+        color: var(--timeText-color);
         text-align: right;
         margin-top: 4px;
       }
@@ -1572,7 +1581,8 @@
 
  /* .messages-container {
   position: relative;
-  /* background: linear-gradient(to right, #d4fc79, #96e6a1);  */
+  background: linear-gradient(to right, #d4fc79, #96e6a1);
+ }  */
    
 
   .messages-container{
@@ -1580,12 +1590,13 @@
   }
 
  .message.sent {
-  background: linear-gradient(to right, #a1c4fd, #c2e9fb);
+  background: linear-gradient(to right, var(--sentText1-color), var(--sentText2-color));
+   
   margin-left: auto;
 }
 
 .message.received {
-  background: linear-gradient(to right, #fbc2eb, #a6c1ee);
+  background: linear-gradient(to right, var(--recievedText1-color), var(--recievedText2-color));
   margin-right: auto;
 }
 

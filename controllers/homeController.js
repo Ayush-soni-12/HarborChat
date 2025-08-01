@@ -450,3 +450,30 @@ export const unPinMessage = asyncHandler(async(req,res)=>{
     res.status(500).json({ success: false, message: "Server error" });
   }
 })
+
+export const updateTheme = asyncHandler(async(req,res)=>{
+    try {
+    const { theme, background1,background2,sentText1,sentText2,recievedText1,recievedText2  } = req.body;
+
+    const update = {
+      theme,
+    };
+
+    if (theme === 'custom') {
+      update.customTheme = {
+        background1,
+        background2,
+        sentText1,
+        sentText2,
+        recievedText1,
+        recievedText2
+      };
+    }
+
+    await User.findByIdAndUpdate(req.user.id, update);
+    res.redirect('/chat/setting');
+  } catch (err) {
+    console.error('Error updating theme:', err);
+    res.status(500).send('Server error');
+  }
+})
