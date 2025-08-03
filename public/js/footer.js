@@ -476,7 +476,7 @@ export async function sendMessage() {
 
     const data = await res.json();
     console.log('data',data);
-   message = typeof data.translated === 'string' ? data.translated.trim() : String(data.translated).trim();
+    message = typeof data.translated === 'string' ? data.translated.trim() : String(data.translated).trim();
 
    }
 

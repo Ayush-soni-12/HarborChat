@@ -25,6 +25,7 @@
     "idb": "^8.0.3",
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
+    "kafkajs": "^2.2.4",
     "libphonenumber-js": "^1.12.9",
     "method-override": "^3.0.0",
     "mongoose": "^8.15.1",

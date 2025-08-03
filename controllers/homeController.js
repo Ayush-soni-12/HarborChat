@@ -8,6 +8,7 @@ import Message from "../modals/Message.js";
 import client from "../redisClient.js";
 import streamifier from "streamifier";
 import { translateText } from "../Helpers/translate.js"; // fixed import path
+import { sendMessageToKafka } from "../kafkaProducer.js"; // fixed import path
 
 // const generateToken = require"../middlewares/generateToken";
 import jwt from  "jsonwebtoken";
@@ -357,59 +358,63 @@ export const translateChat = asyncHandler(async (req, res) => {
   }
 });
 
-export const pinMessage = asyncHandler(async(req,res)=>{
-   try {
+export const pinMessage = asyncHandler(async (req, res) => {
+  try {
     const { messageId, pin } = req.body;
 
-    const result = await Message.findByIdAndUpdate(
-      messageId,
-      { pinned: pin }, // pin = true or false
+    const result = await Message.findOneAndUpdate(
+      { _id: messageId },
+      { pinned: pin },
       { new: true }
     );
 
-    if (!result) return res.status(404).json({ error: "Message not found" });
+    // 🔁 If message already in DB
+    if (result) {
+      const senderId = result.senderId.toString();
+      const receiverId = result.receiverId.toString();
+      const ids = [senderId, receiverId].sort();
+      const baseKey = `chat:${ids[0]}:${ids[1]}`;
+      const normalKey = `${baseKey}:normal`;
+      const secretKey = `${baseKey}:secret`;
 
-     // 2. Update in Redis (if cached)
-    const senderId = result.senderId.toString();
-    const receiverId = result.receiverId.toString();
-    const ids = [senderId, receiverId].sort();
-    const baseKey = `chat:${ids[0]}:${ids[1]}`;
-    const normalKey = `${baseKey}:normal`;
-    const secretKey = `${baseKey}:secret`;
-
-    // Try both normal and secret caches
-    for (const key of [normalKey, secretKey]) {
-      const cached = await client.get(key);
-      if (cached) {
-        let messages = JSON.parse(cached);
-        let updated = false;
-        messages = messages.map(msg => {
-          if (msg._id === messageId) {
-            updated = true;
-            return { ...msg, pinned: pin };
+      for (const key of [normalKey, secretKey]) {
+        const cached = await client.get(key);
+        if (cached) {
+          let messages = JSON.parse(cached);
+          let updated = false;
+          messages = messages.map((msg) => {
+            if (msg._id === messageId) {
+              updated = true;
+              return { ...msg, pinned: pin };
+            }
+            return msg;
+          });
+          if (updated) {
+            await client.set(key, JSON.stringify(messages), { EX: 300 });
           }
-          return msg;
-        });
-        if (updated) {
-          await client.set(key, JSON.stringify(messages), { EX: 300 });
         }
       }
+
+      return res.json({ success: true, message: 'Message pinned in DB', data: result });
     }
 
-    res.json({ success: true, message: "Message updated", data: result });
+    // 🕐 If message not yet in DB, store in Redis as pending
+if (!result) return res.status(404).json({ error: "Message not found" });
+
+
   } catch (err) {
-    console.error("Error pinning message:", err);
-    res.status(500).json({ error: "Server error" });
+    console.error('Error pinning message:', err);
+    res.status(500).json({ error: 'Server error' });
   }
-})
+});
 
 export const unPinMessage = asyncHandler(async(req,res)=>{
    const { id } = req.params;
   const { pinned } = req.body;
 
   try {
-    const updatedMessage = await Message.findByIdAndUpdate(
-      id,
+    const updatedMessage = await Message.findOneAndUpdate(
+      { _id: id },
       { pinned: !!pinned },
       { new: true }
     );
@@ -477,3 +482,4 @@ export const updateTheme = asyncHandler(async(req,res)=>{
     res.status(500).send('Server error');
   }
 })
+

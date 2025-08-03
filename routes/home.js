@@ -40,6 +40,7 @@ router.post('/api/translate',validToken,translateChat);
 router.post('/api/messages/pin',validToken,pinMessage);
 router.patch('/api/pin/:id',validToken, unPinMessage);
 router.post('/settings/update-theme',validToken,updateTheme)
+// router.post('/api/send-message',validToken,kafkaProducer)
 
 
 export default router

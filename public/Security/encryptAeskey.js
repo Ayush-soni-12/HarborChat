@@ -92,7 +92,7 @@ import {
 import { getPublicKeyFromServer } from "./publicKeyUtils.js"; // NEW: fetch all public keys by userId
 import { importPublicKey } from "./rsaHelper.js";
 import { uploadToCloudinary } from "./uploadFunction.js";
-
+// import { sendMessageToKafka } from "../../kafkaProducer.js";
 export async function sendEncryptedMessage(
   senderId,
   receiverId,
@@ -171,8 +171,15 @@ export async function sendEncryptedMessage(
         }
       }
     }
+
+   function getChatId(senderId, receiverId) {
+    return [senderId, receiverId].sort().join('_');
+  }
+
+
     // 6. Prepare message payload
     const messagePayload = {
+      messageId: crypto.randomUUID(), // Generate a unique ID for the message
       senderId,
       receiverId,
       isSecretChat,
@@ -193,29 +200,59 @@ export async function sendEncryptedMessage(
         : null,
     };
 
+          // 8. Emit over socket
+      // socket.emit("chat message", {
+      //   ...messagePayload, // contains encryptedMessage, iv, encryptedKeys
+      // });
+
+      // console.log("✅ Encrypted message sent & emitted");
+
+
+    // const result  = await fetch("/api/send-message",{
+    //     method: 'POST',
+    //     headers: {
+    //         'Content-Type': 'application/json',
+    //            },
+    //          body: JSON.stringify(messagePayload),
+    //    });
+    //    const response = await result.json();
+    //    if(!result.ok) {
+    //     console.error("❌ Failed to send encrypted message:", response.error);
+    //     return;
+    //    }  
+    // console.log("✅ Encrypted message sent successfully:", response);
+
+
+    // await sendMessageToKafka(messagePayload);
+
+
     // 7. Send to backend
-    const res = await fetch("/auth/messages/sendEncrypted", {
+    // const res = await fetch("/auth/messages/sendEncrypted", {
+    //   method: "POST",
+    //   headers: { "Content-Type": "application/json" },
+    //   body: JSON.stringify(messagePayload),
+    // });
+
+    // const data = await res.json();
+    // const messageId = data.messageId;
+
+    // if (!res.ok) {
+    //   console.error("❌ Failed to send encrypted message");
+    // } else {
+      // 8. Emit over socket
+      socket.emit("chat message", {
+        ...messagePayload, // contains encryptedMessage, iv, encryptedKeys
+      });
+
+      console.log("✅ Encrypted message sent & emitted");
+
+      const res = await fetch("/auth/messages/sendEncrypted", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(messagePayload),
     });
 
-    const data = await res.json();
-    const messageId = data.messageId;
-
-    if (!res.ok) {
-      console.error("❌ Failed to send encrypted message");
-    } else {
-      // 8. Emit over socket
-      socket.emit("chat message", {
-        senderId,
-        receiverId,
-        messageId,
-        ...messagePayload, // contains encryptedMessage, iv, encryptedKeys
-      });
-
-      console.log("✅ Encrypted message sent & emitted");
-    }
+    // }
   } catch (err) {
     console.error("❌ Error sending encrypted message:", err);
   }
@@ -270,6 +307,7 @@ export async function sendEncryptedImage(
 
     // 9. Prepare payload for your schema
     const messagePayload = {
+      messageId: crypto.randomUUID(),
       senderId,
       receiverId,
       isSecretChat,
@@ -283,28 +321,23 @@ export async function sendEncryptedImage(
     };
 
     // 10. Send encrypted message to backend
+
+      socket.emit("image-message", {
+        ...messagePayload,
+      });
+
     const res = await fetch("/auth/messages/sendEncrypted", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(messagePayload),
     });
 
-    const data = await res.json();
-    const messageId = data.messageId;
 
-    if (!res.ok) {
-      console.error("❌ Failed to send encrypted image");
-    } else {
       // 11. Emit message over Socket.IO
-      socket.emit("image-message", {
-        senderId,
-        receiverId,
-        messageId,
-        ...messagePayload,
-      });
+
 
       console.log("✅ Encrypted image sent & emitted");
-    }
+    
   } catch (err) {
     console.error("❌ Error in sendEncryptedImage:", err);
   }

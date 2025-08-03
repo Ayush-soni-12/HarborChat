@@ -21,6 +21,8 @@ import { createAdapter } from "@socket.io/redis-adapter";
 import { createClient } from "redis";
 import { fileURLToPath } from "url";
 import getReplySuggestions from "./Helpers/smartReply.js";
+import { startConsumer } from "./kafkaConsumer.js";
+import { connectProducer } from "./kafkaProducer.js"; 
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -119,6 +121,7 @@ io.on("connection", (socket) => {
     async ({
       senderId,
       receiverId,
+      chatId,
       encryptedMessage,
       status,
       encryptedKeys,
@@ -170,6 +173,7 @@ io.on("connection", (socket) => {
         senderName: sender ? sender.name : "Unknown",
         senderId,
         receiverId,
+        chatId,
         message: encryptedMessage,
         encryptedKeys,
         iv,
@@ -220,15 +224,21 @@ io.on("connection", (socket) => {
       // Emit the message to the sender (with 'sent' status)
       io.to(senderId).emit("chat message", saveMessage);
 
+
+
       // Emit the message to the receiver (with 'delivered' status)
       const deliveredMessage = {
         ...saveMessage,
         status: "delivered",
       };
+     
+   
+
       io.to(receiverId).emit("chat message", deliveredMessage);
+
       // Removed duplicate notification emit here
       // Update status in DB to 'delivered' when delivered to receiver
-      await Message.findByIdAndUpdate(messageId, { status: "delivered" });
+      // await Message.findByIdAndUpdate(messageId, { status: "delivered" });
 
       // Update status in Redis cache to 'delivered' for this message
       let updatedMessages = messages.map((msg) => {
@@ -397,9 +407,9 @@ io.on("connection", (socket) => {
         io.to(receiverId).emit("chat message", deliveredImage);
 
         // Update status in DB to 'delivered'
-        await Message.findByIdAndUpdate(messageId, {
-          status: "delivered",
-        });
+        // await Message.findByIdAndUpdate(messageId, {
+        //   status: "delivered",
+        // });
 
         // Update status in Redis cache to 'delivered'
         let updatedMessages = messages.map((msg) => {
@@ -422,80 +432,105 @@ io.on("connection", (socket) => {
     }
   );
 
-  socket.on("deleteMessage", async ({ messageId, scope }) => {
+ socket.on("deleteMessage", async ({ messageId, scope }) => {
   try {
-    const message = await Message.findById(messageId);
+    // Try MongoDB first
+    let message = await Message.findOne({ _id: messageId });
+    let fromRedisOnly = false;
 
-    console.log("message",message)
-    if (!message) return;
+    if (!message) {
+      // Not in DB yet — check Redis cache
+      const allKeys = await client.keys("chat:*"); // or smarter lookup by userId
+      for (const key of allKeys) {
+        const cached = await client.get(key);
+        if (cached) {
+          const msgs = JSON.parse(cached);
+          const found = msgs.find((m) => m._id === messageId);
+          if (found) {
+            message = found;
+            message.cacheKey = key;
+            fromRedisOnly = true;
+            break;
+          }
+        }
+      }
 
-    
+      if (!message) {
+        console.warn("Message not found in Redis or DB");
+        return;
+      }
+    }
+
     const { senderId, receiverId, isSecretChat } = message;
+    // const userId = socket.userId; 
     const ids = [senderId, receiverId].sort();
-    const cacheKey = `chat:${ids[0]}:${ids[1]}:${isSecretChat ? "secret" : "normal"}`;
-
-    // Load messages from Redis
+    const cacheKey = message.cacheKey || `chat:${ids[0]}:${ids[1]}:${isSecretChat ? "secret" : "normal"}`;
     let cached = await client.get(cacheKey);
     let messages = cached ? JSON.parse(cached) : [];
 
-    if (scope === 'me') {
-      // Update MongoDB
-      if (!message.deletedFor.includes(userId)) {
-        message.deletedFor.push(userId);
-        await message.save();
-      }
+    if (scope === "me") {
+      // Redis update
+      messages = messages.filter((msg) => {
+        if (msg._id === messageId) {
+          msg.deletedFor = msg.deletedFor || [];
+          if (!msg.deletedFor.includes(userId)) {
+            msg.deletedFor.push(userId);
+          }
 
-      // Update Redis: no need to delete message, just update message.deletedFor
-        messages = messages.filter((msg) => {
-        if (msg._id?.toString() === messageId.toString()) {
-          if (!msg.deletedFor) msg.deletedFor = [];
-          msg.deletedFor.push(userId);
-
-          // Remove message if both users deleted it
           if (
             msg.deletedFor.includes(senderId) &&
             msg.deletedFor.includes(receiverId)
           ) {
-            return false; // ❌ Remove this message from Redis
+            return false; // remove
           }
         }
-        return true; // ✅ Keep message
+        return true;
       });
-        // console.log("messages again", messages);
-      // Update Redis cache
-      const ttl = isSecretChat ? 60 : 300;
-      await client.set(cacheKey, JSON.stringify(messages), { EX: ttl });
 
+      await client.set(cacheKey, JSON.stringify(messages), {
+        EX: isSecretChat ? 60 : 300,
+      });
 
-      if (
-        message.deletedFor.includes(senderId) &&
-        message.deletedFor.includes(receiverId)
-      ) {
-        await Message.findByIdAndDelete(messageId); // 💥 Full delete
+      if (!fromRedisOnly && message) {
+        // Mongo update (only if present in DB)
+        if (!message.deletedFor.includes(userId)) {
+          message.deletedFor.push(userId);
+          await message.save();
+        }
+
+        if (
+          message.deletedFor.includes(senderId) &&
+          message.deletedFor.includes(receiverId)
+        ) {
+          await Message.findOneAndDelete({ _id: messageId });
+        }
+      } else {
+        // Flag for Kafka to skip insertion
+        // await client.set(`deletedPendingDB:${messageId}`, "true", { EX: 600 });
+         await client.set(`deletedPendingDB:${messageId}:${senderId}`, "true",{ EX: 600 });
       }
 
-      // Notify the user only
       io.to(userId).emit("messageDeletedForMe", { messageId });
 
-    } else if (scope === 'everyone' && userId === senderId) {
+    } else if (scope === "everyone" && userId === senderId) {
+      // Full delete for everyone
+      messages = messages.filter((msg) => msg._id !== messageId);
+      await client.set(cacheKey, JSON.stringify(messages), {
+        EX: isSecretChat ? 60 : 300,
+      });
 
-    await Message.findByIdAndDelete(messageId).catch((err) => {
-      if (err.name !== "DocumentNotFoundError") {
-        console.error("Error deleting from DB:", err);
+      if (!fromRedisOnly) {
+        await Message.findOneAndDelete({ _id: messageId }).catch((err) => {
+          if (err.name !== "DocumentNotFoundError") {
+            console.error("Error deleting from DB:", err);
+          }
+        });
+      } else {
+        // Mark for deferred delete
+        // await client.set(`deletedPendingDB:${messageId}`, "true", { EX: 600 });
+          await client.set(`deleteForAll:${messageId}`, "true",{ EX: 600 });
       }
-    });
 
-      
-
-      // Update Redis message
-       messages = messages.filter((msg) => msg._id !== messageId);
-      const ttl = isSecretChat ? 60 : 300;
-      await client.set(cacheKey, JSON.stringify(messages), { EX: ttl });
-
-      // Update Redis cache
-
-
-      // Notify both users
       io.to(senderId).emit("messageDeletedForEveryone", { messageId });
       io.to(receiverId).emit("messageDeletedForEveryone", { messageId });
     }
@@ -503,6 +538,7 @@ io.on("connection", (socket) => {
     console.error("Error in deleteMessage:", err);
   }
 });
+
 
 
   socket.on("audioMessage", async ({ audioUrl, senderId, receiverId }) => {
@@ -593,80 +629,130 @@ io.on("connection", (socket) => {
 
   // Listen for 'message-read' event from client when user opens chat
   socket.on("message-read", async ({ messageIds, readerId, receiverId }) => {
-    // Ensure all IDs are strings for comparison
-    const messageIdsStr = (messageIds || []).map((id) => id && id.toString());
-    // Defensive: skip if no receiverId or readerId
-    if (!receiverId || !readerId) {
-      console.warn("Missing receiverId or readerId in message-read event");
-      return;
+  console.log("message-read event received:", {
+    messageIds,
+    readerId,
+    receiverId,
+  });
+
+  const messageIdsStr = (messageIds || []).map((id) => id && id.toString());
+
+  if (!receiverId || !readerId || messageIdsStr.length === 0) {
+    console.warn("Missing receiverId, readerId, or empty messageIds");
+    return;
+  }
+
+  // --- Get messages from Redis instead of MongoDB (since Kafka inserts later) ---
+  let messages = [];
+  const chatIds = [readerId, receiverId].sort();
+  const cacheKeys = [
+    `chat:${chatIds[0]}:${chatIds[1]}:normal`,
+    `chat:${chatIds[0]}:${chatIds[1]}:secret`,
+  ];
+
+  for (const cacheKey of cacheKeys) {
+    const cached = await client.get(cacheKey);
+    if (cached) {
+      const cachedMessages = JSON.parse(cached);
+      for (const messageId of messageIdsStr) {
+        const found = cachedMessages.find((m) => m._id === messageId);
+        if (found) {
+          messages.push({ ...found, cacheKey });
+        }
+      }
+      // No need to keep looking if found all
+      if (messages.length === messageIdsStr.length) break;
     }
-    // Update all messages to 'read' in DB
-    if (messageIdsStr.length > 0) {
-      await Message.updateMany(
-        { _id: { $in: messageIdsStr } },
-        { status: "read" }
-      );
+  }
+
+  // --- Update Redis cache with read status ---
+  const updatesByCacheKey = {};
+
+  for (const msg of messages) {
+    if (!updatesByCacheKey[msg.cacheKey]) {
+      updatesByCacheKey[msg.cacheKey] = [];
     }
-    // Reset the unread message count for this chat
-    await Contact.updateOne(
-      { userId: readerId, contactId: receiverId },
-      { $set: { unreadCount: 0 } }
-    );
-    // Notify sender(s) and receiver that their messages have been read
-    const messages =
-      messageIdsStr.length > 0
-        ? await Message.find({ _id: { $in: messageIdsStr } })
-        : [];
-    const senderIds = new Set();
-    messages.forEach((msg) => {
-      senderIds.add(msg.senderId);
-    });
-    // Emit to all senders
-    senderIds.forEach(async (senderId) => {
-      const senderSocketId = await client.get(`online:${senderId}`);
-      if (senderSocketId) {
-        io.to(senderSocketId).emit("message-read", {
-          messageIds: messageIdsStr,
-          readerId,
+    updatesByCacheKey[msg.cacheKey].push(msg._id);
+  }
+
+  for (const [cacheKey, idsToUpdate] of Object.entries(updatesByCacheKey)) {
+    let cached = await client.get(cacheKey);
+    if (cached) {
+      let cachedMessages = JSON.parse(cached);
+      let updated = false;
+      cachedMessages = cachedMessages.map((m) => {
+        if (idsToUpdate.includes(m._id)) {
+          updated = true;
+          return { ...m, status: "read" };
+        }
+        return m;
+      });
+      if (updated) {
+        const isSecretChat = cacheKey.includes(":secret");
+        const ttl = isSecretChat ? 60 : 300;
+        await client.set(cacheKey, JSON.stringify(cachedMessages), {
+          EX: ttl,
         });
       }
-    });
-    // Also emit to the reader (so their own UI updates instantly)
-    const readerSocketId = await client.get(`online:${readerId}`);
-    if (readerSocketId) {
-      io.to(readerSocketId).emit("message-read", {
+    }
+  }
+
+
+
+  // --- Update MongoDB messages ---
+  // --- Also update MongoDB if the messages exist there ---
+try {
+  const dbMessages = await Message.find({ _id: { $in: messageIdsStr } });
+
+  if (dbMessages.length > 0) {
+    const notAlreadyRead = dbMessages.filter((m) => m.status !== "read");
+    const idsToUpdate = notAlreadyRead.map((m) => m._id.toString());
+
+    if (idsToUpdate.length > 0) {
+      await Message.updateMany(
+        { _id: { $in: idsToUpdate } },
+        { $set: { status: "read" } }
+      );
+      console.log(`✅ MongoDB updated ${idsToUpdate.length} messages to read`);
+    }
+  } else {
+    console.log("📭 No messages found in MongoDB yet, likely waiting for Kafka insert");
+  }
+} catch (err) {
+  console.error("❌ MongoDB update failed in message-read:", err.message);
+}
+
+
+  // --- Update unread count in Contact collection ---
+  await Contact.updateOne(
+    { userId: readerId, contactId: receiverId },
+    { $set: { unreadCount: 0 } }
+  );
+
+  // --- Emit read receipts to sender(s) ---
+  const senderIds = new Set();
+  messages.forEach((msg) => senderIds.add(msg.senderId));
+
+  for (const senderId of senderIds) {
+    const senderSocketId = await client.get(`online:${senderId}`);
+    if (senderSocketId) {
+      io.to(senderSocketId).emit("message-read", {
         messageIds: messageIdsStr,
         readerId,
       });
     }
-    // --- Redis cache update for read status ---
-    // Find the chat cache key for each message and update status in Redis
-    for (const msg of messages) {
-      const ids = [msg.senderId.toString(), msg.receiverId.toString()].sort();
-      const isSecretChat = msg.isSecretChat;
-      const cacheKey = `chat:${ids[0]}:${ids[1]}:${
-        isSecretChat ? "secret" : "normal"
-      }`;
-      let cached = await client.get(cacheKey);
-      if (cached) {
-        let cachedMessages = JSON.parse(cached);
-        let updated = false;
-        cachedMessages = cachedMessages.map((m) => {
-          if (m._id && messageIdsStr.includes(m._id.toString())) {
-            updated = true;
-            return { ...m, status: "read" };
-          }
-          return m;
-        });
-        if (updated) {
-          const ttl = isSecretChat ? 60 : 300;
-          await client.set(cacheKey, JSON.stringify(cachedMessages), {
-            EX: ttl,
-          });
-        }
-      }
-    }
-  });
+  }
+
+  // --- Emit to reader as well (so their own UI updates) ---
+  const readerSocketId = await client.get(`online:${readerId}`);
+  if (readerSocketId) {
+    io.to(readerSocketId).emit("message-read", {
+      messageIds: messageIdsStr,
+      readerId,
+    });
+  }
+});
+
 
   // --- TYPING INDICATOR (multi-server robust) ---
   // Store who is typing to whom in Redis for a short TTL
@@ -720,6 +806,8 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+connectProducer();
+startConsumer();
 
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err.stack || err);

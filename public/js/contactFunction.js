@@ -66,6 +66,8 @@ export async function loadChatMessages(append = false) {
     // Render messages
 
     for (const msg of data.messages) {
+       
+      
       if (msg.deletedFor?.includes(senderId)) {
         continue; // Skip rendering for this user, but continue with other messages
       }
@@ -136,7 +138,7 @@ export async function loadChatMessages(append = false) {
 
       if (msg._id) {
         messageDiv.id = `msg-${msg._id}`;
-        messageDiv.dataset.messageId = msg._id;
+        messageDiv.dataset._id = msg._id;
         messageDiv.dataset.sender = msg.senderName || "Unknown";
       }
       if (append)
@@ -220,6 +222,11 @@ export async function handlePin(messageId, shouldPin) {
     });
 
     const data = await res.json();
+     if (res.status === 404) {
+      alert("Message not found in DB. Possibly not inserted yet.");
+      return; // Optionally show UI feedback: "Message not found or not delivered yet"
+    }
+
     if (data.success) {
       const updatedMsg = data.data;
 

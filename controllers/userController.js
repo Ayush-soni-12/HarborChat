@@ -8,6 +8,7 @@ import admin  from "../firebaseAdmin/firebaseInit.js"
 import  {parsePhoneNumber}   from 'libphonenumber-js';
 import mongoose  from "mongoose";
 import crypto from "crypto";
+import { sendMessageToKafka } from "../kafkaProducer.js";
 
 
 
@@ -317,7 +318,7 @@ export const sendEncryptData = asyncHandler(async (req, res) => {
       caption,
       mediaUrls,
       isSecretChat,
-      audioUrl,
+      messageId,
       iv,
       status,
       type,
@@ -333,6 +334,7 @@ export const sendEncryptData = asyncHandler(async (req, res) => {
 
     const newMessage = new Message({
       senderId,
+      _id:messageId,
       receiverId,
       encryptedKeys,
       iv,
@@ -340,7 +342,7 @@ export const sendEncryptData = asyncHandler(async (req, res) => {
       senderPhone,
       isSecretChat,
       status,
-       repliedTo: repliedTo || null,
+      repliedTo: repliedTo || null,
       timestamp: new Date(),
     });
 
@@ -353,9 +355,9 @@ export const sendEncryptData = asyncHandler(async (req, res) => {
         newMessage.mediaUrls = mediaUrls;
         newMessage.message = caption;
       }
-      if (audioUrl) {
-        newMessage.audioUrl = audioUrl;
-      }
+      // if (audioUrl) {
+      //   newMessage.audioUrl = audioUrl;
+      // }
     }
     console.log('Secret chat:', isSecretChat);
 
@@ -365,12 +367,15 @@ export const sendEncryptData = asyncHandler(async (req, res) => {
       newMessage.deleteAt = new Date(Date.now() + 1 * 60 * 1000); // 1 minutes from now
     }
 
-    const savedMessage = await newMessage.save();
-    const messageId = savedMessage._id.toString();
+    // const savedMessage = await newMessage.save();
+    // const messageId = savedMessage._id.toString();
+    if(!isSecretChat){
+    await sendMessageToKafka(newMessage);
+    }
 
     res.status(201).json({
       message: "Encrypted message saved successfully",
-      messageId,
+      // messageId,
     });
   } catch (err) {
     console.error("❌ Error saving encrypted message:", err);

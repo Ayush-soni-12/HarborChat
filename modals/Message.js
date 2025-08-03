@@ -2,6 +2,11 @@
 import mongoose from "mongoose";
 
 const messageSchema = new mongoose.Schema({
+  _id: {
+    type:String,
+    required:true,
+    // unique:true,
+  },
   senderId: {
     type: String,
     required: true,
@@ -83,7 +88,7 @@ const messageSchema = new mongoose.Schema({
 
   repliedTo: {
     type: {
-      messageId: { type: mongoose.Schema.Types.ObjectId, ref: "Message" },
+      messageId: { type: String, ref: "Message" },
       textSnippet: { type: String },
       iv: { type: String },
       encryptedAESKeys: [
