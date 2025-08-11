@@ -70,7 +70,7 @@ function setupContactClickHandlers() {
       const contactabout = this.querySelector(".contact-about").textContent;
       const userId = this.dataset.userid;
       console.log("Contact clicked:", userId, contactName, contactPhone);
-      window.currentReceiverId = userId;
+      window.currentReceiverId = userId; 
       allMessagesInChat = [];
       document.getElementById("chatSearchInput").value = ""; // Clear search input
       document.getElementById("searchResults").innerHTML = ""; // Clear search results
@@ -597,3 +597,680 @@ socket.on("messageDeletedForEveryone", ({ messageId }) => {
     msgElement.classList.add("deleted-message");
   }
 });
+
+
+
+// DOM Elements
+const localVideo = document.getElementById("localVideo");
+const remoteVideo = document.getElementById("remoteVideo");
+const callButton = document.getElementById("callBtn");
+const endCallBtn = document.getElementById("endCallBtn");
+const cancelCallBtn = document.getElementById("cancelCallBtn");
+const startCallBtn = document.getElementById("startCallBtn");
+const preCallScreen = document.getElementById("preCallScreen");
+const videoCallContainer = document.getElementById("videoCallContainer");
+const mainUI = document.getElementById("mainUI");
+const callTimer = document.getElementById("callTimer");
+const callStatusText = document.getElementById("callStatusText");
+
+// ✅ Add this immediately after
+remoteVideo.autoplay = true;
+remoteVideo.playsInline = true;
+
+localVideo.autoplay = true;
+localVideo.playsInline = true;
+localVideo.muted = true;
+
+
+// WebRTC Variables
+let peerConnection = null;
+let localStream = null;
+let iceCandidateBuffer = [];
+let remoteUserId = null;
+let isInCall = false;
+let callStartTime = null;
+let callInterval = null;
+let preferredCameraId = null;
+
+// State Management
+let isSettingRemoteDescription = false;
+let isCreatingAnswer = false;
+
+
+let currentCall = {
+  remoteUserId: null,
+  status: 'idle' // 'idle' | 'calling' | 'ringing' | 'in-call'
+};
+
+
+
+// Configuration
+const config = {
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    // Add TURN servers here if needed
+  ]
+};
+
+// Initialize Socket.io
+
+// Event Listeners
+callButton.addEventListener("click", initiateCall);
+endCallBtn.addEventListener("click", endCall);
+cancelCallBtn.addEventListener("click", cancelCall);
+startCallBtn.addEventListener("click", acceptCall);
+
+// Main Functions
+async function initiateCall() {
+  remoteUserId = window.currentReceiverId;
+  if (!remoteUserId) return alert("No contact selected");
+  
+  // Initialize camera selector only when starting a call
+  currentCall.status = 'calling';
+  showPreCallScreen("Calling...");
+  startCallBtn.style.display = "none";
+ 
+
+    try {
+    await initCameraSelector();
+     setTimeout(startCall, 300);
+  } catch (err) {
+    console.error("Camera selector failed:", err);
+    cancelCall();
+    // Continue with call anyway using default camera
+  }
+}
+
+async function startCall() {
+  if (isInCall) {
+    alert("You're already in a call");
+    return;
+  }
+
+  try {
+    isInCall = true;
+    localStream = await getLocalStream();
+    localVideo.srcObject = localStream;
+    if (!localVideo.srcObject) {
+  console.warn("⚠️ localVideo not set, retrying...");
+  localVideo.srcObject = localStream;
+}
+    // preCallScreen.style.display = "none";
+    // videoCallContainer.style.display = "block";
+
+
+
+      // Verify local stream has tracks
+    if (!localStream.getTracks().length) {
+      throw new Error("No media tracks available");
+    }
+    
+    peerConnection = createPeerConnection(remoteUserId);
+    localStream.getTracks().forEach(track => {
+        console.log("🟢 Adding track to peerConnection on B:", track.kind);
+      peerConnection.addTrack(track, localStream);
+    });
+
+        // Verify peer connection exists
+    if (!peerConnection) {
+      throw new Error("Peer connection not initialized");
+    }
+
+
+
+    
+
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+
+    socket.emit("webrtc-offer", { 
+      to: remoteUserId, 
+      offer,
+    });
+    
+    startCallTimer();
+  } catch (err) {
+    handleCallError(err);
+  }
+}
+
+async function acceptCall() {
+  try {
+    isInCall = true;
+    localStream = await getLocalStream();
+    localVideo.srcObject = localStream;
+    if (!localVideo.srcObject) {
+  console.warn("⚠️ localVideo not set, retrying...");
+  localVideo.srcObject = localStream;
+}
+    // Show video UI immediately for receiver
+    preCallScreen.style.display = "none";
+    videoCallContainer.style.display = "block";
+    
+
+    peerConnection = createPeerConnection(remoteUserId);
+    localStream.getTracks().forEach(track => {
+      peerConnection.addTrack(track, localStream);
+    });
+
+    isSettingRemoteDescription = true;
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(receivedOffer));
+    isSettingRemoteDescription = false;
+
+    isCreatingAnswer = true;
+    const answer = await peerConnection.createAnswer();
+
+    await peerConnection.setLocalDescription(answer);
+    console.log("📨 Answer created and set on B:", answer);
+    isCreatingAnswer = false;
+
+    socket.emit("webrtc-answer", { to: remoteUserId, answer });
+
+    startCallTimer();
+  } catch (err) {
+    handleCallError(err);
+  }
+}
+
+// WebRTC Core Functions
+function createPeerConnection(userId) {
+  const pc = new RTCPeerConnection(config);
+  
+  pc.onicecandidate = (event) => {
+    if (event.candidate && remoteUserId) {
+      socket.emit("webrtc-ice-candidate", {
+        to: userId,
+        candidate: event.candidate
+      });
+    }
+  };
+
+  // pc.ontrack = (event) => {
+  //   if (!remoteVideo.srcObject && event.streams.length > 0) {
+  //     remoteVideo.srcObject = event.streams[0];
+  //   }
+  // };
+
+pc.ontrack = (event) => {
+  console.log("👀 ontrack called on A, streams:", event.streams);
+
+  if (!remoteVideo.srcObject && event.streams.length > 0) {
+    remoteVideo.srcObject = event.streams[0];
+
+   remoteVideo.autoplay = true;
+    remoteVideo.playsInline = true;
+    console.log("✅ remoteVideo.srcObject set on A:", remoteVideo.srcObject);
+
+    setTimeout(() => {
+      const tracks = remoteVideo.srcObject?.getTracks();
+      console.log("🔍 remoteVideo current stream tracks:", tracks);
+    }, 1000);
+
+    // Force playback
+    remoteVideo.play().catch(err => console.warn("⚠️ remoteVideo play() failed:", err));
+
+
+  }
+};
+
+
+
+  pc.onsignalingstatechange = () => {
+    console.log("Signaling state:", pc.signalingState);
+    if (pc.signalingState === "stable") {
+      processBufferedCandidates();
+    }
+  };
+
+  pc.oniceconnectionstatechange = () => {
+    console.log("ICE connection state:", pc.iceConnectionState);
+    if (pc.iceConnectionState === "disconnected") {
+      setTimeout(checkAndReconnect, 2000);
+    }
+  };
+
+  return pc;
+}
+
+// Media Management
+async function getLocalStream() {
+  
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
+  }
+
+  try {
+   const stream = await navigator.mediaDevices.getUserMedia({
+    video: {
+      facingMode: "user", // Front camera
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
+    },
+    audio: true
+});
+localStream = stream;
+localVideo.srcObject = localStream;
+
+
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    // const virtualCamId = findVirtualCamera(devices);
+    // console.log("🎥 Virtual Camera ID found:", virtualCamId);
+    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+    console.log("All cameras:", videoDevices);
+    
+    // Try cameras in order: preferred → virtual → HD → default
+    const cameraPriority = [
+      preferredCameraId,
+      findVirtualCamera(videoDevices),
+      //  virtualCamId,
+      findHighResCamera(videoDevices),
+      undefined
+    ];
+
+    for (const deviceId of cameraPriority) {
+      try {
+        const constraints = {
+          video: {
+            deviceId: deviceId ? { exact: deviceId } : undefined,
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 30 }
+          },
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true
+          }
+        };
+
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        return localStream;
+      } catch (err) {
+        console.warn(`Camera ${deviceId || 'default'} failed:`, err);
+        continue;
+      }
+    }
+
+    throw new Error("All camera attempts failed");
+  } catch (err) {
+    console.error("Media access error:", err);
+    throw err;
+  }
+}
+
+// Device Helpers
+function findVirtualCamera(devices) {
+  if (!devices) return null;
+  const virtualCamKeywords = ['OBS', 'Virtual', 'CamTwist', 'ManyCam','My Webcam'];
+  const virtualCam = devices.find(d => 
+    d.label && virtualCamKeywords.some(kw => d.label.includes(kw))
+  );
+  return virtualCam?.deviceId;
+}
+
+function findHighResCamera(devices) {
+  const hdCam = devices.find(d => {
+    const caps = d.getCapabilities?.();
+    return caps?.width?.max >= 1280 || caps?.height?.max >= 720;
+  });
+  return hdCam?.deviceId;
+}
+
+// Signaling Handlers
+let receivedOffer = null;
+
+socket.on("webrtc-offer", async ({ from, offer }) => {
+
+
+
+  if (isInCall) {
+    socket.emit("call-rejected", { to: from });
+    return;
+  }
+
+  currentCall.status = 'calling'
+  remoteUserId = from;
+  receivedOffer = offer;
+  showPreCallScreen(`Incoming call from`);
+  startCallBtn.style.display = "block";
+  cancelCallBtn.textContent = "Decline";
+});
+
+socket.on("webrtc-answer", async ({ from, answer }) => {
+  if (!peerConnection || peerConnection.signalingState !== "have-local-offer") {
+    console.warn("Invalid state for answer:", peerConnection?.signalingState);
+    return;
+  }
+
+  try {
+    isSettingRemoteDescription = true;
+      console.log("🧾 Received answer on A:", answer);
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+      currentCall.status = 'in-call';
+      console.log("✅ Remote description set on A");
+    isSettingRemoteDescription = false;
+        // Ensure UI is in correct state for caller
+    preCallScreen.style.display = "none";
+    videoCallContainer.style.display = "block";
+  } catch (err) {
+    handleCallError(err);
+    
+  }
+});
+
+socket.on("webrtc-ice-candidate", async ({ from, candidate }) => {
+  console.log("🌐 Received ICE candidate from", from, candidate);
+  const iceCandidate = new RTCIceCandidate(candidate);
+  
+  if (!peerConnection || isSettingRemoteDescription || isCreatingAnswer ||
+      !["stable", "have-remote-offer", "have-local-offer"].includes(peerConnection.signalingState)) {
+    iceCandidateBuffer.push(iceCandidate);
+    return;
+  }
+
+  try {
+    await peerConnection.addIceCandidate(iceCandidate);
+  } catch (err) {
+    console.warn("Failed to add ICE candidate:", err);
+    iceCandidateBuffer.push(iceCandidate);
+  }
+});
+
+// UI Functions
+function showPreCallScreen(status) {
+  mainUI.style.display = "none";
+  preCallScreen.style.display = "flex";
+  videoCallContainer.style.display = "none";
+  callStatusText.textContent = status;
+}
+
+function startCallTimer() {
+  callStartTime = new Date();
+  callInterval = setInterval(() => {
+    const duration = Math.floor((new Date() - callStartTime) / 1000);
+    const minutes = String(Math.floor(duration / 60)).padStart(2, '0');
+    const seconds = String(duration % 60).padStart(2, '0');
+    callTimer.textContent = `${minutes}:${seconds}`;
+  }, 1000);
+}
+
+  function endCall() {
+
+  clearInterval(callInterval);
+
+
+  // if (remoteUserId && currentCall.status === 'in-call') {
+  //   socket.emit('call-ended', { to: remoteUserId });
+  // }
+
+    currentCall = {
+    remoteUserId: null,
+    status: 'idle'
+  };
+  
+  
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+  
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
+  }
+  
+  localVideo.srcObject = null;
+  remoteVideo.srcObject = null;
+  isInCall = false;
+  iceCandidateBuffer = [];
+  remoteUserId = null;
+  
+
+  videoCallContainer.style.display = "none";
+  preCallScreen.style.display = "none";
+  mainUI.style.display = "block";
+}
+
+// Utility Functions
+function processBufferedCandidates() {
+  if (!peerConnection?.remoteDescription) return;
+
+  iceCandidateBuffer = iceCandidateBuffer.filter(candidate => {
+    try {
+      peerConnection.addIceCandidate(candidate);
+      return false;
+    } catch (err) {
+      console.warn("Failed to process buffered candidate:", err);
+      return true;
+    }
+  });
+}
+
+function checkAndReconnect() {
+  if (peerConnection?.iceConnectionState === "disconnected") {
+    console.log("disconnected...");
+    restartCallWithNewDevice();
+  }
+}
+
+async function restartCallWithNewDevice() {
+  endCall();
+  await new Promise(resolve => setTimeout(resolve, 500));
+  // startCall();
+}
+
+function handleCallError(error) {
+  console.error("Call error:", error);
+  alert(`Call failed: ${error.message}`);
+  endCall();
+}
+
+// Initialize camera selection
+// Update your initCameraSelector to handle errors gracefully:
+async function initCameraSelector() {
+  try {
+    // First request camera access
+    await navigator.mediaDevices.getUserMedia({ video: true });
+    
+    // Then enumerate devices
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cameras = devices.filter(d => d.kind === 'videoinput');
+    
+    // Create or update selector UI
+    let selector = document.getElementById('camera-selector');
+    if (!selector) {
+      selector = document.createElement('select');
+      selector.id = 'camera-selector';
+      selector.style.margin = '10px';
+      document.body.appendChild(selector);
+    }
+    
+    selector.innerHTML = cameras.map(cam => 
+      `<option value="${cam.deviceId}">${cam.label || 'Camera ' + (selector.length + 1)}</option>`
+    ).join('');
+    
+    selector.onchange = () => {
+      preferredCameraId = selector.value;
+      if (isInCall) {
+        restartCallWithNewDevice();
+      }
+    };
+    
+    return true;
+  } catch (err) {
+    console.error("Camera initialization failed:", err);
+    return false;
+  }
+}
+
+function cancelCall() {
+  cancelCallBtn.disabled = true;
+  // Close the peer connection if it exists
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+
+
+     console.log('currentcall status' , currentCall.status)
+    if (remoteUserId) {
+    if (currentCall.status === 'calling') {
+      console.log("calling ")
+      socket.emit('call-rejected', { to: remoteUserId });
+    } 
+    // endCall();
+  }
+
+
+  // Stop and clear the local media stream
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
+  }
+
+  // Clear any buffered ICE candidates
+  iceCandidateBuffer = [];
+
+  // Notify the other user if we're the caller
+  if (remoteUserId && startCallBtn.style.display === "none") {
+    socket.emit("call-rejected", { to: remoteUserId });
+  }
+
+
+  // Reset call state
+  isInCall = false;
+  remoteUserId = null;
+
+  // Reset UI elements
+  preCallScreen.style.display = "none";
+  mainUI.style.display = "block";
+  videoCallContainer.style.display = "none";
+  
+  // Clear the call timer if it exists
+  if (callInterval) {
+    clearInterval(callInterval);
+    callInterval = null;
+  }
+
+  // Reset video elements
+  localVideo.srcObject = null;
+  remoteVideo.srcObject = null;
+  setTimeout(() => cancelCallBtn.disabled = false, 1000);
+
+  console.log("Call cancelled successfully");
+
+}
+
+
+// Add these to your existing DOM elements
+const muteBtn = document.getElementById("muteBtn");
+const fullscreenBtn = document.getElementById("fullscreenBtn");
+const toggleCameraBtn = document.getElementById("toggleCameraBtn");
+
+// Track camera state
+let isFrontCamera = true;
+let isMuted = false;
+
+// Event Listeners
+muteBtn.addEventListener("click", toggleMute);
+fullscreenBtn.addEventListener("click", toggleFullscreen);
+toggleCameraBtn.addEventListener("click", toggleCamera);
+
+// New Functions
+function toggleMute() {
+  if (!localStream) return;
+  
+  isMuted = !isMuted;
+  localStream.getAudioTracks().forEach(track => {
+    track.enabled = !isMuted;
+  });
+  
+  muteBtn.innerHTML = isMuted 
+    ? '<i class="fas fa-microphone-slash"></i>' 
+    : '<i class="fas fa-microphone"></i>';
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+    fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i>';
+  } else {
+    document.exitFullscreen();
+    fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
+  }
+}
+
+async function toggleCamera() {
+  if (!localStream) return;
+  
+  isFrontCamera = !isFrontCamera;
+  try {
+    const newStream = await navigator.mediaDevices.getUserMedia({
+      video: { 
+        facingMode: isFrontCamera ? "user" : "environment",
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: true
+    });
+    
+    // Replace video track
+    const videoTrack = newStream.getVideoTracks()[0];
+    const sender = peerConnection.getSenders().find(s => s.track.kind === "video");
+    if (sender) sender.replaceTrack(videoTrack);
+    
+    // Update local video
+    localStream.getVideoTracks().forEach(track => track.stop());
+    localStream.removeTrack(localStream.getVideoTracks()[0]);
+    localStream.addTrack(videoTrack);
+    localVideo.srcObject = localStream;
+    
+    // Update camera icon
+    toggleCameraBtn.innerHTML = isFrontCamera 
+      ? '<i class="fas fa-camera-retro"></i>' 
+      : '<i class="fas fa-camera"></i>';
+  } catch (err) {
+    console.error("Error switching camera:", err);
+  }
+}
+
+// Modify cancelCall to work for both parties
+// function cancelCall() {
+//   if (isInCall) {
+//     // Notify the other user
+//     if (remoteUserId) {
+//       socket.emit("call-cancelled", { to: remoteUserId });
+//     }
+//     endCall();
+//   }
+// }
+
+// Add this to socket listeners
+// socket.on('call-cancelled', (from) => {
+//   if (currentCall.status === 'ringing') {
+//     alert('The caller cancelled the call');
+//     endCall();
+//   }
+// });
+
+
+socket.on('call-rejected', (from) => {
+  if (currentCall.status === 'calling') {
+    alert('The recipient rejected your call');
+    endCall();
+  }
+});
+
+// socket.on('call-ended', (from) => {
+//   if (currentCall.status === 'in-call') {
+//     alert('The other party has ended the call');
+//     endCall();
+//   }
+// });
+
+// function rejectCall() {
+//   if (currentCall.status === 'ringing' && remoteUserId) {
+//     socket.emit('call-rejected', { to: remoteUserId });
+//     endCall();
+//   }
+// }

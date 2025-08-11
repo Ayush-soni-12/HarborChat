@@ -1,10 +1,11 @@
-import dotenv, { decrypt } from "dotenv";
+import dotenv from "dotenv";
 dotenv.config();
 
 import express from "express";
 const app = express();
 import mongoose from "mongoose";
 import path from "path";
+import cors from "cors";
 import cookieParser from "cookie-parser";
 import methodOverride from "method-override";
 import setCurrentUser from "./middlewares/setCurrentuser.js";
@@ -23,6 +24,8 @@ import { fileURLToPath } from "url";
 import getReplySuggestions from "./Helpers/smartReply.js";
 import { startConsumer } from "./kafkaConsumer.js";
 import { connectProducer } from "./kafkaProducer.js"; 
+// import { endCall } from "./public/js/main.js";
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,8 +46,19 @@ app.use("views", express.static(path.join(__dirname, "views")));
 app.set("view engine", "ejs");
 app.use(setCurrentUser);
 
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST"],
+}));
+
 const server = http.createServer(app);
-const io = new Server(server);
+// const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: "*", // OR restrict to: ["http://localhost:3000", "http://192.168.1.4:3000"]
+    methods: ["GET", "POST"],
+  }
+});
 
 app.use("/auth", authRoutes);
 app.use("/", homeRoute);
@@ -107,6 +121,53 @@ io.on("connection", (socket) => {
     }
     console.log(`User ${id} joined room ${id}`);
   });
+
+// 🧩 Step 2: Add WebRTC signaling handlers
+
+  socket.on("webrtc-offer", ({ to, offer }) => {
+    console.log(`📡 Offer from ${userId} → ${to}`);
+    io.to(to).emit("webrtc-offer", { from: userId, offer });
+  });
+
+  socket.on("webrtc-answer", ({ to, answer }) => {
+    console.log(`📡 Answer from ${userId} → ${to}`);
+    io.to(to).emit("webrtc-answer", { from: userId, answer });
+  });
+
+  socket.on("webrtc-ice-candidate", ({ to, candidate }) => {
+    console.log(`📡 ICE candidate from ${userId} → ${to}`);
+    io.to(to).emit("webrtc-ice-candidate", { from: userId, candidate });
+  });
+  socket.on('call-cancelled', ({ to }) => {
+    const recipientSocketId = users[to];
+    if (recipientSocketId) {
+      console.log(`Call cancelled by ${userId}, notifying ${to}`);
+      io.to(recipientSocketId).emit('call-cancelled', {
+        from: userId
+      });
+    }
+  });
+
+  socket.on('call-rejected', ({ to }) => {
+    const recipientSocketId = users[to];
+    if (recipientSocketId) {
+      console.log(`Call from ${userId} rejected by ${to}`);
+      io.to(recipientSocketId).emit('call-rejected', {
+        from: userId
+      });
+    }
+  });
+
+    socket.on('call-ended', ({ to }) => {
+    const recipientSocketId = users[to];
+    if (recipientSocketId) {
+      console.log(`Call ended normally by ${userId}, notifying ${to}`);
+      io.to(recipientSocketId).emit('call-ended', {
+        from: userId
+      });
+    }
+  });
+
 
   // Track which chat the user has open
   socket.on("chat-open", async ({ userId, contactId }) => {
@@ -804,8 +865,12 @@ try {
   });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+// const PORT = process.env.PORT || 3000;
+// server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));4
+server.listen(3000, "0.0.0.0", () => {
+  console.log("Server running on port 3000");
+});
+
 connectProducer();
 startConsumer();
 

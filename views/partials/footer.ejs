@@ -28,8 +28,12 @@
         </div>
         <!-- Full screen modal -->
 
+
+
         <div class="dotIcon">
           <!-- Somewhere in your chat page navbar -->
+
+
             
           <select id="languageSelector" class="language-selector">
             <option value="">Send as is</option>
@@ -317,9 +321,86 @@
         <div class="spinner"></div>
       </div>
        <div id="pinnedMessagesBar" class="pinned-bar"></div>
-      <div class="messages-container" id="messagesContainer">
-        
+      <!-- <div class="video-container">
+          <button id="videoToggleBtn" onclick="toggleVideo()">
+              <i class="fa-solid fa-video"></i>
+          </button>
+          <video id="myVideo" autoplay playsinline style="display: none;"></video>
+      </div> -->
+      
 
+    
+    <!-- Contacts/List View (hidden during calls) -->
+    <div class="main-ui" id="mainUI">
+      <!-- Your existing contacts list UI -->
+      <button id="callBtn" class="call-button">
+        <i class="fas fa-video"></i> Start Video Call
+      </button>
+    </div>
+    
+    <!-- Pre-call Screen -->
+     <div class="video-call-wrapper">
+
+    <div class="pre-call-screen" id="preCallScreen" style="display: none;">
+      <div class="user-avatar">
+        <img id="callerAvatar" src="default-avatar.jpg" alt="User">
+      </div>
+      <h2 id="callStatusText">Calling User...</h2>
+      <div class="pre-call-controls">
+        <button class="cancel-call" id="cancelCallBtn">
+          <i class="fas fa-times"></i> Cancel
+        </button>
+        <button class="start-call" id="startCallBtn" style="display: none;">
+          <i class="fas fa-phone"></i> Accept
+        </button>
+      </div>
+    </div>
+    
+    <!-- Active Call UI -->
+    <div class="video-call-container" id="videoCallContainer" style="display: none;">
+      <!-- Remote Video -->
+          <div class="video-container">
+      <!-- Remote video (big) -->
+      <video id="remoteVideo" class="remote-video" autoplay playsinline></video>
+      
+      <!-- Local video (small preview) -->
+      <div class="local-video-wrapper">
+        <video id="localVideo" class="local-video" autoplay playsinline muted></video>
+        <div class="local-video-controls">
+          <button class="btn btn-sm toggle-camera" id="toggleCameraBtn">
+            <i class="fas fa-camera-retro"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+      
+
+      
+      <!-- Call Controls -->
+      <div class="call-controls">
+
+        <button class="btn control-btn" id="muteBtn">
+        <i class="fas fa-microphone"></i>
+      </button>
+        <button class="control-btn end-call-btn" id="endCallBtn">
+          <i class="fas fa-phone-slash"></i>
+        </button>
+      <button class="btn control-btn" id="fullscreenBtn">
+        <i class="fas fa-expand"></i>
+      </button>
+      </div>
+  
+   <div id="callTimer" class="call-timer">00:00</div>
+    </div>
+    </div>
+
+   
+ 
+
+      
+
+
+      <div class="messages-container" id="messagesContainer">
         <!-- Messages will be inserted here -->
       </div>
       <div class="suggestion-controls">
@@ -676,6 +757,47 @@ function getLastDecryptedMessages(count = 10) {
 }
 
 
+//  let mediaStream = null;
 
+// async function toggleVideo() {
+//     const btn = document.getElementById('videoToggleBtn');
+//     // const status = document.getElementById('status');
+//     const video = document.getElementById('myVideo');
+//     const container = document.querySelector('.video-container');
+    
+//     if (mediaStream) {
+//         // Stop video
+//         mediaStream.getTracks().forEach(track => track.stop());
+//         mediaStream = null;
+//         video.style.display = 'none';
+//         container.classList.remove('video-active');
+//         btn.innerHTML = '<i class="fa-solid fa-video"></i>';
+//         // status.textContent = "Camera is off";
+//     } else {
+//         // Start video
+//         try {
+//             mediaStream = await navigator.mediaDevices.getUserMedia({ 
+//                 video: true, 
+//                 audio: false // Change to true if you want audio
+//             });
+//             video.srcObject = mediaStream;
+//             video.style.display = 'block';
+//             container.classList.add('video-active');
+//             btn.innerHTML = '<i class="fa-solid fa-video-slash"></i>';
+//             // status.textContent = "Camera is active";
+//         } catch (err) {
+//             console.error("Error accessing camera:", err);
+//             // status.textContent = "Error accessing camera";
+//             // status.style.color = "#dc3545";
+//         }
+//     }
+// }
+
+// // Optional: Clean up when leaving page
+// window.addEventListener('beforeunload', () => {
+//     if (mediaStream) {
+//         mediaStream.getTracks().forEach(track => track.stop());
+//     }
+// });
 
 </script>

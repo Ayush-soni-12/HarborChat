@@ -42,7 +42,7 @@ const userSchema = new mongoose.Schema({
   },
   theme: {
   type: String,
-  enum: ['light', 'dark', 'amoled', 'custom'],
+  enum: ['light', 'dark', 'amoled', 'custom','Neon','Forest','BloodMoon','DeepSpace','Crystal','Noir'],
   default: 'light'
  },
  customTheme: {

@@ -1758,15 +1758,6 @@ align-self: flex-end;
     box-shadow: none;
   }
 }
-/* Scrollbar for pinned container (if needed) */
-/* #pinnedMessagesBar::-webkit-scrollbar {
-  height: 4px;
-}
-
-#pinnedMessagesBar::-webkit-scrollbar-thumb {
-  background: #adb5bd;
-  border-radius: 4px;
-} */
 
 
 /*  reply messages .......................... */
@@ -1890,4 +1881,264 @@ align-self: flex-end;
   color: gray;
   font-size: 0.9rem;
   opacity: 0.8;
+}
+
+
+
+
+/* Video Call Container */
+.video-call-container {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  background: #1a1a1a;
+  overflow: hidden;
+  display: none;
+}
+
+.remote-video-container {
+  width: 100%;
+  height: 100%;
+}
+
+#remoteVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.local-video-container {
+  position: absolute;
+  bottom: 100px;
+  right: 20px;
+  width: 200px;
+  height: 150px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  border: 2px solid #4CAF50;
+}
+
+#localVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Call Controls */
+.call-controls {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.control-btn {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: none;
+  background: #333;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.control-btn:hover {
+  transform: scale(1.1);
+}
+
+.control-btn.active {
+  background: #4CAF50;
+}
+
+.end-call-btn {
+  background: #f44336;
+}
+
+/* User Info */
+.remote-user-info {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: rgba(0,0,0,0.5);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-indicator {
+  width: 10px;
+  height: 10px;
+  background: #4CAF50;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+
+
+/* Pre-call Screen */
+.pre-call-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #1a1a1a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  color: white;
+}
+
+.user-avatar img {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #4CAF50;
+}
+
+.pre-call-controls {
+  margin-top: 30px;
+  display: flex;
+  gap: 20px;
+}
+
+.pre-call-controls button {
+  padding: 12px 24px;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cancel-call {
+  background: #f44336;
+  color: white;
+}
+
+.start-call {
+  background: #4CAF50;
+  color: white;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .local-video-container {
+    width: 120px;
+    height: 90px;
+    bottom: 80px;
+  }
+  
+  .call-chat {
+    width: 250px;
+    height: 250px;
+  }
+}
+
+
+
+.video-container {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 100px);
+}
+
+.remote-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.local-video-wrapper {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 120px;
+  height: 160px;
+  border: 2px solid white;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+}
+
+.local-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.local-video-controls {
+  position: absolute;
+  bottom: 5px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.call-controls {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  padding: 15px 0;
+  background: rgba(0,0,0,0.5);
+}
+
+.control-btn {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  font-size: 18px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+}
+
+.btn-sm {
+  width: 30px;
+  height: 30px;
+  font-size: 12px;
+}
+
+.call-timer {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  color: white;
+  font-size: 16px;
+  background: rgba(0,0,0,0.5);
+  padding: 5px 10px;
+  border-radius: 20px;
+}
+
+/* Fullscreen mode */
+:-webkit-full-screen .video-container {
+  height: 100vh;
 }
