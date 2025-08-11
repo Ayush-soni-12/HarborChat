@@ -334,7 +334,7 @@ export async function handleDelete(messageId, scope) {
     scope === "everyone" ? "Delete for everyone?" : "Delete for you only?"
   );
   console.log("Confirm delete:", confirmDelete);
-  if (confirmDelete) {
+  if (confirmDelete) {          
     socket.emit("deleteMessage", { messageId, scope });
   }
 }

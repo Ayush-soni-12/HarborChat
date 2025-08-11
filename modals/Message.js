@@ -104,6 +104,9 @@ const messageSchema = new mongoose.Schema({
   deletedFor: [
     String
   ], 
+  deleteChat:[
+    String
+  ],
   isDeleted: { type: Boolean, default: false }, // for "delete for everyone"
 });
 

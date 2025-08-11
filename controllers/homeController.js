@@ -9,6 +9,8 @@ import client from "../redisClient.js";
 import streamifier from "streamifier";
 import { translateText } from "../Helpers/translate.js"; // fixed import path
 import { sendMessageToKafka } from "../kafkaProducer.js"; // fixed import path
+import { getConversationKey } from "../Helpers/chat.js";
+import UserChat from "../modals/userChat.js";
 
 // const generateToken = require"../middlewares/generateToken";
 import jwt from  "jsonwebtoken";
@@ -228,6 +230,11 @@ export const personalChat = asyncHandler(async (req, res) => {
     const normalKey = `${baseKey}:normal`;
     const secretKey = `${baseKey}:secret`;
 
+        // 🔹 Get lastClearedAt for this user
+    const conversationKey = getConversationKey(senderId, receiverId);
+    const meta = await UserChat.findOne({ userId: senderId, conversationKey });
+    const lastClearedAt = meta?.lastClearedAt || new Date(0);
+
     let messages = [];
 
     // ✅ 1. If first page, try Redis cache
@@ -244,9 +251,9 @@ export const personalChat = asyncHandler(async (req, res) => {
         const secretMessages = secretCached ? JSON.parse(secretCached) : [];
 
         // Merge both and sort by timestamp (oldest to newest)
-        messages = [...normalMessages, ...secretMessages].sort(
-          (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
-        );
+        messages = [...normalMessages, ...secretMessages]
+         .filter(m => new Date(m.timestamp) > lastClearedAt)
+        .sort( (a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
         return res.json({ messages });
       }
@@ -258,6 +265,7 @@ export const personalChat = asyncHandler(async (req, res) => {
         { senderId, receiverId },
         { senderId: receiverId, receiverId: senderId },
       ],
+           timestamp: { $gt: lastClearedAt }
     })
       .sort({ timestamp: -1 }) // newest first
       .skip(Number(skip))
@@ -483,3 +491,33 @@ export const updateTheme = asyncHandler(async(req,res)=>{
   }
 })
 
+export const deleteChat = asyncHandler(async(req,res)=>{
+  try {
+    const receiverId = req.body.targetUserId // user you're chatting with
+    const senderId = req.user._id;
+    const userId = req.user._id
+
+
+    const conversationKey = getConversationKey(senderId, receiverId);
+
+    await UserChat.updateOne(
+      { userId, conversationKey },
+      { $set: { lastClearedAt: new Date() } },
+      { upsert: true }
+    );
+
+    const ids = [senderId, receiverId].sort();
+    const baseKey = `chat:${ids[0]}:${ids[1]}`;
+
+    await Promise.all([
+      client.del(`${baseKey}:normal`),
+      client.del(`${baseKey}:secret`)
+    ]);
+
+
+    res.json({ success: true, message: "Chat cleared from your side." });
+  } catch (error) {
+    console.error("Error clearing chat:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+})

@@ -1046,3 +1046,24 @@ const results = allMessagesInChat.filter(msg =>
     });
   }
 });
+
+
+
+// delete entire chat
+
+document.getElementById("clear-chat").addEventListener("click", async function() {
+  const targetUserId = window.currentReceiverId;
+  const res = await fetch("/deleteChat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ targetUserId })
+  });
+
+  const data = await res.json();
+  if (data.success) {
+    document.querySelector(".messages-container").innerHTML =
+      "<div class='cleared-placeholder'>This chat was cleared</div>";
+  } else {
+    alert("Failed to clear chat.");
+  }
+});
