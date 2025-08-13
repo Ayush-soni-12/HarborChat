@@ -328,7 +328,12 @@ export const audioMessage = asyncHandler(async (req, res) => {
 
     console.log("Audio uploaded to Cloudinary:", req.file);
 
-    res.json({ audioUrl: req.file.path }); // <-- Cloudinary secure URL
+    // This URL now points to encrypted binary stored on Cloudinary
+    res.json({
+      encryptedAudioUrl: req.file.path, // Not directly playable
+      senderId,
+      receiverId
+    });// <-- Cloudinary secure URL
   } catch (err) {
     console.error("Upload error:", err);
     res.status(500).json({ error: "Upload failed" });

@@ -94,6 +94,52 @@ export async function decryptImage({ encryptedAESKey, iv, fileUrl }) {
   }
 }
 
+export async function decryptAudio({ encryptedAESKey, iv, fileUrl, mimeType = "audio/webm" }) {
+  try {
+    // 1. Load private RSA key
+    const privateKey = await loadPrivateKey();
+
+    // 2. Decode AES key and IV
+    const aesKeyBuffer = base64ToUint8Array(encryptedAESKey);
+    const ivBuffer = base64ToUint8Array(iv);
+
+    // 3. Decrypt AES key with RSA
+    const rawAESKey = await window.crypto.subtle.decrypt(
+      { name: "RSA-OAEP" },
+      privateKey,
+      aesKeyBuffer
+    );
+
+    // 4. Import decrypted AES key
+    const aesKey = await window.crypto.subtle.importKey(
+      "raw",
+      rawAESKey,
+      "AES-GCM",
+      true,
+      ["decrypt"]
+    );
+
+    // 5. Fetch encrypted audio from Cloudinary (or any URL)
+    const response = await fetch(fileUrl);
+    const encryptedBuffer = await response.arrayBuffer();
+
+    // 6. Decrypt with AES
+    const decryptedBuffer = await window.crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: ivBuffer },
+      aesKey,
+      encryptedBuffer
+    );
+
+    // 7. Return audio Blob with correct MIME type
+    return new Blob([decryptedBuffer], { type: mimeType });
+
+  } catch (err) {
+    console.error("❌ Audio decryption failed:", err);
+    return null;
+  }
+}
+
+
 
  export async function decryptLockedMessageWithCode({ encryptedMessage, iv, code }) {
   const key = await deriveAESKeyFromCode(code);

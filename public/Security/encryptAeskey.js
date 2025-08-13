@@ -88,6 +88,7 @@ import {
   encryptWithAESKey,
   exportAESKeyRaw,
   deriveAESKeyFromCode,
+  encryptAudioBlob
 } from "./aesHelper.js";
 import { getPublicKeyFromServer } from "./publicKeyUtils.js"; // NEW: fetch all public keys by userId
 import { importPublicKey } from "./rsaHelper.js";
@@ -172,10 +173,6 @@ export async function sendEncryptedMessage(
       }
     }
 
-   function getChatId(senderId, receiverId) {
-    return [senderId, receiverId].sort().join('_');
-  }
-
 
     // 6. Prepare message payload
     const messagePayload = {
@@ -200,46 +197,6 @@ export async function sendEncryptedMessage(
         : null,
     };
 
-          // 8. Emit over socket
-      // socket.emit("chat message", {
-      //   ...messagePayload, // contains encryptedMessage, iv, encryptedKeys
-      // });
-
-      // console.log("✅ Encrypted message sent & emitted");
-
-
-    // const result  = await fetch("/api/send-message",{
-    //     method: 'POST',
-    //     headers: {
-    //         'Content-Type': 'application/json',
-    //            },
-    //          body: JSON.stringify(messagePayload),
-    //    });
-    //    const response = await result.json();
-    //    if(!result.ok) {
-    //     console.error("❌ Failed to send encrypted message:", response.error);
-    //     return;
-    //    }  
-    // console.log("✅ Encrypted message sent successfully:", response);
-
-
-    // await sendMessageToKafka(messagePayload);
-
-
-    // 7. Send to backend
-    // const res = await fetch("/auth/messages/sendEncrypted", {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify(messagePayload),
-    // });
-
-    // const data = await res.json();
-    // const messageId = data.messageId;
-
-    // if (!res.ok) {
-    //   console.error("❌ Failed to send encrypted message");
-    // } else {
-      // 8. Emit over socket
       socket.emit("chat message", {
         ...messagePayload, // contains encryptedMessage, iv, encryptedKeys
       });
@@ -256,6 +213,100 @@ export async function sendEncryptedMessage(
   } catch (err) {
     console.error("❌ Error sending encrypted message:", err);
   }
+}
+
+export async function sendEncryptaudio(
+  senderId,
+  receiverId,
+  recordedAudioBlob,
+  isSecretChat,
+  
+){
+  try{
+    const aesKey = await generateAESKey();
+
+
+    const { encryptedData, iv } = await encryptAudioBlob(aesKey, recordedAudioBlob);
+
+        const rawAESKey = await exportAESKeyRaw(aesKey);
+
+        // 3. Get public keys for all devices
+    const senderKeys = await getPublicKeyFromServer(senderId);
+    const receiverKeys = await getPublicKeyFromServer(receiverId);
+    const allKeys = [...senderKeys, ...receiverKeys];
+
+        // 4. Encrypt AES key for each device
+    const encryptedKeys = [];
+    for (const { deviceId, publicKey: base64Key } of allKeys) {
+      const cryptoKey = await importPublicKey(base64Key);
+      const encryptedAESKeyBuffer = await window.crypto.subtle.encrypt({ name: "RSA-OAEP" }, cryptoKey, rawAESKey);
+      encryptedKeys.push({
+        deviceId,
+        encryptedAESKey: btoa(String.fromCharCode(...new Uint8Array(encryptedAESKeyBuffer)))
+      });
+    }
+
+        // 5. Create encrypted Blob for upload
+    const encryptedBlob = new Blob([encryptedData], { type: "application/octet-stream" });
+
+    // 6. Create FormData with encrypted blob
+    const formData = new FormData();
+    formData.append("audio", encryptedBlob, "encrypted-audio.bin");
+    formData.append("senderId", senderId);
+    formData.append("receiverId", receiverId);
+
+
+          const res = await fetch("/upload-audio", {
+            method: "POST",
+            body: formData,
+          });
+      
+      
+      
+          if (!res.ok) {
+            throw new Error("Failed to upload audio");
+          }
+      
+          const data = await res.json();
+          const audioUrl = data.encryptedAudioUrl;
+
+     // 5. Prepare message payload
+    const messagePayload = {
+      messageId: crypto.randomUUID(),
+      senderId,
+      receiverId,
+      isSecretChat,
+      // encryptedMessage: btoa(String.fromCharCode(...encryptedData)), // Encrypted audio
+      iv: btoa(String.fromCharCode(...iv)),
+      encryptedKeys,
+      type: "audio",
+      status: "sent",
+      audioUrl
+    };
+
+
+
+
+        socket.emit("audioMessage", {
+            ...messagePayload,  // encryptedMessage, iv, encryptedKeys, etc.
+            audioUrl
+         });
+
+
+
+
+          // 7. Save to server (Kafka or DB queue)
+    await fetch("/auth/messages/sendEncrypted", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(messagePayload)
+    });
+
+    console.log("✅ Encrypted audio sent & emitted");
+  }catch(err){
+       console.error("❌ Error sending encrypted audio:", err);
+  }
+
 }
 
 export async function sendEncryptedImage(

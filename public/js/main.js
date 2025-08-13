@@ -331,7 +331,7 @@ socket.on("chat message", async (msg) => {
       
     } else if (msg.type === "audio" && msg.audioUrl) {
 
-      await getAudioMessageHtml(msg, messageDiv, tickHtml, );
+      await getAudioMessageHtml(msg, messageDiv, isSent,tickHtml,senderId,encryptedKeyObj );
 
     } else if (msg.type === "lockedText") {
       

@@ -4,6 +4,7 @@ import {
   decryptImage,
   decryptLockedMessageWithCode,
   decryptImageWithCode,
+  decryptAudio,
 } from "../Security/decryptMessage.js";
 
 import {
@@ -199,15 +200,38 @@ export async function getNormalMessageHtml(msg,messageDiv,isSent,tickHtml,replie
 
 // function for audio message
 
-export async function getAudioMessageHtml(msg, messageDiv, tickHtml) {
-        messageDiv.innerHTML = `
+  export async function getAudioMessageHtml(msg, messageDiv, isSent, tickHtml, senderId, encryptedKeyObj) {
+
+         try {
+    // 1️⃣ Decrypt the audio
+    const decryptedAudioBlob = await decryptAudio({
+      encryptedAESKey: encryptedKeyObj.encryptedAESKey,
+      iv: msg.iv,
+      fileUrl: msg.audioUrl, // URL to the encrypted file
+      mimeType: "audio/webm", // adjust if needed
+    });
+
+    if (!decryptedAudioBlob) {
+      console.error("Failed to decrypt audio");
+      return;
+    }
+
+    // 2️⃣ Create a Blob URL for the decrypted audio
+    const audioUrl = URL.createObjectURL(decryptedAudioBlob);
+
+    // 3️⃣ Render decrypted audio in the message div
+    messageDiv.innerHTML = `
       <audio controls style="max-width:200px;">
-        <source src="${msg.audioUrl}" type="audio/webm">
+        <source src="${audioUrl}" type="audio/webm">
         Your browser does not support the audio element.
       </audio>
       <div class="message-time">${formatTime(msg.timestamp)} ${tickHtml}</div>
     `;
-}
+
+  } catch (error) {
+    console.error("Error rendering audio message:", error);
+  }
+  }
 
 // function for menu UI inside message
 

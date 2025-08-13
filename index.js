@@ -602,64 +602,24 @@ io.on("connection", (socket) => {
 
 
 
-  socket.on("audioMessage", async ({ audioUrl, senderId, receiverId }) => {
+  socket.on(
+  "audio-message",
+  async ({
+    senderId,
+    receiverId,
+    audioUrl,       // array of encrypted audio URLs
+    iv,
+    encryptedKeys,
+    messageId,
+    status,
+    type = "audio",
+    isSecretChat,
+  }) => {
     try {
-      // Save to MongoDB
-      const newAudioMessage = await Message.create({
-        senderId,
-        receiverId,
-        type: "audio",
-        audioUrl,
-        status: "sent",
-        timestamp: new Date(),
-      });
+      const sender = await User.findById(senderId).select("name phoneNo");
+      const senderPhone = sender ? sender.phoneNo : "";
 
-      // --- Redis cache logic (same as text/image) ---
-      const ids = [senderId, receiverId].sort();
-      const cacheKey = `chat:${ids[0]}:${ids[1]}`;
-
-      let cached = await client.get(cacheKey);
-      let messages = cached ? JSON.parse(cached) : [];
-
-      messages.push(newAudioMessage.toObject());
-
-      // Keep only latest 30 messages
-      if (messages.length > 30) {
-        messages = messages.slice(-30);
-      }
-
-      await client.set(cacheKey, JSON.stringify(messages), { EX: 300 });
-
-      // Emit to sender (status: sent)
-      io.to(senderId).emit("chat message", newAudioMessage.toObject());
-
-      // Emit to receiver (status: delivered)
-      const deliveredAudio = {
-        ...newAudioMessage.toObject(),
-        status: "delivered",
-      };
-      io.to(receiverId).emit("chat message", deliveredAudio);
-
-      // Update status in DB to 'delivered'
-      await Message.findByIdAndUpdate(newAudioMessage._id, {
-        status: "delivered",
-      });
-
-      // Update status in Redis cache to 'delivered'
-      let updatedMessages = messages.map((msg) => {
-        if (msg._id && msg._id.toString() === newAudioMessage._id.toString()) {
-          return { ...msg, status: "delivered" };
-        }
-        return msg;
-      });
-      await client.set(cacheKey, JSON.stringify(updatedMessages), { EX: 300 });
-
-      // Emit 'message-delivered' to sender for real-time double tick
-      io.to(senderId).emit("message-delivered", {
-        messageId: newAudioMessage._id,
-      });
-
-      // Optionally: notification logic (if chat not open)
+      // ✅ Notification logic
       const openChat = await client.get(`openchat:${receiverId}`);
       const isChatOpen = openChat === senderId;
       if (!isChatOpen) {
@@ -667,26 +627,83 @@ io.on("connection", (socket) => {
           { userId: receiverId, contactId: senderId },
           { $inc: { unreadCount: 1 } }
         );
-        const senderUser = await User.findById(senderId).select("name");
+        const senderNameObj = await User.findById(senderId).select("name");
         const socketId = await client.get(`online:${receiverId}`);
         if (socketId) {
           io.to(socketId).emit("notify-new-message", {
-            from: senderUser.name,
+            from: senderNameObj.name,
             message: "[Audio]",
             type: "audio",
           });
         }
       } else {
-        // If chat is open, ensure unreadCount is 0 (defensive)
         await Contact.updateOne(
           { userId: receiverId, contactId: senderId },
           { $set: { unreadCount: 0 } }
         );
       }
+
+      // ✅ Set expiry for secret chats
+      const expiresAt =  Date.now() + 60000 
+
+      const savedAudioObj = {
+        _id: messageId,
+        senderName: sender ? sender.name : "Unknown",
+        senderId,
+        receiverId,
+        type,
+        audioUrl, // encrypted audio file URLs
+        iv,
+        encryptedKeys,
+        senderPhone,
+        isSecretChat,
+        expiresAt,
+        timestamp: new Date(),
+        status,
+      };
+
+      // --- Redis cache logic ---
+      const ids = [senderId, receiverId].sort();
+      const cacheKey = `chat:${ids[0]}:${ids[1]}:${
+        isSecretChat ? "secret" : "normal"
+      }`;
+
+      let cached = await client.get(cacheKey);
+      let messages = cached ? JSON.parse(cached) : [];
+
+      messages.push(savedAudioObj);
+
+      if (messages.length > 30) {
+        messages = messages.slice(-30);
+      }
+
+      const ttl = isSecretChat ? 60 : 300;
+      await client.set(cacheKey, JSON.stringify(messages), { EX: ttl });
+
+      // ✅ Emit to sender (sent)
+      io.to(senderId).emit("chat message", savedAudioObj);
+
+      // ✅ Emit to receiver (delivered)
+      const deliveredAudio = { ...savedAudioObj, status: "delivered" };
+      io.to(receiverId).emit("chat message", deliveredAudio);
+
+      // ✅ Update Redis cache for delivered status
+      let updatedMessages = messages.map((msg) => {
+        if (msg._id && msg._id.toString() === messageId.toString()) {
+          return { ...msg, status: "delivered" };
+        }
+        return msg;
+      });
+      await client.set(cacheKey, JSON.stringify(updatedMessages), { EX: ttl });
+
+      // ✅ Emit delivery tick to sender
+      io.to(senderId).emit("message-delivered", { messageId });
     } catch (err) {
       console.error("Audio message error:", err);
     }
-  });
+  }
+);
+
 
   // Listen for 'message-read' event from client when user opens chat
   socket.on("message-read", async ({ messageIds, readerId, receiverId }) => {

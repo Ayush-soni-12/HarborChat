@@ -38,6 +38,25 @@ export async function encryptWithAESKey(aesKey, input) {
   };
 }
 
+export async function encryptAudioBlob(aesKey, audioBlob) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+
+  // Convert Blob to ArrayBuffer
+  const arrayBuffer = await audioBlob.arrayBuffer();
+  const audioData = new Uint8Array(arrayBuffer);
+
+  // Encrypt the audio data
+  const encryptedContent = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    aesKey,
+    audioData
+  );
+
+  return {
+    encryptedData: new Uint8Array(encryptedContent), // Encrypted bytes
+    iv: new Uint8Array(iv) // IV needed for decryption
+  };
+}
 
 
 export async function exportAESKeyRaw(aesKey) {

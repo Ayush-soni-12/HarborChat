@@ -3,7 +3,7 @@ import { updateEmptyChatMessage ,moveContactToTop} from "./uiFunction.js";
 import {  showToast } from "./contactFunction.js";
 import state from "./state.js";
 // import socket from "./socket.js";
-import { sendEncryptedMessage,sendEncryptedImage ,sendMultipleEncryptedImages,encryptMessageWithCode,encryptImageWithCode} from "../Security/encryptAeskey.js";
+import { sendEncryptedMessage,sendEncryptedImage ,sendMultipleEncryptedImages,encryptMessageWithCode,encryptImageWithCode, sendEncryptaudio} from "../Security/encryptAeskey.js";
 import { clearAllSuggestions }from "./main.js";
 
 // --- ADD CONTACT FORM SUBMISSION ---
@@ -872,23 +872,30 @@ sendRecordingBtn.addEventListener("click", async () => {
     formData.append("senderId", senderId);
     formData.append("receiverId", receiverId);
 
-    const res = await fetch("/upload-audio", {
-      method: "POST",
-      body: formData,
-    });
+    // const res = await fetch("/upload-audio", {
+    //   method: "POST",
+    //   body: formData,
+    // });
 
-    if (!res.ok) {
-      throw new Error("Failed to upload audio");
-    }
 
-    const data = await res.json();
-    const audioURL = data.audioUrl;
 
-    socket.emit("audioMessage", {
-      audioUrl: audioURL,
-      senderId,
-      receiverId,
-    });
+    // if (!res.ok) {
+    //   throw new Error("Failed to upload audio");
+    // }
+
+    // const data = await res.json();
+    // const audioURL = data.audioUrl;
+
+       const isSecretChat = secretChatMap[receiverId] || false;
+      console.log('Secretmessage:', isSecretChat);
+
+    await sendEncryptaudio(senderId,receiverId,recordedAudioBlob,isSecretChat)
+
+    // socket.emit("audioMessage", {
+    //   audioUrl: audioURL,
+    //   senderId,
+    //   receiverId,
+    // });
 
     resetRecordingUI();
 

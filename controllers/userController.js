@@ -319,6 +319,7 @@ export const sendEncryptData = asyncHandler(async (req, res) => {
       mediaUrls,
       isSecretChat,
       messageId,
+      audioUrl,
       iv,
       status,
       type,
@@ -355,9 +356,9 @@ export const sendEncryptData = asyncHandler(async (req, res) => {
         newMessage.mediaUrls = mediaUrls;
         newMessage.message = caption;
       }
-      // if (audioUrl) {
-      //   newMessage.audioUrl = audioUrl;
-      // }
+      if (audioUrl) {
+        newMessage.audioUrl = audioUrl;
+      }
     }
     console.log('Secret chat:', isSecretChat);
 
