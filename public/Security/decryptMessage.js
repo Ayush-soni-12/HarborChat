@@ -131,7 +131,7 @@ export async function decryptAudio({ encryptedAESKey, iv, fileUrl, mimeType = "a
     );
 
     // 7. Return audio Blob with correct MIME type
-    return new Blob([decryptedBuffer], { type: mimeType });
+    return new Blob([decryptedBuffer]);
 
   } catch (err) {
     console.error("❌ Audio decryption failed:", err);

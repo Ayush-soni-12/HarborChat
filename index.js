@@ -678,7 +678,9 @@ io.on("connection", (socket) => {
       }
 
       const ttl = isSecretChat ? 60 : 300;
-      await client.set(cacheKey, JSON.stringify(messages), { EX: ttl });
+      let audiocache = await client.set(cacheKey, JSON.stringify(messages), { EX: ttl });
+
+      console.log("AudioCache",audiocache);
 
       // ✅ Emit to sender (sent)
       io.to(senderId).emit("chat message", savedAudioObj);

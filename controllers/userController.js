@@ -405,6 +405,28 @@ export const uploadImage = asyncHandler(async(req,res)=>{
 
 })
 
+export const uploadAudio = asyncHandler(async(req,res)=>{
+   const timestamp = Math.round(Date.now() / 1000);
+  const folder = req.body.folder || "harborchat/audio"; // optional folder name
+
+  const paramsToSign = `folder=${folder}&timestamp=${timestamp}`;
+  const signature = crypto
+    .createHash("sha1")
+    .update(paramsToSign + process.env.CLOUD_API_SECRET)
+    .digest("hex");
+
+  res.json({
+    timestamp,
+    folder,
+    signature,
+    apiKey: process.env.CLOUD_API_KEY,
+    cloudName: process.env.CLOUD_NAME,
+  });
+
+})
+
+
+
 
 export const sendCodeLockedMessage = asyncHandler(async (req, res) => {
   try {

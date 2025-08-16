@@ -92,7 +92,7 @@ import {
 } from "./aesHelper.js";
 import { getPublicKeyFromServer } from "./publicKeyUtils.js"; // NEW: fetch all public keys by userId
 import { importPublicKey } from "./rsaHelper.js";
-import { uploadToCloudinary } from "./uploadFunction.js";
+import { uploadToCloudinary,AudiouploadToCloudinary } from "./uploadFunction.js";
 // import { sendMessageToKafka } from "../../kafkaProducer.js";
 export async function sendEncryptedMessage(
   senderId,
@@ -247,28 +247,33 @@ export async function sendEncryptaudio(
     }
 
         // 5. Create encrypted Blob for upload
-    const encryptedBlob = new Blob([encryptedData], { type: "application/octet-stream" });
+    const encryptedBlob = new Blob([encryptedData], { type: recordedAudioBlob.type });
 
-    // 6. Create FormData with encrypted blob
-    const formData = new FormData();
-    formData.append("audio", encryptedBlob, "encrypted-audio.bin");
-    formData.append("senderId", senderId);
-    formData.append("receiverId", receiverId);
+    const cloudinaryRes = await AudiouploadToCloudinary(encryptedBlob);
+    const audioUrl = cloudinaryRes.secure_url;
 
 
-          const res = await fetch("/upload-audio", {
-            method: "POST",
-            body: formData,
-          });
+
+    // // 6. Create FormData with encrypted blob
+    // const formData = new FormData();
+    // formData.append("audio", encryptedBlob, "encrypted-audio.bin");
+    // formData.append("senderId", senderId);
+    // formData.append("receiverId", receiverId);
+
+
+    //       const res = await fetch("/upload-audio", {
+    //         method: "POST",
+    //         body: formData,
+    //       });
       
       
       
-          if (!res.ok) {
-            throw new Error("Failed to upload audio");
-          }
+    //       if (!res.ok) {
+    //         throw new Error("Failed to upload audio");
+    //       }
       
-          const data = await res.json();
-          const audioUrl = data.encryptedAudioUrl;
+    //       const data = await res.json();
+    //       const audioUrl = data.encryptedAudioUrl;
 
      // 5. Prepare message payload
     const messagePayload = {
@@ -287,7 +292,7 @@ export async function sendEncryptaudio(
 
 
 
-        socket.emit("audioMessage", {
+        socket.emit("audio-message", {
             ...messagePayload,  // encryptedMessage, iv, encryptedKeys, etc.
             audioUrl
          });
