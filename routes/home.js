@@ -1,6 +1,6 @@
 import  express from "express";
 const router = express.Router();
-import  {index,chat,contact,setting,Status,profile,updateProfile,updateEmail,me,personalChat,searchContact,audioMessage,whisperBotMessage,translateChat,pinMessage,unPinMessage,updateTheme,deleteChat} from "../controllers/homeController.js";
+import  {index,chat,contact,setting,Status,profile,updateProfile,updateEmail,me,personalChat,searchContact,audioMessage,whisperBotMessage,translateChat,pinMessage,unPinMessage,updateTheme,deleteChat,createGroup,fetchGroups} from "../controllers/homeController.js";
 import  validToken from '../middlewares/verifytoken.js';
 import  {verifyemail, newContactSchema }from "../validations/authValidation.js"
 import  validation from "../middlewares/validate.js";
@@ -34,14 +34,16 @@ router.patch("/update-email",validToken,validation(verifyemail),updateEmail)
 router.get("/api/me",validToken,me)
 router.get("/api/messages/:receiverId",validToken,personalChat)
 router.get("/api/contacts/search",validToken,searchContact)
-router.post('/upload-audio',validToken,setaudioFolder,multerUpload.single('audio'),audioMessage);
+// router.post('/upload-audio',validToken,setaudioFolder,multerUpload.single('audio'),audioMessage);
 router.post('/api/whisperbot',validToken,whisperBotMessage)
 router.post('/api/translate',validToken,translateChat);
 router.post('/api/messages/pin',validToken,pinMessage);
 router.patch('/api/pin/:id',validToken, unPinMessage);
-router.post('/settings/update-theme',validToken,updateTheme)
-router.post('/deleteChat',validToken,deleteChat)
+router.post('/settings/update-theme',validToken,updateTheme) // patch
+router.post('/deleteChat',validToken,deleteChat) // delete
 // router.post('/api/send-message',validToken,kafkaProducer)
+router.get('/groups',validToken,fetchGroups)
+router.post('/groups',validToken, createGroup);
 
 
 export default router

@@ -23,7 +23,24 @@
             </div>
         <% }) %>
     <% } %>
+<!-- </div> -->
+
+<!-- GROUP SECTION -->
+<!-- <div class="group-list contact-list" id="groupList contactList"> -->
+  <% if (groups && groups.length > 0) { %>
+    <% groups.forEach(group => { %>
+      <div class="group-item contact-item" data-groupid="<%= group._id %>" data-type="group">
+        <div class="group-avatar contact-avatar"><%= group.name.charAt(0) %></div>
+        <div class="group-info contact-info">
+          <div class="group-name contact-name"><%= group.name %></div>
+          <div class="group-last-message contact-last-message"><%= group.lastMessage || '' %></div>
+        </div>
+      </div>
+    <% }) %>
+  <% } %>
 </div>
+
+
 <div class="empty" id="emptyChatMsg" <% if (contacts && contacts.length > 0) { %>style="display:none"<% } %>>
     <div class="empty-chat-icon">
         <i class="fas fa-users"></i>
@@ -46,6 +63,50 @@
   <div class="profile-name" id="profileName"></div>
   <div class="profile-phone" id="profilePhone"></div>
   <div class="profile-about" id="profileAbout"></div>
+</div>
+
+
+ <!--  for group creation  -->
+  <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="exampleModalLabel"><i class="fas fa-users me-2"></i>Create Group</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="createGroupModal">
+        <div class="mb-3">
+          <label for="groupName" class="form-label fw-semibold">Group Name</label>
+          <input type="text" class="form-control" id="groupName" placeholder="Enter group name">
+        </div>
+        
+        <div class="mb-3">
+          <label for="groupDescription" class="form-label fw-semibold">Description</label>
+          <textarea class="form-control" id="groupDescription" placeholder="What's this group about?"></textarea>
+        </div>
+        
+        <h4><i class="fas fa-user-plus me-2"></i>Select Members:</h4>
+         <div id="contactListForGroup">
+      <% if (contacts && contacts.length > 0) { %>
+      <% contacts.forEach(contact => { %>
+        <div class="contact-select">
+          <label>
+            <input type="checkbox" value="<%= contact.contactId._id %>">
+            <%= contact.name %> (<%= contact.phone %>)
+          </label>
+        </div>
+      <% }) %>
+    <% } else { %>
+      <p>No contacts available to add.</p>
+    <% } %>
+  </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancelGroupBtn" data-bs-dismiss="modal">Cancel</button>
+        <button type="button"  id="saveGroupBtn" class="btn btn-success">Create Group</button>
+      </div>
+    </div>
+  </div>
 </div>
 
    <%- include('partials/footer') %>

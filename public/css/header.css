@@ -12,6 +12,10 @@
         --sentText2-color: #DCF8C6;
         --recievedText1-color: #ffffff;
         --recievedText2-color: #ffffff;
+         --harbor-light-blue: #e5f7ed;
+        --harbor-dark-blue: #3a7052;
+        --harbor-gray: #f8f9fa;
+        --harbor-dark: #212529;
         
       }
 
@@ -25,7 +29,10 @@
       body {
         height: 100vh;
         display: flex;
+        background-color: #f5f7fb;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         background-color: var(--sidebar-bg);
+
       }
       .navbar {
         height: 100%;
@@ -2175,3 +2182,164 @@ align-self: flex-end;
   line-height: 1.4;
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
+
+
+
+
+/*  for group  */
+
+
+
+        
+ 
+        
+        .modal-content {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            border: none;
+        }
+        
+        .modal-header {
+            background-color: var(--primary);
+            color: white;
+            padding: 15px 20px;
+        }
+        
+        .modal-title {
+            font-weight: 600;
+        }
+        
+        .btn-close {
+            filter: invert(1);
+        }
+        
+        .modal-body {
+            padding: 25px;
+        }
+        
+        #groupName, #groupDescription {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+        
+        #groupName:focus, #groupDescription:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        #groupDescription {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        h4 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: 600;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        #contactListForGroup {
+            max-height: 250px;
+            overflow-y: auto;
+            padding: 5px;
+            background-color: var(--harbor-gray);
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        
+        .contact-select {
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: white;
+            transition: all 0.2s;
+            border: 1px solid #f1f1f1;
+        }
+        
+        .contact-select:hover {
+            background-color: var(--harbor-light-blue);
+            border-color: var(--harbor-light-blue);
+            transform: translateY(-1px);
+            box-shadow: 0 3px 7px rgba(0, 0, 0, 0.05);
+        }
+        
+        .contact-select label {
+            display: flex;
+            align-items: center;
+            margin: 0;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .contact-select input[type="checkbox"] {
+            margin-right: 12px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .modal-footer {
+            padding: 15px 25px;
+            background-color: #f9f9f9;
+            border-top: 1px solid #eee;
+        }
+        
+        
+        
+
+        
+        /* Custom scrollbar */
+        #contactListForGroup::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        #contactListForGroup::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        #contactListForGroup::-webkit-scrollbar-thumb {
+            background: #c5c5c5;
+            border-radius: 10px;
+        }
+        
+        #contactListForGroup::-webkit-scrollbar-thumb:hover {
+            background: #a5a5a5;
+        }
+        
+        /* Checkbox styling */
+        input[type="checkbox"] {
+            accent-color: var(--primary);
+        }
+        
+        /* Placeholder styling */
+        ::placeholder {
+            color: #aaa;
+        }
+        
+        /* No contacts message */
+        #contactListForGroup p {
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 576px) {
+            .modal-body {
+                padding: 20px 15px;
+            }
+            
+            .contact-select {
+                padding: 10px;
+            }
+        }

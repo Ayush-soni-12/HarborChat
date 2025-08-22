@@ -11,6 +11,8 @@ import { translateText } from "../Helpers/translate.js"; // fixed import path
 import { sendMessageToKafka } from "../kafkaProducer.js"; // fixed import path
 import { getConversationKey } from "../Helpers/chat.js";
 import UserChat from "../modals/userChat.js";
+import Group from "../modals/GroupSchema.js"; // fixed import path
+import GroupMessage from "../modals/GroupMessage.js";
 
 // const generateToken = require"../middlewares/generateToken";
 import jwt from  "jsonwebtoken";
@@ -42,10 +44,32 @@ export const chat = asyncHandler(async (req, res) => {
       })
     );
 
-    res.render("chatss", { contacts: contactsWithLastMsg });
+    // Groups where user is a member
+    const groups = await Group.find({ "members.user": req.user._id })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const groupsWithLastMsg = await Promise.all(
+      groups.map(async (group) => {
+        const lastMsg = await GroupMessage.findOne({ groupId: group._id })
+          .sort({ timestamp: -1 })
+          .lean();
+
+        return {
+          ...group,
+          lastMessage: lastMsg ? lastMsg.message : "",
+        };
+      })
+    );
+
+    res.render("chatss", {
+      contacts: contactsWithLastMsg,
+      groups: groupsWithLastMsg,
+    });
   } catch (err) {
     console.error(err);
-    res.render("chatss", { contacts: [] });
+    
+    res.render("chatss", { contacts: [], groups: [] });
   }
 });
 export const contact = asyncHandler(async (req, res) => {
@@ -526,3 +550,56 @@ export const deleteChat = asyncHandler(async(req,res)=>{
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 })
+
+export const fetchGroups  = asyncHandler(async(req,res)=>{
+  try {
+    const userId = req.user._id;
+
+    const groups = await Group.find({
+      "members.user": userId,
+    })
+      .populate("members.user", "name avatar") // optional: fetch user data
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({ groups });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Server error" });
+  }
+})
+
+export const createGroup = asyncHandler(async(req,res)=>{
+
+   try {
+    const { name, description, avatar, members = [] } = req.body;
+
+    // Ensure group name
+    if (!name) return res.status(400).json({ error: "Group name is required" });
+
+    // Initialize members: include creator as owner
+    const allMembers = [
+      { user: req.user._id, role: "owner" },
+      ...members.map((id) => ({ user: id, role: "member" })),
+    ];
+
+    // Remove duplicates (optional)
+    // const uniqueMembers = Array.from(
+    //   new Map(allMembers.map((m) => [m.user.toString(), m])).values()
+    // );
+
+    const group = new Group({
+      name,
+      description,
+      avatar,
+      owner: req.user._id,
+      members: allMembers,
+    });
+
+    await group.save();
+    return res.status(201).json({ message: "Group created", group });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Server error" });
+  }
+
+});
