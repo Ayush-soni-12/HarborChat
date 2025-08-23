@@ -122,6 +122,22 @@ io.on("connection", (socket) => {
     console.log(`User ${id} joined room ${id}`);
   });
 
+    // Step 2: Real-Time Group Creation
+socket.on("create-group", async ({ groupId, members }) => {
+  // Notify all group members except the creator
+  console.log("Group creation event:", { groupId, members });
+  for (const member of members) {
+    const userId = member.user; // Extract user ID from member object
+    const memberSocketId = await client.get(`online:${userId}`);
+    console.log("MemberSocketId", memberSocketId);
+    if (memberSocketId) {
+      io.to(memberSocketId).emit("group-created", { groupId });
+      console.log(`Notified ${userId} of new group ${groupId}`);
+    }
+  }
+  console.log(`📢 Group ${groupId} created, notified members`);
+});
+
 // 🧩 Step 2: Add WebRTC signaling handlers
 
   socket.on("webrtc-offer", ({ to, offer }) => {

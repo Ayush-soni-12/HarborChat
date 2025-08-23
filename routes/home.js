@@ -1,6 +1,6 @@
 import  express from "express";
 const router = express.Router();
-import  {index,chat,contact,setting,Status,profile,updateProfile,updateEmail,me,personalChat,searchContact,audioMessage,whisperBotMessage,translateChat,pinMessage,unPinMessage,updateTheme,deleteChat,createGroup,fetchGroups} from "../controllers/homeController.js";
+import  {index,chat,contact,setting,Status,profile,updateProfile,updateEmail,me,personalChat,searchContact,audioMessage,whisperBotMessage,translateChat,pinMessage,unPinMessage,updateTheme,deleteChat,createGroup,fetchGroups,GroupInfo} from "../controllers/homeController.js";
 import  validToken from '../middlewares/verifytoken.js';
 import  {verifyemail, newContactSchema }from "../validations/authValidation.js"
 import  validation from "../middlewares/validate.js";
@@ -43,6 +43,7 @@ router.post('/settings/update-theme',validToken,updateTheme) // patch
 router.post('/deleteChat',validToken,deleteChat) // delete
 // router.post('/api/send-message',validToken,kafkaProducer)
 router.get('/groups',validToken,fetchGroups)
+router.get('/api/groups/:groupId',validToken,GroupInfo) // fetch single group details
 router.post('/groups',validToken, createGroup);
 
 

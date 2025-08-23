@@ -4,7 +4,7 @@ import {
   showOfflineDot,
   showToast,
 } from "./contactFunction.js";
-import { setupInputHandlers, updateProfileSidebar,updateUnreadBadge ,moveContactToTop,updateContactLastMessage,updateEmptyChatMessage} from "./uiFunction.js";
+import { setupInputHandlers, updateProfileSidebar,updateUnreadBadge ,moveContactToTop,updateContactLastMessage,updateEmptyChatMessage,updateGroupProfileSidebar} from "./uiFunction.js";
 import state from "./state.js";
 import { updateSecretChatUI, onChatSwitch } from "./footer.js";
 import { getReplyPreviewHtml,
@@ -55,7 +55,22 @@ window.addEventListener("DOMContentLoaded", () => {
     unreadCounts[userId] =
       badge && badge.textContent ? parseInt(badge.textContent, 10) : 0;
   });
+
+    document.querySelectorAll(".group-item").forEach((group) => {
+    const groupId = group.dataset.groupid;
+
+    const name =
+      group.querySelector(".contact-name")?.textContent.trim() || "";
+    contactMap[groupId] = { name };
+     const badge = group.querySelector(".unread-badge");
+    unreadCounts[groupId] =
+      badge && badge.textContent ? parseInt(badge.textContent, 10) : 0;
+  });
+
+
+
   updateEmptyChatMessage();
+  setupGroupClickHandlers();
   setupContactClickHandlers();
   setupInputHandlers();
 });
@@ -66,7 +81,7 @@ function setupContactClickHandlers() {
     contact.addEventListener("click", async function () {
       const contactName = this.querySelector(".contact-name").textContent;
       const contactAvatar = this.querySelector(".contact-avatar").textContent;
-      const contactPhone = this.querySelector(".contact-last-msg").textContent;
+      const contactPhone = this.querySelector(".contact-phone").textContent;
       const contactabout = this.querySelector(".contact-about").textContent;
       const userId = this.dataset.userid;
       console.log("Contact clicked:", userId, contactName, contactPhone);
@@ -106,6 +121,57 @@ function setupContactClickHandlers() {
       await loadChatMessages(false);
       unreadCounts[userId] = 0;
       updateUnreadBadge(userId, 0);
+    });
+  });
+}
+
+
+function setupGroupClickHandlers(groupId,groupName) {
+  document.querySelectorAll(".group-item").forEach((group) => {
+    group.addEventListener("click", async function () {
+      const groupName = this.querySelector(".group-name").textContent;
+      const groupAvatar = this.querySelector(".group-avatar").textContent;
+      // const contactPhone = this.querySelector(".contact-last-msg").textContent;
+      // const contactabout = this.querySelector(".contact-about").textContent;
+      const groupId = this.dataset.groupid;
+      // console.log("Contact clicked:", groupId, contactName, contactPhone);
+      window.currentReceiverId = groupId; 
+      allMessagesInChat = [];
+      document.getElementById("chatSearchInput").value = ""; // Clear search input
+      document.getElementById("searchResults").innerHTML = ""; // Clear search results
+      document.querySelector('.user-status').innerHTML = "";
+
+      updateSecretChatUI();
+      onChatSwitch(groupId);
+      // socket.emit("chat-open", {
+      //   userId: localStorage.getItem("userId"),
+      //   contactId: userId,
+      // });
+      // const statusText = document.querySelector(".nav-info .user-status");
+      // if (statusText) {
+      //   if (onlineUserIds.has(groupId)) {
+      //     statusText.innerText = "Online";
+      //     statusText.style.color = "green";
+      //   } else {
+      //     statusText.innerText = "Offline";
+      //     statusText.style.color = "gray";
+      //   }
+      // }
+      updateGroupProfileSidebar(
+        groupName,
+        groupAvatar,
+        // contactPhone,
+        // contactabout
+      );
+      document.querySelector(".empty-chat").style.display = "none";
+      document.querySelector(".chattingArea").style.display = "block";
+      document.getElementById("sidebar").classList.add("active");
+      document.getElementById("chatArea").classList.add("active");
+      state.messagesSkip = 0;
+      state.allMessagesLoaded = false;
+      await loadChatMessages(false);
+      unreadCounts[groupId] = 0;
+      updateUnreadBadge(groupId, 0);
     });
   });
 }
@@ -1274,3 +1340,53 @@ socket.on('call-rejected', (from) => {
 //     endCall();
 //   }
 // }
+
+
+
+
+
+socket.on('group-created', async ({ groupId }) => {
+  try {
+    // Fetch group details
+    const res = await fetch(`/api/groups/${groupId}`);
+    const group = await res.json();
+
+    // Create a new list item for the group
+    // const chatList = document.getElementById("chat-list");
+    // const groupItem = document.createElement("div");
+    // groupItem.className = "chat-item group-chat";
+    // groupItem.dataset.groupId = group._id;
+    // groupItem.innerHTML = `
+    //   <div class="chat-avatar">👥</div>
+    //   <div class="chat-info">
+    //     <p class="chat-name">${group.name}</p>
+    //     <p class="chat-last-msg">New group created</p>
+    //   </div>
+    // `;
+
+
+
+      const userId = groupId;
+      const newContact = document.createElement("div");
+      newContact.className = "contact-item";
+      newContact.dataset.groupid = userId;
+      newContact.innerHTML = `
+       <div class="contact-avatar">${group.name.charAt(0)}</div>
+       <div class="contact-info">
+           <div class="contact-name">${group.name}</div>
+       </div>
+       `
+
+    // Add click event to open group chat
+    groupItem.addEventListener("click", () => {
+      setupGroupClickHandlers(group._id, group.name);
+    });
+    console.log("New group added:", group.name);
+
+    // Add to chat list
+    document.querySelector(".contact-list").appendChild(newContact);
+
+  } catch (error) {
+    console.error("Error fetching group details:", error);
+  }
+});

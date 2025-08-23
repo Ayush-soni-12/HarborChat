@@ -14,7 +14,8 @@ const GroupSchema = new mongoose.Schema({
   ],
   isPublic: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
-  lastMessageAt: { type: Date }
+  lastMessageAt: { type: Date },
+  unreadCount: {type :Number},
 
 });
 

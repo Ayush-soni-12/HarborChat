@@ -1141,8 +1141,10 @@ document.getElementById("saveGroupBtn").addEventListener("click", async () => {
     });
 
     const data = await res.json();
+    console.log("Group creation response:", data);
     if (res.ok) {
       alert("Group created successfully!");
+      socket.emit('create-group', { groupId: data.group._id, members: data.group.members });
       // Clear form fields and checkboxes
       document.getElementById("groupName").value = "";
       document.getElementById("groupDescription").value = "";

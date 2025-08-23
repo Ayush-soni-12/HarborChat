@@ -568,6 +568,17 @@ export const fetchGroups  = asyncHandler(async(req,res)=>{
   }
 })
 
+export const  GroupInfo = asyncHandler(async(req,res)=>{
+
+    const group = await Group.findById(req.params.id)
+    .populate("members", "name avatar")
+    .select("name members createdAt");
+
+  if (!group) return res.status(404).json({ error: "Group not found" });
+  console.log(group);
+   return res.json(group);
+})
+
 export const createGroup = asyncHandler(async(req,res)=>{
 
    try {

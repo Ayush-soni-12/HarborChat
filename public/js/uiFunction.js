@@ -10,6 +10,13 @@ export function updateProfileSidebar(name, avatar, phone, about) {
     document.querySelector('.profile-about').textContent = about;
 }
 
+export function updateGroupProfileSidebar(name, avatar, ) {
+    document.querySelector('.nav-name').textContent = name;
+    document.querySelector('.nav-avatar').textContent = avatar;
+    document.querySelector('.profile-name').textContent = name;
+    document.querySelector('.profile-avatar').textContent = avatar;
+}
+
 // --- INPUT & SEND HANDLERS ---
 export function setupInputHandlers() {
     document.querySelector('.send-button').addEventListener('click', sendMessage);
