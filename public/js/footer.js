@@ -1121,10 +1121,8 @@ document.getElementById("saveGroupBtn").addEventListener("click", async () => {
   const description = document.getElementById("groupDescription").value.trim();
 
   const members = Array.from(
-    document.querySelectorAll(
-      "#contactListForGroup input[type=checkbox]:checked"
-    )
-  ).map((cb) => cb.value);
+    document.querySelectorAll("#contactListForGroup input[type=checkbox]:checked")
+  ).map(cb => cb.value);
 
   if (!name) {
     alert("Group name is required");
@@ -1134,23 +1132,25 @@ document.getElementById("saveGroupBtn").addEventListener("click", async () => {
   try {
     const res = await fetch("/groups", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, description, members }),
     });
 
     const data = await res.json();
     console.log("Group creation response:", data);
-    if (res.ok) {
+
+    if (res.ok && data.group && data.group._id && data.group.members) {
       alert("Group created successfully!");
+      // Emit socket event with correct members array
       socket.emit('create-group', { groupId: data.group._id, members: data.group.members });
+
       // Clear form fields and checkboxes
       document.getElementById("groupName").value = "";
       document.getElementById("groupDescription").value = "";
-      document
-        .querySelectorAll("#contactListForGroup input[type=checkbox]")
-        .forEach((cb) => (cb.checked = false));
+      document.querySelectorAll("#contactListForGroup input[type=checkbox]")
+        .forEach(cb => cb.checked = false);
+
+      // Optionally reload, or update UI dynamically instead
       location.reload();
     } else {
       alert(data.error || "Failed to create group");

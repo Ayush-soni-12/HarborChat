@@ -9,7 +9,13 @@
     <% if (contacts && contacts.length > 0) { %>
         <% contacts.forEach(contact => { %>
             <div class="contact-item" data-userid="<%=contact.contactId._id%>">
-                <div class="contact-avatar"><%= contact.name.charAt(0) %></div>
+            <div class="contact-avatar">
+              <% if (contact.contactId.image) { %>
+                <img src="<%= contact.contactId.image %>" alt="<%= contact.name.charAt(0) %>" />
+              <% } else { %>
+                <%= contact.name.charAt(0) %>
+              <% } %>
+            </div>
                 <div class="contact-info">
                     <div class="contact-name"><%= contact.name %></div>
                     <div class="contact-last-msg contact-phone"><%= contact.phone %></div>
@@ -29,11 +35,11 @@
 <!-- <div class="group-list contact-list" id="groupList contactList"> -->
   <% if (groups && groups.length > 0) { %>
     <% groups.forEach(group => { %>
-      <div class="group-item contact-item" data-groupid="<%= group._id %>" data-type="group">
+      <div class="group-item" data-groupid="<%= group._id %>" data-type="group">
         <div class="group-avatar contact-avatar"><%= group.name.charAt(0) %></div>
         <div class="group-info contact-info">
           <div class="group-name contact-name"><%= group.name %></div>
-          <div class="group-last-message contact-last-message"><%= group.lastMessage || '' %></div>
+          <div class="group-last-message contact-last-msg"><%= group.lastMessage || '' %></div>
         </div>
           <% if (group.unreadCount && group.unreadCount > 0) { %>
             <span class="unread-badge"><%= group.unreadCount %></span>
@@ -55,20 +61,21 @@
     </div>
         <!-- Add this just before </body> -->
 <div class="user-info-overlay" id="userInfoOverlay"></div>
-<div class="user-info" id="userInfoSidebar">
-  <div class="crossEdit">
-    <div class="crossbtn">
-    <i class="fa-solid fa-xmark"></i>
+    <div class="user-info" id="userInfoSidebar">
+        <div class="crossEdit">
+            <div class="crossbtn">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+            <div class="editbtn">
+                <i class="fa-solid fa-pencil"></i>
+            </div>
+        </div>
+
+        <div id="contact-details-panel" class="contact-details-panel">
+            <p>Select a contact or group to view details</p>
+        </div>
     </div>
-    <div class="editbtn">
-    <i class="fa-solid fa-pencil"></i>
-    </div>
-  </div>
-  <div class="profile-avatar" id="profileAvatar"></div>
-  <div class="profile-name" id="profileName"></div>
-  <div class="profile-phone" id="profilePhone"></div>
-  <div class="profile-about" id="profileAbout"></div>
-</div>
+
 
 
  <!--  for group creation  -->
@@ -119,9 +126,10 @@
     <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <script type="module" src="/js/footer.js"></script>
     <script type="module" src="/js/main.js"></script>
+    <script type="module" src="/js/footer.js"></script>
     <script src="/js/socket.js"></script>
+
 
 </body>
 </html>

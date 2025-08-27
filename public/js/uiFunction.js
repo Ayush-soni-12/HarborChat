@@ -1,20 +1,24 @@
 import {sendMessage} from './footer.js'
 // import socket from './socket.js';
 
-export function updateProfileSidebar(name, avatar, phone, about) {
+export function updateProfileSidebar(name, avatar) {
     document.querySelector('.nav-name').textContent = name;
-    document.querySelector('.nav-avatar').textContent = avatar;
-    document.querySelector('.profile-name').textContent = name;
-    document.querySelector('.profile-avatar').textContent = avatar;
-    document.querySelector('.profile-phone').textContent = phone;
-    document.querySelector('.profile-about').textContent = about;
+    
+  const avatarElement = document.querySelector('.nav-avatar');
+
+  if (avatar && avatar.startsWith('http')) {
+    avatarElement.innerHTML = `<img src="${avatar}" alt="${name}" />`;
+  } else {
+    avatarElement.textContent = avatar || name.charAt(0);
+  }
 }
+
 
 export function updateGroupProfileSidebar(name, avatar, ) {
     document.querySelector('.nav-name').textContent = name;
     document.querySelector('.nav-avatar').textContent = avatar;
-    document.querySelector('.profile-name').textContent = name;
-    document.querySelector('.profile-avatar').textContent = avatar;
+    // document.querySelector('.profile-name').textContent = name;
+    // document.querySelector('.profile-avatar').textContent = avatar;
 }
 
 // --- INPUT & SEND HANDLERS ---

@@ -4,21 +4,28 @@ import {
   showOfflineDot,
   showToast,
 } from "./contactFunction.js";
-import { setupInputHandlers, updateProfileSidebar,updateUnreadBadge ,moveContactToTop,updateContactLastMessage,updateEmptyChatMessage,updateGroupProfileSidebar} from "./uiFunction.js";
+import {
+  setupInputHandlers,
+  updateProfileSidebar,
+  updateUnreadBadge,
+  moveContactToTop,
+  updateContactLastMessage,
+  updateEmptyChatMessage,
+  updateGroupProfileSidebar,
+} from "./uiFunction.js";
 import state from "./state.js";
 import { updateSecretChatUI, onChatSwitch } from "./footer.js";
-import { getReplyPreviewHtml,
-        getLockedMessageHtml,
-        getLockedImageHtml,
-        getNormalMessageHtml,
-        getAudioMessageHtml,
-        getMenuUi,
-        getSecretchatCountDown,
-        getMessageHtml,
-        getNormalImageHtml,
-
-
-} from "./mainFunction.js"
+import {
+  getReplyPreviewHtml,
+  getLockedMessageHtml,
+  getLockedImageHtml,
+  getNormalMessageHtml,
+  getAudioMessageHtml,
+  getMenuUi,
+  getSecretchatCountDown,
+  getMessageHtml,
+  getNormalImageHtml,
+} from "./mainFunction.js";
 
 // import showToast from './footer.js'
 
@@ -56,18 +63,15 @@ window.addEventListener("DOMContentLoaded", () => {
       badge && badge.textContent ? parseInt(badge.textContent, 10) : 0;
   });
 
-    document.querySelectorAll(".group-item").forEach((group) => {
+  document.querySelectorAll(".group-item").forEach((group) => {
     const groupId = group.dataset.groupid;
 
-    const name =
-      group.querySelector(".contact-name")?.textContent.trim() || "";
+    const name = group.querySelector(".contact-name")?.textContent.trim() || "";
     contactMap[groupId] = { name };
-     const badge = group.querySelector(".unread-badge");
+    const badge = group.querySelector(".unread-badge");
     unreadCounts[groupId] =
       badge && badge.textContent ? parseInt(badge.textContent, 10) : 0;
   });
-
-
 
   updateEmptyChatMessage();
   setupGroupClickHandlers();
@@ -79,13 +83,25 @@ window.addEventListener("DOMContentLoaded", () => {
 function setupContactClickHandlers() {
   document.querySelectorAll(".contact-item").forEach((contact) => {
     contact.addEventListener("click", async function () {
-      const contactName = this.querySelector(".contact-name").textContent;
-      const contactAvatar = this.querySelector(".contact-avatar").textContent;
-      const contactPhone = this.querySelector(".contact-phone").textContent;
-      const contactabout = this.querySelector(".contact-about").textContent;
+      const contactName =
+        this.querySelector(".contact-name")?.textContent || "";
+      const contactPhone =
+        this.querySelector(".contact-phone")?.textContent || "";
+      const contactabout =
+        this.querySelector(".contact-about")?.textContent || "";
+       const avatarElement = this.querySelector(".contact-avatar img");
+       let contactAvatar;
+       
+       if (avatarElement) {
+         // If image exists, use its URL
+         contactAvatar = avatarElement.getAttribute("src");
+       } else {
+         // Otherwise, use text (initial letter)
+         contactAvatar = this.querySelector(".contact-avatar")?.textContent.trim() || "";
+       }
       const userId = this.dataset.userid;
       console.log("Contact clicked:", userId, contactName, contactPhone);
-      window.currentReceiverId = userId; 
+      window.currentReceiverId = userId;
       allMessagesInChat = [];
       document.getElementById("chatSearchInput").value = ""; // Clear search input
       document.getElementById("searchResults").innerHTML = ""; // Clear search results
@@ -106,12 +122,98 @@ function setupContactClickHandlers() {
           statusText.style.color = "gray";
         }
       }
+
+      // Fetch contact details and show in the contact-details-panel
+      try {
+        const res = await fetch(`/contact/${userId}`);
+        const contactData = await res.json();
+
+         const panel = document.getElementById('contact-details-panel');
+            panel.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            
+            // Simulate network request
+            setTimeout(() => {
+                try {
+                    let infoHtml = `
+                        <div class="avatar-container">
+                            <div class="avatar">
+                    `;
+                    
+                    // Avatar Section
+                    if (contactData.image) {
+                        infoHtml += `<img src="${contactData.image}" alt="${contactData.name}">`;
+                    } else {
+                        // Show first letter fallback
+                        const initial = (contactData.name || "?").charAt(0).toUpperCase();
+                        infoHtml += `${initial}`;
+                    }
+                    
+                    infoHtml += `</div></div>`;
+                    
+                    infoHtml += `
+                        <div class="user-info">
+                            <div class="user-name">${contactData.name}</div>
+                            <div class="user-phone">${contactData.phoneNo}</div>
+                        </div>
+                        
+                        <ul class="details-list">
+                    `;
+                    
+                    infoHtml += `<li><strong>Name:</strong> ${contactData.name}</li>`;
+                    infoHtml += `<li><strong>Phone:</strong> ${contactData.phoneNo}</li>`;
+                    
+                    if (contactData.about) {
+                        infoHtml += `</ul>`;
+                        infoHtml += `
+                            <div class="about-section">
+                                <h4>About</h4>
+                                <p class="about-text">${contactData.about}</p>
+                            </div>
+                        `;
+                    } else {
+                        infoHtml += `</ul>`;
+                    }
+                    
+                    // Add action buttons
+                    infoHtml += `
+                        <div class="action-buttons">
+                            <div class="action-btn">
+                                <div class="action-icon">
+                                    <i class="fas fa-comment"></i>
+                                </div>
+                                <span class="action-label">Message</span>
+                            </div>
+                            <div class="action-btn">
+                                <div class="action-icon">
+                                    <i class="fas fa-phone"></i>
+                                </div>
+                                <span class="action-label">Call</span>
+                            </div>
+                            <div class="action-btn">
+                                <div class="action-icon">
+                                    <i class="fas fa-video"></i>
+                                </div>
+                                <span class="action-label">Video</span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    panel.innerHTML = infoHtml;
+                } catch (err) {
+                    panel.innerHTML = '<p class="error-message">Error loading contact details.</p>';
+                }
+            }, 1500);
+
+      } catch (err) {
+        document.getElementById("contact-details-panel").innerHTML =
+          "<p>Error loading contact details.</p>";
+      }
+
       updateProfileSidebar(
         contactName,
         contactAvatar,
-        contactPhone,
-        contactabout
       );
+
       document.querySelector(".empty-chat").style.display = "none";
       document.querySelector(".chattingArea").style.display = "block";
       document.getElementById("sidebar").classList.add("active");
@@ -125,44 +227,45 @@ function setupContactClickHandlers() {
   });
 }
 
-
-function setupGroupClickHandlers(groupId,groupName) {
+function setupGroupClickHandlers() {
   document.querySelectorAll(".group-item").forEach((group) => {
     group.addEventListener("click", async function () {
-      const groupName = this.querySelector(".group-name").textContent;
-      const groupAvatar = this.querySelector(".group-avatar").textContent;
-      // const contactPhone = this.querySelector(".contact-last-msg").textContent;
-      // const contactabout = this.querySelector(".contact-about").textContent;
+      const groupName = this.querySelector(".contact-name")?.textContent || "";
+      const groupAvatar =
+        this.querySelector(".contact-avatar")?.textContent || "";
       const groupId = this.dataset.groupid;
-      // console.log("Contact clicked:", groupId, contactName, contactPhone);
-      window.currentReceiverId = groupId; 
+      window.currentReceiverId = groupId;
+
+      // Fetch group details and show members in the group-details-panel
+      try {
+        const res = await fetch(`/group/${groupId}`);
+        const groupData = await res.json();
+        let membersHtml = "<h4>Group Members</h4><ul>";
+        if (Array.isArray(groupData.members)) {
+          groupData.members.forEach((member) => {
+            membersHtml += `<li><strong>${member.name}</strong> (${member.phone})</li>`;
+          });
+        } else {
+          membersHtml += "<li>No members found.</li>";
+        }
+        membersHtml += "</ul>";
+        document.getElementById("contact-details-panel").innerHTML =
+          membersHtml;
+      } catch (err) {
+        document.getElementById("contact-details-panel").innerHTML =
+          "<p>Error loading group details.</p>";
+      }
+
       allMessagesInChat = [];
-      document.getElementById("chatSearchInput").value = ""; // Clear search input
-      document.getElementById("searchResults").innerHTML = ""; // Clear search results
-      document.querySelector('.user-status').innerHTML = "";
+      document.getElementById("chatSearchInput").value = "";
+      document.getElementById("searchResults").innerHTML = "";
+      document.querySelector(".user-status").innerHTML = "";
 
       updateSecretChatUI();
       onChatSwitch(groupId);
-      // socket.emit("chat-open", {
-      //   userId: localStorage.getItem("userId"),
-      //   contactId: userId,
-      // });
-      // const statusText = document.querySelector(".nav-info .user-status");
-      // if (statusText) {
-      //   if (onlineUserIds.has(groupId)) {
-      //     statusText.innerText = "Online";
-      //     statusText.style.color = "green";
-      //   } else {
-      //     statusText.innerText = "Offline";
-      //     statusText.style.color = "gray";
-      //   }
-      // }
-      updateGroupProfileSidebar(
-        groupName,
-        groupAvatar,
-        // contactPhone,
-        // contactabout
-      );
+
+      updateGroupProfileSidebar(groupName, groupAvatar);
+
       document.querySelector(".empty-chat").style.display = "none";
       document.querySelector(".chattingArea").style.display = "block";
       document.getElementById("sidebar").classList.add("active");
@@ -175,7 +278,6 @@ function setupGroupClickHandlers(groupId,groupName) {
     });
   });
 }
-
 document
   .getElementById("messagesContainer")
   .addEventListener("scroll", function () {
@@ -228,16 +330,20 @@ const emptyBox = document.getElementById("emptyChatMsg");
 input.addEventListener("input", async (e) => {
   const query = e.target.value;
   try {
-    const res = await fetch(
-      `/api/contacts/search?query=${encodeURIComponent(query)}`,
-      {
-        credentials: "include", // if you're using cookies/auth
-      }
-    );
-    const data = await res.json();
-    console.log("data", data);
+    // Fetch both contacts and groups in parallel
+    const [contactsRes, groupsRes] = await Promise.all([
+      fetch(`/api/contacts/search?query=${encodeURIComponent(query)}`, {
+        credentials: "include",
+      }),
+      fetch(`/api/groups/search?query=${encodeURIComponent(query)}`, {
+        credentials: "include",
+      }),
+    ]);
+    const contacts = await contactsRes.json();
+    const groups = await groupsRes.json();
     resultBox.innerHTML = "";
-    data.forEach((contact) => {
+    // Render contacts
+    contacts.forEach((contact) => {
       const userId = contact.contactId;
       const newContact = document.createElement("div");
       newContact.className = "contact-item";
@@ -248,22 +354,42 @@ input.addEventListener("input", async (e) => {
            <div class="contact-name">${contact.name}</div>
            <div class="contact-last-msg">${contact.phone}</div>
        </div>
-   `;
-
+      `;
+      // ...existing contact click handler...
       newContact.addEventListener("click", async function () {
-        document.querySelector(".nav-name").textContent = contact.name;
-        document.querySelector(".nav-avatar").textContent =
-          contact.name.charAt(0);
-        window.currentReceiverId = userId;
-        document.querySelector(".empty-chat").style.display = "none";
-        document.querySelector(".chattingArea").style.display = "block";
-        document.getElementById("sidebar").classList.add("active");
-        document.getElementById("chatArea").classList.add("active");
-        messagesSkip = 0;
-        allMessagesLoaded = false;
-        await loadChatMessages(false);
+        // ...existing code for contact click...
+        setupContactClickHandlers();
+        // document.querySelector(".nav-name").textContent = contact.name;
+        // document.querySelector(".nav-avatar").textContent =
+        //   contact.name.charAt(0);
+        // window.currentReceiverId = userId;
+        // document.querySelector(".empty-chat").style.display = "none";
+        // document.querySelector(".chattingArea").style.display = "block";
+        // document.getElementById("sidebar").classList.add("active");
+        // document.getElementById("chatArea").classList.add("active");
+        // messagesSkip = 0;
+        // allMessagesLoaded = false;
+        // await loadChatMessages(false);
       });
       resultBox.appendChild(newContact);
+    });
+    // Render groups
+    groups.forEach((group) => {
+      const groupId = group._id;
+      const newGroup = document.createElement("div");
+      newGroup.className = "group-item";
+      newGroup.dataset.groupid = groupId;
+      newGroup.innerHTML = `
+       <div class="contact-avatar">${group.name.charAt(0)}</div>
+       <div class="contact-info">
+           <div class="contact-name group-name">${group.name}</div>
+       </div>
+      `;
+      newGroup.addEventListener("click", async function () {
+        // ...existing code for group click...
+        setupGroupClickHandlers();
+      });
+      resultBox.appendChild(newGroup);
     });
   } catch (err) {
     console.error("Search failed", err);
@@ -304,10 +430,13 @@ socket.on("chat message", async (msg) => {
   const encryptedKeyObj = msg.encryptedKeys?.find(
     (k) => k.deviceId === deviceId
   );
-  if (encryptedKeyObj && msg.iv && msg.encryptedMessage && msg.type === "text") {
-
-    await getMessageHtml(msg,encryptedKeyObj);
- 
+  if (
+    encryptedKeyObj &&
+    msg.iv &&
+    msg.encryptedMessage &&
+    msg.type === "text"
+  ) {
+    await getMessageHtml(msg, encryptedKeyObj);
   } else {
     // msg.message = "[No valid key for this device]";
   }
@@ -364,12 +493,19 @@ socket.on("chat message", async (msg) => {
 
   // --- Unread badge logic for real-time updates ---
   // If this is a received message and the chat is NOT open, increment unread count
-  if ( msg.receiverId === senderId && window.currentReceiverId !== msg.senderId ) {
+  if (
+    msg.receiverId === senderId &&
+    window.currentReceiverId !== msg.senderId
+  ) {
     unreadCounts[msg.senderId] = (unreadCounts[msg.senderId] || 0) + 1;
     updateUnreadBadge(msg.senderId, unreadCounts[msg.senderId]);
   }
 
-  if ( (msg.senderId === window.currentReceiverId &&   msg.receiverId === senderId) || (msg.senderId === senderId && msg.receiverId === window.currentReceiverId) ) {
+  if (
+    (msg.senderId === window.currentReceiverId &&
+      msg.receiverId === senderId) ||
+    (msg.senderId === senderId && msg.receiverId === window.currentReceiverId)
+  ) {
     const messagesContainer = document.getElementById("messagesContainer");
     const messageDiv = document.createElement("div");
     const isSent = msg.senderId === senderId;
@@ -389,31 +525,45 @@ socket.on("chat message", async (msg) => {
     }
 
     // For image message
-    if ( msg.type === "image" &&  msg.mediaUrls?.length &&  encryptedKeyObj &&  msg.iv) {
-
-      await getNormalImageHtml(msg, messageDiv, isSent, tickHtml, senderId, encryptedKeyObj);
-
-
-      
+    if (
+      msg.type === "image" &&
+      msg.mediaUrls?.length &&
+      encryptedKeyObj &&
+      msg.iv
+    ) {
+      await getNormalImageHtml(
+        msg,
+        messageDiv,
+        isSent,
+        tickHtml,
+        senderId,
+        encryptedKeyObj
+      );
     } else if (msg.type === "audio" && msg.audioUrl) {
-
-      await getAudioMessageHtml(msg, messageDiv, isSent,tickHtml,senderId,encryptedKeyObj );
-
+      await getAudioMessageHtml(
+        msg,
+        messageDiv,
+        isSent,
+        tickHtml,
+        senderId,
+        encryptedKeyObj
+      );
     } else if (msg.type === "lockedText") {
-      
-      await getLockedMessageHtml(msg,messageDiv,isSent,tickHtml,senderId);
-
+      await getLockedMessageHtml(msg, messageDiv, isSent, tickHtml, senderId);
     } else if (msg.type === "lockedImage" && msg.mediaUrls?.length === 1) {
-
-      await getLockedImageHtml(msg,messageDiv,isSent,tickHtml,senderId);
-
-    }else if(msg.isDeleted) {
-        messageDiv.innerHTML = `<i>This message was deleted</i>`;
-    }
-    else {
+      await getLockedImageHtml(msg, messageDiv, isSent, tickHtml, senderId);
+    } else if (msg.isDeleted) {
+      messageDiv.innerHTML = `<i>This message was deleted</i>`;
+    } else {
       let repliedHtml = await getReplyPreviewHtml(msg.repliedTo);
 
-      await getNormalMessageHtml(msg,messageDiv,isSent,tickHtml,repliedHtml);
+      await getNormalMessageHtml(
+        msg,
+        messageDiv,
+        isSent,
+        tickHtml,
+        repliedHtml
+      );
 
       if (smartReplyEnabled && msg.senderId !== senderId) {
         const typingIndicator = document.getElementById("ai-typing-indicator");
@@ -431,8 +581,7 @@ socket.on("chat message", async (msg) => {
         }
       }
     }
-    await getMenuUi(messageDiv,msg,isSent,senderId);
-
+    await getMenuUi(messageDiv, msg, isSent, senderId);
 
     if (msg._id) {
       messageDiv.id = `msg-${msg._id}`;
@@ -444,10 +593,7 @@ socket.on("chat message", async (msg) => {
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
     if (msg.isSecretChat && msg._id && msg.expiresAt) {
-
-      await getSecretchatCountDown(messageDiv,msg,isSent,senderId);
-
-      
+      await getSecretchatCountDown(messageDiv, msg, isSent, senderId);
     }
 
     // If this is a received message and the chat is open, emit read immediately
@@ -647,14 +793,12 @@ function playNotificationSound() {
   }
 }
 
-
 socket.on("messageDeletedForMe", ({ messageId }) => {
   const msgElement = document.getElementById(`msg-${messageId}`);
   if (msgElement) {
     msgElement.remove(); // or msgElement.style.display = 'none';
   }
 });
-
 
 socket.on("messageDeletedForEveryone", ({ messageId }) => {
   const msgElement = document.getElementById(`msg-${messageId}`);
@@ -663,8 +807,6 @@ socket.on("messageDeletedForEveryone", ({ messageId }) => {
     msgElement.classList.add("deleted-message");
   }
 });
-
-
 
 // DOM Elements
 const localVideo = document.getElementById("localVideo");
@@ -687,7 +829,6 @@ localVideo.autoplay = true;
 localVideo.playsInline = true;
 localVideo.muted = true;
 
-
 // WebRTC Variables
 let peerConnection = null;
 let localStream = null;
@@ -702,20 +843,17 @@ let preferredCameraId = null;
 let isSettingRemoteDescription = false;
 let isCreatingAnswer = false;
 
-
 let currentCall = {
   remoteUserId: null,
-  status: 'idle' // 'idle' | 'calling' | 'ringing' | 'in-call'
+  status: "idle", // 'idle' | 'calling' | 'ringing' | 'in-call'
 };
-
-
 
 // Configuration
 const config = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     // Add TURN servers here if needed
-  ]
+  ],
 };
 
 // Initialize Socket.io
@@ -730,16 +868,15 @@ startCallBtn.addEventListener("click", acceptCall);
 async function initiateCall() {
   remoteUserId = window.currentReceiverId;
   if (!remoteUserId) return alert("No contact selected");
-  
+
   // Initialize camera selector only when starting a call
-  currentCall.status = 'calling';
+  currentCall.status = "calling";
   showPreCallScreen("Calling...");
   startCallBtn.style.display = "none";
- 
 
-    try {
+  try {
     await initCameraSelector();
-     setTimeout(startCall, 300);
+    setTimeout(startCall, 300);
   } catch (err) {
     console.error("Camera selector failed:", err);
     cancelCall();
@@ -758,42 +895,36 @@ async function startCall() {
     localStream = await getLocalStream();
     localVideo.srcObject = localStream;
     if (!localVideo.srcObject) {
-  console.warn("⚠️ localVideo not set, retrying...");
-  localVideo.srcObject = localStream;
-}
+      console.warn("⚠️ localVideo not set, retrying...");
+      localVideo.srcObject = localStream;
+    }
     // preCallScreen.style.display = "none";
     // videoCallContainer.style.display = "block";
 
-
-
-      // Verify local stream has tracks
+    // Verify local stream has tracks
     if (!localStream.getTracks().length) {
       throw new Error("No media tracks available");
     }
-    
+
     peerConnection = createPeerConnection(remoteUserId);
-    localStream.getTracks().forEach(track => {
-        console.log("🟢 Adding track to peerConnection on B:", track.kind);
+    localStream.getTracks().forEach((track) => {
+      console.log("🟢 Adding track to peerConnection on B:", track.kind);
       peerConnection.addTrack(track, localStream);
     });
 
-        // Verify peer connection exists
+    // Verify peer connection exists
     if (!peerConnection) {
       throw new Error("Peer connection not initialized");
     }
 
-
-
-    
-
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
 
-    socket.emit("webrtc-offer", { 
-      to: remoteUserId, 
+    socket.emit("webrtc-offer", {
+      to: remoteUserId,
       offer,
     });
-    
+
     startCallTimer();
   } catch (err) {
     handleCallError(err);
@@ -806,21 +937,22 @@ async function acceptCall() {
     localStream = await getLocalStream();
     localVideo.srcObject = localStream;
     if (!localVideo.srcObject) {
-  console.warn("⚠️ localVideo not set, retrying...");
-  localVideo.srcObject = localStream;
-}
+      console.warn("⚠️ localVideo not set, retrying...");
+      localVideo.srcObject = localStream;
+    }
     // Show video UI immediately for receiver
     preCallScreen.style.display = "none";
     videoCallContainer.style.display = "block";
-    
 
     peerConnection = createPeerConnection(remoteUserId);
-    localStream.getTracks().forEach(track => {
+    localStream.getTracks().forEach((track) => {
       peerConnection.addTrack(track, localStream);
     });
 
     isSettingRemoteDescription = true;
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(receivedOffer));
+    await peerConnection.setRemoteDescription(
+      new RTCSessionDescription(receivedOffer)
+    );
     isSettingRemoteDescription = false;
 
     isCreatingAnswer = true;
@@ -841,12 +973,12 @@ async function acceptCall() {
 // WebRTC Core Functions
 function createPeerConnection(userId) {
   const pc = new RTCPeerConnection(config);
-  
+
   pc.onicecandidate = (event) => {
     if (event.candidate && remoteUserId) {
       socket.emit("webrtc-ice-candidate", {
         to: userId,
-        candidate: event.candidate
+        candidate: event.candidate,
       });
     }
   };
@@ -857,29 +989,27 @@ function createPeerConnection(userId) {
   //   }
   // };
 
-pc.ontrack = (event) => {
-  console.log("👀 ontrack called on A, streams:", event.streams);
+  pc.ontrack = (event) => {
+    console.log("👀 ontrack called on A, streams:", event.streams);
 
-  if (!remoteVideo.srcObject && event.streams.length > 0) {
-    remoteVideo.srcObject = event.streams[0];
+    if (!remoteVideo.srcObject && event.streams.length > 0) {
+      remoteVideo.srcObject = event.streams[0];
 
-   remoteVideo.autoplay = true;
-    remoteVideo.playsInline = true;
-    console.log("✅ remoteVideo.srcObject set on A:", remoteVideo.srcObject);
+      remoteVideo.autoplay = true;
+      remoteVideo.playsInline = true;
+      console.log("✅ remoteVideo.srcObject set on A:", remoteVideo.srcObject);
 
-    setTimeout(() => {
-      const tracks = remoteVideo.srcObject?.getTracks();
-      console.log("🔍 remoteVideo current stream tracks:", tracks);
-    }, 1000);
+      setTimeout(() => {
+        const tracks = remoteVideo.srcObject?.getTracks();
+        console.log("🔍 remoteVideo current stream tracks:", tracks);
+      }, 1000);
 
-    // Force playback
-    remoteVideo.play().catch(err => console.warn("⚠️ remoteVideo play() failed:", err));
-
-
-  }
-};
-
-
+      // Force playback
+      remoteVideo
+        .play()
+        .catch((err) => console.warn("⚠️ remoteVideo play() failed:", err));
+    }
+  };
 
   pc.onsignalingstatechange = () => {
     console.log("Signaling state:", pc.signalingState);
@@ -900,38 +1030,36 @@ pc.ontrack = (event) => {
 
 // Media Management
 async function getLocalStream() {
-  
   if (localStream) {
-    localStream.getTracks().forEach(track => track.stop());
+    localStream.getTracks().forEach((track) => track.stop());
     localStream = null;
   }
 
   try {
-   const stream = await navigator.mediaDevices.getUserMedia({
-    video: {
-      facingMode: "user", // Front camera
-      width: { ideal: 1280 },
-      height: { ideal: 720 }
-    },
-    audio: true
-});
-localStream = stream;
-localVideo.srcObject = localStream;
-
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: "user", // Front camera
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+      audio: true,
+    });
+    localStream = stream;
+    localVideo.srcObject = localStream;
 
     const devices = await navigator.mediaDevices.enumerateDevices();
     // const virtualCamId = findVirtualCamera(devices);
     // console.log("🎥 Virtual Camera ID found:", virtualCamId);
-    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+    const videoDevices = devices.filter((d) => d.kind === "videoinput");
     console.log("All cameras:", videoDevices);
-    
+
     // Try cameras in order: preferred → virtual → HD → default
     const cameraPriority = [
       preferredCameraId,
       findVirtualCamera(videoDevices),
       //  virtualCamId,
       findHighResCamera(videoDevices),
-      undefined
+      undefined,
     ];
 
     for (const deviceId of cameraPriority) {
@@ -941,18 +1069,18 @@ localVideo.srcObject = localStream;
             deviceId: deviceId ? { exact: deviceId } : undefined,
             width: { ideal: 1280 },
             height: { ideal: 720 },
-            frameRate: { ideal: 30 }
+            frameRate: { ideal: 30 },
           },
           audio: {
             echoCancellation: true,
-            noiseSuppression: true
-          }
+            noiseSuppression: true,
+          },
         };
 
         localStream = await navigator.mediaDevices.getUserMedia(constraints);
         return localStream;
       } catch (err) {
-        console.warn(`Camera ${deviceId || 'default'} failed:`, err);
+        console.warn(`Camera ${deviceId || "default"} failed:`, err);
         continue;
       }
     }
@@ -967,15 +1095,21 @@ localVideo.srcObject = localStream;
 // Device Helpers
 function findVirtualCamera(devices) {
   if (!devices) return null;
-  const virtualCamKeywords = ['OBS', 'Virtual', 'CamTwist', 'ManyCam','My Webcam'];
-  const virtualCam = devices.find(d => 
-    d.label && virtualCamKeywords.some(kw => d.label.includes(kw))
+  const virtualCamKeywords = [
+    "OBS",
+    "Virtual",
+    "CamTwist",
+    "ManyCam",
+    "My Webcam",
+  ];
+  const virtualCam = devices.find(
+    (d) => d.label && virtualCamKeywords.some((kw) => d.label.includes(kw))
   );
   return virtualCam?.deviceId;
 }
 
 function findHighResCamera(devices) {
-  const hdCam = devices.find(d => {
+  const hdCam = devices.find((d) => {
     const caps = d.getCapabilities?.();
     return caps?.width?.max >= 1280 || caps?.height?.max >= 720;
   });
@@ -986,15 +1120,12 @@ function findHighResCamera(devices) {
 let receivedOffer = null;
 
 socket.on("webrtc-offer", async ({ from, offer }) => {
-
-
-
   if (isInCall) {
     socket.emit("call-rejected", { to: from });
     return;
   }
 
-  currentCall.status = 'calling'
+  currentCall.status = "calling";
   remoteUserId = from;
   receivedOffer = offer;
   showPreCallScreen(`Incoming call from`);
@@ -1010,26 +1141,33 @@ socket.on("webrtc-answer", async ({ from, answer }) => {
 
   try {
     isSettingRemoteDescription = true;
-      console.log("🧾 Received answer on A:", answer);
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-      currentCall.status = 'in-call';
-      console.log("✅ Remote description set on A");
+    console.log("🧾 Received answer on A:", answer);
+    await peerConnection.setRemoteDescription(
+      new RTCSessionDescription(answer)
+    );
+    currentCall.status = "in-call";
+    console.log("✅ Remote description set on A");
     isSettingRemoteDescription = false;
-        // Ensure UI is in correct state for caller
+    // Ensure UI is in correct state for caller
     preCallScreen.style.display = "none";
     videoCallContainer.style.display = "block";
   } catch (err) {
     handleCallError(err);
-    
   }
 });
 
 socket.on("webrtc-ice-candidate", async ({ from, candidate }) => {
   console.log("🌐 Received ICE candidate from", from, candidate);
   const iceCandidate = new RTCIceCandidate(candidate);
-  
-  if (!peerConnection || isSettingRemoteDescription || isCreatingAnswer ||
-      !["stable", "have-remote-offer", "have-local-offer"].includes(peerConnection.signalingState)) {
+
+  if (
+    !peerConnection ||
+    isSettingRemoteDescription ||
+    isCreatingAnswer ||
+    !["stable", "have-remote-offer", "have-local-offer"].includes(
+      peerConnection.signalingState
+    )
+  ) {
     iceCandidateBuffer.push(iceCandidate);
     return;
   }
@@ -1054,43 +1192,39 @@ function startCallTimer() {
   callStartTime = new Date();
   callInterval = setInterval(() => {
     const duration = Math.floor((new Date() - callStartTime) / 1000);
-    const minutes = String(Math.floor(duration / 60)).padStart(2, '0');
-    const seconds = String(duration % 60).padStart(2, '0');
+    const minutes = String(Math.floor(duration / 60)).padStart(2, "0");
+    const seconds = String(duration % 60).padStart(2, "0");
     callTimer.textContent = `${minutes}:${seconds}`;
   }, 1000);
 }
 
-  function endCall() {
-
+function endCall() {
   clearInterval(callInterval);
-
 
   // if (remoteUserId && currentCall.status === 'in-call') {
   //   socket.emit('call-ended', { to: remoteUserId });
   // }
 
-    currentCall = {
+  currentCall = {
     remoteUserId: null,
-    status: 'idle'
+    status: "idle",
   };
-  
-  
+
   if (peerConnection) {
     peerConnection.close();
     peerConnection = null;
   }
-  
+
   if (localStream) {
-    localStream.getTracks().forEach(track => track.stop());
+    localStream.getTracks().forEach((track) => track.stop());
     localStream = null;
   }
-  
+
   localVideo.srcObject = null;
   remoteVideo.srcObject = null;
   isInCall = false;
   iceCandidateBuffer = [];
   remoteUserId = null;
-  
 
   videoCallContainer.style.display = "none";
   preCallScreen.style.display = "none";
@@ -1101,7 +1235,7 @@ function startCallTimer() {
 function processBufferedCandidates() {
   if (!peerConnection?.remoteDescription) return;
 
-  iceCandidateBuffer = iceCandidateBuffer.filter(candidate => {
+  iceCandidateBuffer = iceCandidateBuffer.filter((candidate) => {
     try {
       peerConnection.addIceCandidate(candidate);
       return false;
@@ -1121,7 +1255,7 @@ function checkAndReconnect() {
 
 async function restartCallWithNewDevice() {
   endCall();
-  await new Promise(resolve => setTimeout(resolve, 500));
+  await new Promise((resolve) => setTimeout(resolve, 500));
   // startCall();
 }
 
@@ -1137,31 +1271,36 @@ async function initCameraSelector() {
   try {
     // First request camera access
     await navigator.mediaDevices.getUserMedia({ video: true });
-    
+
     // Then enumerate devices
     const devices = await navigator.mediaDevices.enumerateDevices();
-    const cameras = devices.filter(d => d.kind === 'videoinput');
-    
+    const cameras = devices.filter((d) => d.kind === "videoinput");
+
     // Create or update selector UI
-    let selector = document.getElementById('camera-selector');
+    let selector = document.getElementById("camera-selector");
     if (!selector) {
-      selector = document.createElement('select');
-      selector.id = 'camera-selector';
-      selector.style.margin = '10px';
+      selector = document.createElement("select");
+      selector.id = "camera-selector";
+      selector.style.margin = "10px";
       document.body.appendChild(selector);
     }
-    
-    selector.innerHTML = cameras.map(cam => 
-      `<option value="${cam.deviceId}">${cam.label || 'Camera ' + (selector.length + 1)}</option>`
-    ).join('');
-    
+
+    selector.innerHTML = cameras
+      .map(
+        (cam) =>
+          `<option value="${cam.deviceId}">${
+            cam.label || "Camera " + (selector.length + 1)
+          }</option>`
+      )
+      .join("");
+
     selector.onchange = () => {
       preferredCameraId = selector.value;
       if (isInCall) {
         restartCallWithNewDevice();
       }
     };
-    
+
     return true;
   } catch (err) {
     console.error("Camera initialization failed:", err);
@@ -1177,20 +1316,18 @@ function cancelCall() {
     peerConnection = null;
   }
 
-
-     console.log('currentcall status' , currentCall.status)
-    if (remoteUserId) {
-    if (currentCall.status === 'calling') {
-      console.log("calling ")
-      socket.emit('call-rejected', { to: remoteUserId });
-    } 
+  console.log("currentcall status", currentCall.status);
+  if (remoteUserId) {
+    if (currentCall.status === "calling") {
+      console.log("calling ");
+      socket.emit("call-rejected", { to: remoteUserId });
+    }
     // endCall();
   }
 
-
   // Stop and clear the local media stream
   if (localStream) {
-    localStream.getTracks().forEach(track => track.stop());
+    localStream.getTracks().forEach((track) => track.stop());
     localStream = null;
   }
 
@@ -1202,7 +1339,6 @@ function cancelCall() {
     socket.emit("call-rejected", { to: remoteUserId });
   }
 
-
   // Reset call state
   isInCall = false;
   remoteUserId = null;
@@ -1211,7 +1347,7 @@ function cancelCall() {
   preCallScreen.style.display = "none";
   mainUI.style.display = "block";
   videoCallContainer.style.display = "none";
-  
+
   // Clear the call timer if it exists
   if (callInterval) {
     clearInterval(callInterval);
@@ -1221,12 +1357,10 @@ function cancelCall() {
   // Reset video elements
   localVideo.srcObject = null;
   remoteVideo.srcObject = null;
-  setTimeout(() => cancelCallBtn.disabled = false, 1000);
+  setTimeout(() => (cancelCallBtn.disabled = false), 1000);
 
   console.log("Call cancelled successfully");
-
 }
-
 
 // Add these to your existing DOM elements
 const muteBtn = document.getElementById("muteBtn");
@@ -1245,14 +1379,14 @@ toggleCameraBtn.addEventListener("click", toggleCamera);
 // New Functions
 function toggleMute() {
   if (!localStream) return;
-  
+
   isMuted = !isMuted;
-  localStream.getAudioTracks().forEach(track => {
+  localStream.getAudioTracks().forEach((track) => {
     track.enabled = !isMuted;
   });
-  
-  muteBtn.innerHTML = isMuted 
-    ? '<i class="fas fa-microphone-slash"></i>' 
+
+  muteBtn.innerHTML = isMuted
+    ? '<i class="fas fa-microphone-slash"></i>'
     : '<i class="fas fa-microphone"></i>';
 }
 
@@ -1268,32 +1402,34 @@ function toggleFullscreen() {
 
 async function toggleCamera() {
   if (!localStream) return;
-  
+
   isFrontCamera = !isFrontCamera;
   try {
     const newStream = await navigator.mediaDevices.getUserMedia({
-      video: { 
+      video: {
         facingMode: isFrontCamera ? "user" : "environment",
         width: { ideal: 1280 },
-        height: { ideal: 720 }
+        height: { ideal: 720 },
       },
-      audio: true
+      audio: true,
     });
-    
+
     // Replace video track
     const videoTrack = newStream.getVideoTracks()[0];
-    const sender = peerConnection.getSenders().find(s => s.track.kind === "video");
+    const sender = peerConnection
+      .getSenders()
+      .find((s) => s.track.kind === "video");
     if (sender) sender.replaceTrack(videoTrack);
-    
+
     // Update local video
-    localStream.getVideoTracks().forEach(track => track.stop());
+    localStream.getVideoTracks().forEach((track) => track.stop());
     localStream.removeTrack(localStream.getVideoTracks()[0]);
     localStream.addTrack(videoTrack);
     localVideo.srcObject = localStream;
-    
+
     // Update camera icon
-    toggleCameraBtn.innerHTML = isFrontCamera 
-      ? '<i class="fas fa-camera-retro"></i>' 
+    toggleCameraBtn.innerHTML = isFrontCamera
+      ? '<i class="fas fa-camera-retro"></i>'
       : '<i class="fas fa-camera"></i>';
   } catch (err) {
     console.error("Error switching camera:", err);
@@ -1319,10 +1455,9 @@ async function toggleCamera() {
 //   }
 // });
 
-
-socket.on('call-rejected', (from) => {
-  if (currentCall.status === 'calling') {
-    alert('The recipient rejected your call');
+socket.on("call-rejected", (from) => {
+  if (currentCall.status === "calling") {
+    alert("The recipient rejected your call");
     endCall();
   }
 });
@@ -1341,41 +1476,27 @@ socket.on('call-rejected', (from) => {
 //   }
 // }
 
-
-
-
-
-socket.on('group-created', async ({ groupId }) => {
+socket.on("group-created", async ({ groupId }) => {
   try {
     // Fetch group details
+
+    console.log("Group created event received:", groupId);
+    // Update UI here
+
     const res = await fetch(`/api/groups/${groupId}`);
     const group = await res.json();
+    console.log("group", group);
 
-    // Create a new list item for the group
-    // const chatList = document.getElementById("chat-list");
-    // const groupItem = document.createElement("div");
-    // groupItem.className = "chat-item group-chat";
-    // groupItem.dataset.groupId = group._id;
-    // groupItem.innerHTML = `
-    //   <div class="chat-avatar">👥</div>
-    //   <div class="chat-info">
-    //     <p class="chat-name">${group.name}</p>
-    //     <p class="chat-last-msg">New group created</p>
-    //   </div>
-    // `;
-
-
-
-      const userId = groupId;
-      const newContact = document.createElement("div");
-      newContact.className = "contact-item";
-      newContact.dataset.groupid = userId;
-      newContact.innerHTML = `
+    const userId = groupId;
+    const newContact = document.createElement("div");
+    newContact.className = "contact-item";
+    newContact.dataset.groupid = userId;
+    newContact.innerHTML = `
        <div class="contact-avatar">${group.name.charAt(0)}</div>
        <div class="contact-info">
            <div class="contact-name">${group.name}</div>
        </div>
-       `
+       `;
 
     // Add click event to open group chat
     groupItem.addEventListener("click", () => {
@@ -1385,7 +1506,6 @@ socket.on('group-created', async ({ groupId }) => {
 
     // Add to chat list
     document.querySelector(".contact-list").appendChild(newContact);
-
   } catch (error) {
     console.error("Error fetching group details:", error);
   }

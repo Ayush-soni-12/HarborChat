@@ -15,16 +15,16 @@ import Group from "../modals/GroupSchema.js"; // fixed import path
 import GroupMessage from "../modals/GroupMessage.js";
 
 // const generateToken = require"../middlewares/generateToken";
-import jwt from  "jsonwebtoken";
+import jwt from "jsonwebtoken";
 
-export const  index = asyncHandler(async (req, res) => {
+export const index = asyncHandler(async (req, res) => {
   return res.render("home.ejs");
 });
 export const chat = asyncHandler(async (req, res) => {
   try {
     const contacts = await Contact.find({ userId: req.user._id })
       .sort({ messageTime: -1 }) //  Sort latest messageTime first
-      .populate("contactId", "about");
+      .populate("contactId", "about image");
     const contactsWithLastMsg = await Promise.all(
       contacts.map(async (contact) => {
         const lastMsg = await Message.findOne({
@@ -68,7 +68,7 @@ export const chat = asyncHandler(async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    
+
     res.render("chatss", { contacts: [], groups: [] });
   }
 });
@@ -254,7 +254,7 @@ export const personalChat = asyncHandler(async (req, res) => {
     const normalKey = `${baseKey}:normal`;
     const secretKey = `${baseKey}:secret`;
 
-        // 🔹 Get lastClearedAt for this user
+    // 🔹 Get lastClearedAt for this user
     const conversationKey = getConversationKey(senderId, receiverId);
     const meta = await UserChat.findOne({ userId: senderId, conversationKey });
     const lastClearedAt = meta?.lastClearedAt || new Date(0);
@@ -276,8 +276,8 @@ export const personalChat = asyncHandler(async (req, res) => {
 
         // Merge both and sort by timestamp (oldest to newest)
         messages = [...normalMessages, ...secretMessages]
-         .filter(m => new Date(m.timestamp) > lastClearedAt)
-        .sort( (a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+          .filter((m) => new Date(m.timestamp) > lastClearedAt)
+          .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
         return res.json({ messages });
       }
@@ -289,7 +289,7 @@ export const personalChat = asyncHandler(async (req, res) => {
         { senderId, receiverId },
         { senderId: receiverId, receiverId: senderId },
       ],
-           timestamp: { $gt: lastClearedAt }
+      timestamp: { $gt: lastClearedAt },
     })
       .sort({ timestamp: -1 }) // newest first
       .skip(Number(skip))
@@ -303,7 +303,9 @@ export const personalChat = asyncHandler(async (req, res) => {
     if (Number(skip) === 0) {
       const normalMessagesToCache = messages.filter((msg) => !msg.isSecretChat);
       if (normalMessagesToCache.length > 0) {
-        await client.set(normalKey, JSON.stringify(normalMessagesToCache), { EX: 300 });
+        await client.set(normalKey, JSON.stringify(normalMessagesToCache), {
+          EX: 300,
+        });
         console.log("💾 Cached normal messages to Redis");
       }
     }
@@ -314,7 +316,6 @@ export const personalChat = asyncHandler(async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
-
 
 export const searchContact = asyncHandler(async (req, res) => {
   const userId = req.user._id; // from JWT middleware
@@ -356,22 +357,21 @@ export const audioMessage = asyncHandler(async (req, res) => {
     res.json({
       encryptedAudioUrl: req.file.path, // Not directly playable
       senderId,
-      receiverId
-    });// <-- Cloudinary secure URL
+      receiverId,
+    }); // <-- Cloudinary secure URL
   } catch (err) {
     console.error("Upload error:", err);
     res.status(500).json({ error: "Upload failed" });
   }
 });
 
-export const whisperBotMessage = asyncHandler(async( req,res)=>{
-
-    try {
+export const whisperBotMessage = asyncHandler(async (req, res) => {
+  try {
     const { prompt } = req.body;
 
     const aiReply = await getGeminiResponse(prompt); // Or your own function
 
-        if (!aiReply) {
+    if (!aiReply) {
       return res.status(500).json({ error: "Gemini failed to respond." });
     }
 
@@ -380,14 +380,12 @@ export const whisperBotMessage = asyncHandler(async( req,res)=>{
     console.error("❌ WhisperBot error:", err);
     res.status(500).json({ error: "WhisperBot failed" });
   }
-
-})
-
+});
 
 export const translateChat = asyncHandler(async (req, res) => {
   const { text, targetLang } = req.body;
   const translated = await translateText(text, targetLang);
-  
+
   if (translated) {
     res.json({ translated });
   } else {
@@ -432,21 +430,23 @@ export const pinMessage = asyncHandler(async (req, res) => {
         }
       }
 
-      return res.json({ success: true, message: 'Message pinned in DB', data: result });
+      return res.json({
+        success: true,
+        message: "Message pinned in DB",
+        data: result,
+      });
     }
 
     // 🕐 If message not yet in DB, store in Redis as pending
-if (!result) return res.status(404).json({ error: "Message not found" });
-
-
+    if (!result) return res.status(404).json({ error: "Message not found" });
   } catch (err) {
-    console.error('Error pinning message:', err);
-    res.status(500).json({ error: 'Server error' });
+    console.error("Error pinning message:", err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-export const unPinMessage = asyncHandler(async(req,res)=>{
-   const { id } = req.params;
+export const unPinMessage = asyncHandler(async (req, res) => {
+  const { id } = req.params;
   const { pinned } = req.body;
 
   try {
@@ -457,10 +457,12 @@ export const unPinMessage = asyncHandler(async(req,res)=>{
     );
 
     if (!updatedMessage) {
-      return res.status(404).json({ success: false, message: "Message not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Message not found" });
     }
 
-     // 2. Update in Redis (if cached)
+    // 2. Update in Redis (if cached)
     const senderId = updatedMessage.senderId.toString();
     const receiverId = updatedMessage.receiverId.toString();
     const ids = [senderId, receiverId].sort();
@@ -473,7 +475,7 @@ export const unPinMessage = asyncHandler(async(req,res)=>{
       if (cached) {
         let messages = JSON.parse(cached);
         let updated = false;
-        messages = messages.map(msg => {
+        messages = messages.map((msg) => {
           if (msg._id === id) {
             updated = true;
             return { ...msg, pinned: !!pinned };
@@ -491,41 +493,48 @@ export const unPinMessage = asyncHandler(async(req,res)=>{
     console.error("Error updating pin status:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
-})
+});
 
-export const updateTheme = asyncHandler(async(req,res)=>{
-    try {
-    const { theme, background1,background2,sentText1,sentText2,recievedText1,recievedText2  } = req.body;
+export const updateTheme = asyncHandler(async (req, res) => {
+  try {
+    const {
+      theme,
+      background1,
+      background2,
+      sentText1,
+      sentText2,
+      recievedText1,
+      recievedText2,
+    } = req.body;
 
     const update = {
       theme,
     };
 
-    if (theme === 'custom') {
+    if (theme === "custom") {
       update.customTheme = {
         background1,
         background2,
         sentText1,
         sentText2,
         recievedText1,
-        recievedText2
+        recievedText2,
       };
     }
 
     await User.findByIdAndUpdate(req.user.id, update);
-    res.redirect('/chat/setting');
+    res.redirect("/chat/setting");
   } catch (err) {
-    console.error('Error updating theme:', err);
-    res.status(500).send('Server error');
+    console.error("Error updating theme:", err);
+    res.status(500).send("Server error");
   }
-})
+});
 
-export const deleteChat = asyncHandler(async(req,res)=>{
+export const deleteChat = asyncHandler(async (req, res) => {
   try {
-    const receiverId = req.body.targetUserId // user you're chatting with
+    const receiverId = req.body.targetUserId; // user you're chatting with
     const senderId = req.user._id;
-    const userId = req.user._id
-
+    const userId = req.user._id;
 
     const conversationKey = getConversationKey(senderId, receiverId);
 
@@ -540,18 +549,17 @@ export const deleteChat = asyncHandler(async(req,res)=>{
 
     await Promise.all([
       client.del(`${baseKey}:normal`),
-      client.del(`${baseKey}:secret`)
+      client.del(`${baseKey}:secret`),
     ]);
-
 
     res.json({ success: true, message: "Chat cleared from your side." });
   } catch (error) {
     console.error("Error clearing chat:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
-})
+});
 
-export const fetchGroups  = asyncHandler(async(req,res)=>{
+export const fetchGroups = asyncHandler(async (req, res) => {
   try {
     const userId = req.user._id;
 
@@ -566,22 +574,20 @@ export const fetchGroups  = asyncHandler(async(req,res)=>{
     console.error(error);
     return res.status(500).json({ error: "Server error" });
   }
-})
+});
 
-export const  GroupInfo = asyncHandler(async(req,res)=>{
-
-    const group = await Group.findById(req.params.id)
+export const GroupInfo = asyncHandler(async (req, res) => {
+  const group = await Group.findById(req.params.id)
     .populate("members", "name avatar")
     .select("name members createdAt");
 
   if (!group) return res.status(404).json({ error: "Group not found" });
   console.log(group);
-   return res.json(group);
-})
+  return res.json(group);
+});
 
-export const createGroup = asyncHandler(async(req,res)=>{
-
-   try {
+export const createGroup = asyncHandler(async (req, res) => {
+  try {
     const { name, description, avatar, members = [] } = req.body;
 
     // Ensure group name
@@ -612,5 +618,73 @@ export const createGroup = asyncHandler(async(req,res)=>{
     console.error(error);
     return res.status(500).json({ error: "Server error" });
   }
+});
 
+export const GroupUserinfo = asyncHandler(async (req, res) => {
+  try {
+    const group = await Group.findById(req.params.id)
+      .populate("members.user", "name image phoneNo about")
+      .lean();
+
+    if (!group) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    // Map members to match your frontend usage
+    const members = group.members.map((m) => ({
+      name: m.user?.name || "Unknown",
+      phone: m.user?.phoneNo || "",
+      image: m.user?.image || "",
+      about: m.user?.about || "",
+    }));
+
+    res.json({ members });
+  } catch (err) {
+    console.error("Error loading group details:", err);
+    res.status(500).json({ message: "Error loading group details" });
+  }
+});
+
+export const contactDetails = asyncHandler(async (req, res) => {
+  try {
+    const userId = req.params.id;
+    // Try to find as a User
+    let user = await User.findById(userId).select("name phoneNo about image");
+    if (!user) {
+      // Try to find as a Contact (for non-user contacts)
+      const contact = await Contact.findOne({ contactId: userId });
+      if (contact) {
+        user = {
+          name: contact.name,
+          phoneNo: contact.phone,
+          about: contact.about || "",
+          image: contact.image || "",
+        };
+      }
+    }
+    if (!user) return res.status(404).json({ error: "Contact not found" });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch contact details" });
+  }
+});
+
+export const searchGroups = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const query = req.query.query?.trim();
+  if (!query) {
+    // Return all groups for this user if no query
+    const groups = await Group.find({ "members.user": userId }).select(
+      "_id name"
+    );
+    return res.json(groups);
+  }
+  const regex = new RegExp(query, "i");
+  const groups = await Group.find({
+    "members.user": userId,
+    name: regex,
+  })
+    .select("_id name")
+    .limit(10);
+  return res.json(groups);
 });
